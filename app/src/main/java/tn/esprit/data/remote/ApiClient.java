@@ -11,6 +11,10 @@ import retrofit2.http.POST;
 /**
  * Provides a configured Retrofit instance to talk to the Spring Boot backend.
  * Uses 10.0.2.2 so the Android emulator can reach localhost:8080 on your machine.
+ *
+ * NOTE: This client is intentionally small and focused on auth for now.
+ * Later we can split it into separate files (AuthApi, UserApi, DoctorApi...)
+ * to avoid it becoming a god-class.
  */
 public class ApiClient {
 
@@ -19,6 +23,9 @@ public class ApiClient {
 
     private ApiClient() {
         // No instances
+    }
+    public static <T> T createService(Class<T> serviceClass) {
+        return getRetrofit().create(serviceClass);
     }
 
     private static Retrofit getRetrofit() {

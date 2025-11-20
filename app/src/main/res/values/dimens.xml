@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Drawer header -->
     <dimen name="drawer_header_padding">24dp</dimen>
     <dimen name="drawer_header_avatar_size">48dp</dimen>
     <dimen name="drawer_header_avatar_padding">8dp</dimen>
     <dimen name="drawer_header_spacing_horizontal">16dp</dimen>
+
+    <!-- Profile header -->
+    <dimen name="profile_header_avatar_size">64dp</dimen>
+    <dimen name="profile_header_avatar_padding">8dp</dimen>
 </resources>

@@ -23,6 +23,10 @@
     <color name="color_drawer_header_on_bg">@color/white</color>
     <color name="color_drawer_header_on_bg_secondary">#E5FFFFFF</color>
 
+    <!-- Profile-specific -->
+    <color name="color_profile_role_bg">@color/color_primary_soft</color>
+    <color name="color_profile_role_text">@color/color_primary_variant</color>
+
     <!-- Ripples / effects -->
     <color name="color_primary_ripple">#330BA5A4</color>      <!-- 20% alpha primary -->
 </resources>

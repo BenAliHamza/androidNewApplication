@@ -23,6 +23,7 @@ import java.util.Calendar;
 import tn.esprit.R;
 import tn.esprit.data.auth.AuthLocalDataSource;
 import tn.esprit.presentation.auth.AuthGateActivity;
+import tn.esprit.presentation.profile.ProfileActivity;
 
 public class HomeFragment extends Fragment {
 
@@ -80,12 +81,19 @@ public class HomeFragment extends Fragment {
             });
         }
 
-        // Drawer navigation: Profile/Settings are placeholders, Logout is functional.
         if (navigationView != null) {
             navigationView.setNavigationItemSelectedListener(item -> {
                 int id = item.getItemId();
 
-                if (id == R.id.menu_logout) {
+                if (id == R.id.menu_profile) {
+                    // Open profile screen in its own activity
+                    if (drawerLayout != null) {
+                        drawerLayout.closeDrawer(GravityCompat.START);
+                    }
+                    Intent intent = new Intent(requireContext(), ProfileActivity.class);
+                    startActivity(intent);
+                    return true;
+                } else if (id == R.id.menu_logout) {
                     if (drawerLayout != null) {
                         drawerLayout.closeDrawer(GravityCompat.START);
                     }
@@ -93,23 +101,21 @@ public class HomeFragment extends Fragment {
                     // Clear session tokens
                     authLocalDataSource.clearTokens();
 
-                    // Go back into the auth gate (which decides Login vs Main based on tokens)
+                    // Go back through AuthGate to re-check session and show login
                     Intent intent = new Intent(requireContext(), AuthGateActivity.class);
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                     return true;
                 } else {
-                    // Profile / Settings: placeholder for now – just close drawer
+                    // Settings and any other future items: placeholder for now
                     if (drawerLayout != null) {
                         drawerLayout.closeDrawer(GravityCompat.START);
                     }
-                    // TODO: later route to profile/settings (doctor vs patient specific)
                     return true;
                 }
             });
         }
 
-        // Text placeholders (will be replaced by real user data later)
         updateHeaderAndHighlightPlaceholders();
 
         // Simple entrance animation for the highlight card.
@@ -132,10 +138,10 @@ public class HomeFragment extends Fragment {
         String greeting = getGreetingForCurrentTime();
         textGreeting.setText(greeting);
 
-        // For now, we use placeholder name; later we will inject real user profile (doctor/patient).
+        // Placeholder name (will be replaced by real UserDto later)
         textUserName.setText(getString(R.string.home_drawer_user_name_placeholder));
 
-        // Sync drawer header placeholders (name + email)
+        // Sync drawer header placeholders
         if (navigationView != null) {
             View header = navigationView.getHeaderView(0);
             if (header != null) {

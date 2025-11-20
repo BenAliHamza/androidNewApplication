@@ -12,4 +12,14 @@
         <item name="android:textSize">13sp</item>
     </style>
 
+    <!-- Profile: role chip style -->
+    <style name="Widget.Docs.Chip.Role" parent="Widget.Material3.Chip.Assist">
+        <item name="chipMinHeight">28dp</item>
+        <item name="chipBackgroundColor">@color/color_profile_role_bg</item>
+        <item name="chipStrokeWidth">0dp</item>
+        <item name="android:textColor">@color/color_profile_role_text</item>
+        <item name="chipStartPadding">10dp</item>
+        <item name="chipEndPadding">10dp</item>
+    </style>
+
 </resources>

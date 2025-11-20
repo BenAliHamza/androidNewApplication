@@ -67,4 +67,64 @@
     <string name="home_bottom_appointments">Appointments</string>
     <string name="home_bottom_messages">Messages</string>
     <string name="home_bottom_more">More</string>
+
+    <!-- Profile: generic -->
+    <string name="profile_title">Profile</string>
+    <string name="profile_section_account">Account</string>
+    <string name="profile_account_created_label">Member since</string>
+    <string name="profile_account_status_label">Status</string>
+    <string name="profile_account_created_placeholder">–</string>
+    <string name="profile_account_status_placeholder">Active</string>
+    <string name="profile_phone_placeholder">No phone number</string>
+
+    <!-- Profile: role labels -->
+    <string name="profile_role_doctor">Doctor</string>
+    <string name="profile_role_patient">Patient</string>
+    <string name="profile_role_admin">Admin</string>
+    <string name="profile_role_unknown">User</string>
+
+    <!-- Profile: errors -->
+    <string name="profile_error_generic">Could not load your profile. Please try again.</string>
+    <string name="profile_error_not_authenticated">Your session expired. Please sign in again.</string>
+
+    <!-- Profile: role-specific section titles -->
+    <string name="profile_section_doctor">Doctor profile</string>
+    <string name="profile_section_doctor_hint">Your specialties, clinic, consultation fees and availability will appear here.</string>
+    <string name="profile_section_patient">Patient profile</string>
+    <string name="profile_section_patient_hint">Your medical profile (blood type, allergies, lifestyle) will appear here.</string>
+
+    <!-- Profile: doctor summary helpers -->
+    <string name="profile_doctor_years_exp_suffix">years experience</string>
+    <string name="profile_doctor_accepting_new">Accepting new patients</string>
+    <string name="profile_doctor_teleconsultation">Teleconsultation available</string>
+
+    <!-- Profile: patient summary helpers -->
+    <string name="profile_patient_blood_type_prefix">Blood type %1$s</string>
+    <string name="profile_patient_height_weight">%1$d cm · %2$d kg</string>
+    <string name="profile_patient_smoker_yes">Smoker</string>
+    <string name="profile_patient_smoker_no">Non-smoker</string>
+    <!-- keep your existing content above -->
+
+    <!-- Profile -->
+
+    <string name="profile_section_doctor_title">Doctor details</string>
+    <string name="profile_section_patient_title">Patient details</string>
+
+    <string name="profile_doctor_experience_format">%1$d years of experience</string>
+    <string name="profile_doctor_fee_format">Consultation: %1$s</string>
+
+    <string name="profile_patient_height_weight_format">%1$d cm • %2$d kg</string>
+    <string name="profile_patient_height_only_format">%1$d cm</string>
+    <string name="profile_patient_weight_only_format">%1$d kg</string>
+
+    <string name="profile_flag_accepts_new">Accepting new patients</string>
+    <string name="profile_flag_teleconsultation">Teleconsultation available</string>
+    <string name="profile_flag_smoker">Smoker</string>
+    <string name="profile_flag_alcohol">Alcohol use</string>
+    <string name="profile_flags_none">No extra details</string>
+
+    <!-- Profile error messages -->
+    <string name="profile_error_network">Network error. Please check your connection.</string>
+    <string name="profile_error_unauthorized">Your session has expired. Please sign in again.</string>
+
 </resources>

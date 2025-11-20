@@ -37,7 +37,12 @@
             android:name=".presentation.auth.SignupActivity"
             android:exported="false" />
 
-        <!-- MainActivity (home/dashboard placeholder) -->
+        <!-- Profile screen (hosts ProfileFragment) -->
+        <activity
+            android:name=".presentation.profile.ProfileActivity"
+            android:exported="false" />
+
+        <!-- MainActivity (home/dashboard with drawer + bottom nav) -->
         <activity
             android:name=".MainActivity"
             android:exported="false" />
