@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/menu_home"
+        android:icon="@android:drawable/ic_menu_view"
+        android:title="Home" />
+
+    <item
+        android:id="@+id/menu_appointments"
+        android:icon="@android:drawable/ic_menu_today"
+        android:title="Appointments" />
+
+    <item
+        android:id="@+id/menu_messages"
+        android:icon="@android:drawable/ic_dialog_email"
+        android:title="Messages" />
+
+    <item
+        android:id="@+id/menu_more"
+        android:icon="@android:drawable/ic_menu_manage"
+        android:title="More" />
+
+</menu>

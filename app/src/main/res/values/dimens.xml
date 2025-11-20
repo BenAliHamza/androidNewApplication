@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="drawer_header_padding">24dp</dimen>
+    <dimen name="drawer_header_avatar_size">48dp</dimen>
+    <dimen name="drawer_header_avatar_padding">8dp</dimen>
+    <dimen name="drawer_header_spacing_horizontal">16dp</dimen>
+</resources>

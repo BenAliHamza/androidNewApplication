@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- App palette -->
+    <color name="color_primary">#0BA5A4</color>               <!-- main teal -->
+    <color name="color_primary_soft">#E0F4F4</color>          <!-- light teal for subtle surfaces -->
+    <color name="color_background">#F5F7FB</color>            <!-- app background -->
+    <color name="color_surface">#FFFFFFFF</color>             <!-- cards / bottom bar -->
+
+    <color name="color_on_background">#111827</color>         <!-- main text -->
+    <color name="color_on_background_secondary">#6B7280</color> <!-- secondary text -->
+
+    <!-- Theme-specific aliases -->
+    <color name="color_on_primary">@color/white</color>       <!-- text/icon on primary -->
+    <color name="color_primary_variant">#088180</color>       <!-- darker teal variant -->
+    <color name="color_on_surface">@color/color_on_background</color> <!-- text on surface -->
+
+    <!-- Drawer specific -->
+    <color name="color_drawer_header_bg">@color/color_primary_variant</color>
+    <color name="color_drawer_header_on_bg">@color/white</color>
+    <color name="color_drawer_header_on_bg_secondary">#E5FFFFFF</color>
+
+    <!-- Ripples / effects -->
+    <color name="color_primary_ripple">#330BA5A4</color>      <!-- 20% alpha primary -->
+</resources>

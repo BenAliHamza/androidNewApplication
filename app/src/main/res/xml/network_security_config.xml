@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- For development: allow cleartext everywhere.
+         You can tighten this later to specific domains if needed. -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

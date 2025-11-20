@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="TextAppearance.Docs.DrawerTitle" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textColor">@color/color_drawer_header_on_bg</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+
+    <style name="TextAppearance.Docs.DrawerSubtitle" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textColor">@color/color_drawer_header_on_bg_secondary</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+</resources>
