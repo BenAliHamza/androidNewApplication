@@ -7,7 +7,10 @@
     <fragment
         android:id="@+id/homeFragment"
         android:name="tn.esprit.presentation.home.HomeFragment"
-        android:label="@string/home_title">
-    </fragment>
+        android:label="@string/home_title" />
 
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="tn.esprit.presentation.profile.ProfileFragment"
+        android:label="@string/profile_title" />
 </navigation>

@@ -1,48 +1,710 @@
-===== FILE: ./app/src/main/res/menu/menu_home_drawer.xml =====
-<?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+===== FILE: ./app/src/main/java/tn/esprit/data/auth/AuthRepository.java =====
+package tn.esprit.data.auth;
 
-    <group android:checkableBehavior="single">
-        <item
-            android:id="@+id/menu_profile"
-            android:title="Profile" />
+import tn.esprit.data.remote.ApiClient;
+import tn.esprit.data.remote.ApiClient.AuthApiService;
+import tn.esprit.data.remote.ApiClient.LoginRequestDto;
+import tn.esprit.data.remote.ApiClient.RefreshTokenRequestDto;
+import tn.esprit.data.remote.ApiClient.SignupRequestDto;
+import tn.esprit.data.remote.ApiClient.TokenResponseDto;
+import tn.esprit.domain.auth.AuthTokens;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
-        <item
-            android:id="@+id/menu_settings"
-            android:title="Settings" />
-    </group>
+/**
+ * Auth repository bridging presentation/domain with the remote /auth endpoints.
+ */
+public class AuthRepository {
 
-    <item
-        android:id="@+id/menu_logout"
-        android:title="Logout" />
+    private final AuthApiService authApiService;
 
-</menu>
+    public AuthRepository() {
+        this.authApiService = ApiClient.getAuthApiService();
+    }
+
+    public interface LoginCallback {
+        void onSuccess(AuthTokens tokens);
+        void onError(Throwable throwable, Integer httpCode, String errorBody);
+    }
+
+    public interface SignupCallback {
+        void onSuccess(AuthTokens tokens);
+        void onError(Throwable throwable, Integer httpCode, String errorBody);
+    }
+
+    public interface RefreshCallback {
+        void onSuccess(AuthTokens tokens);
+        void onError(Throwable throwable, Integer httpCode, String errorBody);
+    }
+
+    /**
+     * Calls /auth/login with the given credentials.
+     */
+    public void login(String email, String password, final LoginCallback callback) {
+        LoginRequestDto request = new LoginRequestDto(email, password);
+
+        authApiService.login(request).enqueue(new Callback<TokenResponseDto>() {
+            @Override
+            public void onResponse(Call<TokenResponseDto> call, Response<TokenResponseDto> response) {
+                handleTokenResponse(response, new InternalCallback() {
+                    @Override
+                    public void onSuccess(AuthTokens tokens) {
+                        callback.onSuccess(tokens);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                        callback.onError(throwable, httpCode, errorBody);
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(Call<TokenResponseDto> call, Throwable t) {
+                callback.onError(t, null, null);
+            }
+        });
+    }
+
+    /**
+     * Calls /auth/signup with the given registration data.
+     */
+    public void signup(String firstname,
+                       String lastname,
+                       String email,
+                       String phone,
+                       String password,
+                       String role,
+                       final SignupCallback callback) {
+
+        SignupRequestDto request = new SignupRequestDto(
+                firstname,
+                lastname,
+                email,
+                phone,
+                password,
+                role
+        );
+
+        authApiService.signup(request).enqueue(new Callback<TokenResponseDto>() {
+            @Override
+            public void onResponse(Call<TokenResponseDto> call, Response<TokenResponseDto> response) {
+                handleTokenResponse(response, new InternalCallback() {
+                    @Override
+                    public void onSuccess(AuthTokens tokens) {
+                        callback.onSuccess(tokens);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                        callback.onError(throwable, httpCode, errorBody);
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(Call<TokenResponseDto> call, Throwable t) {
+                callback.onError(t, null, null);
+            }
+        });
+    }
+
+    /**
+     * Calls /auth/refresh with the given refresh token.
+     */
+    public void refreshToken(String refreshToken, final RefreshCallback callback) {
+        RefreshTokenRequestDto request = new RefreshTokenRequestDto(refreshToken);
+
+        authApiService.refresh(request).enqueue(new Callback<TokenResponseDto>() {
+            @Override
+            public void onResponse(Call<TokenResponseDto> call, Response<TokenResponseDto> response) {
+                handleTokenResponse(response, new InternalCallback() {
+                    @Override
+                    public void onSuccess(AuthTokens tokens) {
+                        callback.onSuccess(tokens);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                        callback.onError(throwable, httpCode, errorBody);
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(Call<TokenResponseDto> call, Throwable t) {
+                callback.onError(t, null, null);
+            }
+        });
+    }
+
+    /**
+     * Internal helper to convert TokenResponseDto -> AuthTokens and route callbacks.
+     */
+    private void handleTokenResponse(Response<TokenResponseDto> response, InternalCallback callback) {
+        if (!response.isSuccessful()) {
+            String errorBody = null;
+            try {
+                if (response.errorBody() != null) {
+                    errorBody = response.errorBody().string();
+                }
+            } catch (Exception ignored) {
+            }
+            callback.onError(null, response.code(), errorBody);
+            return;
+        }
+
+        TokenResponseDto body = response.body();
+        if (body == null) {
+            callback.onError(
+                    new IllegalStateException("Empty response body"),
+                    response.code(),
+                    null
+            );
+            return;
+        }
+
+        AuthTokens tokens = new AuthTokens(
+                body.getAccessToken(),
+                body.getRefreshToken(),
+                body.getTokenType(),
+                body.getExpiresIn()
+        );
+        callback.onSuccess(tokens);
+    }
+
+    private interface InternalCallback {
+        void onSuccess(AuthTokens tokens);
+        void onError(Throwable throwable, Integer httpCode, String errorBody);
+    }
+}
 
 
-===== FILE: ./app/src/main/res/menu/menu_home_bottom.xml =====
-<?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+===== FILE: ./app/src/main/java/tn/esprit/data/auth/AuthLocalDataSource.java =====
+package tn.esprit.data.auth;
 
-    <item
-        android:id="@+id/menu_home"
-        android:icon="@android:drawable/ic_menu_view"
-        android:title="Home" />
+import android.content.Context;
+import android.content.SharedPreferences;
 
-    <item
-        android:id="@+id/menu_appointments"
-        android:icon="@android:drawable/ic_menu_today"
-        android:title="Appointments" />
+import tn.esprit.domain.auth.AuthTokens;
 
-    <item
-        android:id="@+id/menu_messages"
-        android:icon="@android:drawable/ic_dialog_email"
-        android:title="Messages" />
+/**
+ * Local persistence for auth tokens using SharedPreferences.
+ */
+public class AuthLocalDataSource {
 
-    <item
-        android:id="@+id/menu_more"
-        android:icon="@android:drawable/ic_menu_manage"
-        android:title="More" />
+    private static final String PREFS_NAME = "auth_prefs";
+    private static final String KEY_ACCESS_TOKEN = "access_token";
+    private static final String KEY_REFRESH_TOKEN = "refresh_token";
+    private static final String KEY_TOKEN_TYPE = "token_type";
+    private static final String KEY_EXPIRES_IN = "expires_in";
 
-</menu>
+    private final SharedPreferences preferences;
+
+    public AuthLocalDataSource(Context context) {
+        this.preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    }
+
+    public void saveTokens(AuthTokens tokens) {
+        if (tokens == null) return;
+        preferences.edit()
+                .putString(KEY_ACCESS_TOKEN, tokens.getAccessToken())
+                .putString(KEY_REFRESH_TOKEN, tokens.getRefreshToken())
+                .putString(KEY_TOKEN_TYPE, tokens.getTokenType())
+                .putLong(KEY_EXPIRES_IN, tokens.getExpiresIn() != null ? tokens.getExpiresIn() : -1L)
+                .apply();
+    }
+
+    public AuthTokens getTokens() {
+        String accessToken = preferences.getString(KEY_ACCESS_TOKEN, null);
+        String refreshToken = preferences.getString(KEY_REFRESH_TOKEN, null);
+        String tokenType = preferences.getString(KEY_TOKEN_TYPE, null);
+        long expiresIn = preferences.getLong(KEY_EXPIRES_IN, -1L);
+
+        if (accessToken == null || refreshToken == null || tokenType == null) {
+            return null;
+        }
+
+        Long expiresInValue = expiresIn >= 0 ? expiresIn : null;
+        return new AuthTokens(accessToken, refreshToken, tokenType, expiresInValue);
+    }
+
+    public void clearTokens() {
+        preferences.edit().clear().apply();
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/data/profile/ProfileRepository.java =====
+package tn.esprit.data.profile;
+
+import android.content.Context;
+
+import java.io.IOException;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import tn.esprit.data.auth.AuthLocalDataSource;
+import tn.esprit.data.remote.ApiClient;
+import tn.esprit.data.remote.doctor.DoctorApiService;
+import tn.esprit.data.remote.patient.PatientApiService;
+import tn.esprit.data.remote.user.UserApiService;
+import tn.esprit.domain.auth.AuthTokens;
+import tn.esprit.domain.doctor.DoctorProfile;
+import tn.esprit.domain.patient.PatientProfile;
+import tn.esprit.domain.user.User;
+
+/**
+ * Repository responsible for loading the current user's profile
+ * (User + DoctorProfile or PatientProfile depending on role).
+ *
+ * Note: we now use the domain models directly as Retrofit response types,
+ * so there is no extra mapping layer.
+ */
+public class ProfileRepository {
+
+    private final AuthLocalDataSource authLocalDataSource;
+    private final UserApiService userApiService;
+    private final DoctorApiService doctorApiService;
+    private final PatientApiService patientApiService;
+
+    public ProfileRepository(Context context) {
+        this.authLocalDataSource = new AuthLocalDataSource(context.getApplicationContext());
+        this.userApiService = ApiClient.createService(UserApiService.class);
+        this.doctorApiService = ApiClient.createService(DoctorApiService.class);
+        this.patientApiService = ApiClient.createService(PatientApiService.class);
+    }
+
+    public interface ProfileCallback {
+        void onSuccess(User user, DoctorProfile doctorProfile, PatientProfile patientProfile);
+        void onError(Throwable throwable, Integer httpCode, String errorBody);
+    }
+
+    public void loadProfile(final ProfileCallback callback) {
+        AuthTokens tokens = authLocalDataSource.getTokens();
+        if (tokens == null || tokens.getAccessToken() == null) {
+            callback.onError(new IllegalStateException("Not authenticated"), null, null);
+            return;
+        }
+
+        final String authHeader = buildAuthHeader(tokens);
+
+        // 1) Load the base User (/me)
+        userApiService.getCurrentUser(authHeader).enqueue(new Callback<User>() {
+            @Override
+            public void onResponse(Call<User> call,
+                                   Response<User> response) {
+                if (!response.isSuccessful()) {
+                    String errorBody = extractErrorBody(response);
+                    callback.onError(null, response.code(), errorBody);
+                    return;
+                }
+
+                User user = response.body();
+                if (user == null) {
+                    callback.onError(new IllegalStateException("Empty user body"),
+                            response.code(), null);
+                    return;
+                }
+
+                String role = user.getRole() != null ? user.getRole() : "";
+
+                // 2) Depending on the role, load doctor or patient profile.
+                if ("DOCTOR".equalsIgnoreCase(role)) {
+                    loadDoctorProfile(authHeader, user, callback);
+                } else if ("PATIENT".equalsIgnoreCase(role)) {
+                    loadPatientProfile(authHeader, user, callback);
+                } else {
+                    // Unknown or admin role -> return only User
+                    callback.onSuccess(user, null, null);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<User> call, Throwable t) {
+                callback.onError(t, null, null);
+            }
+        });
+    }
+
+    private void loadDoctorProfile(String authHeader,
+                                   final User user,
+                                   final ProfileCallback callback) {
+
+        doctorApiService.getMyProfile(authHeader)
+                .enqueue(new Callback<DoctorProfile>() {
+                    @Override
+                    public void onResponse(Call<DoctorProfile> call,
+                                           Response<DoctorProfile> response) {
+                        if (!response.isSuccessful()) {
+                            String errorBody = extractErrorBody(response);
+                            callback.onError(null, response.code(), errorBody);
+                            return;
+                        }
+
+                        DoctorProfile dto = response.body();
+                        // If null, still return user with null profile
+                        callback.onSuccess(user, dto, null);
+                    }
+
+                    @Override
+                    public void onFailure(Call<DoctorProfile> call, Throwable t) {
+                        callback.onError(t, null, null);
+                    }
+                });
+    }
+
+    private void loadPatientProfile(String authHeader,
+                                    final User user,
+                                    final ProfileCallback callback) {
+
+        patientApiService.getMyProfile(authHeader)
+                .enqueue(new Callback<PatientProfile>() {
+                    @Override
+                    public void onResponse(Call<PatientProfile> call,
+                                           Response<PatientProfile> response) {
+                        if (!response.isSuccessful()) {
+                            String errorBody = extractErrorBody(response);
+                            callback.onError(null, response.code(), errorBody);
+                            return;
+                        }
+
+                        PatientProfile dto = response.body();
+                        callback.onSuccess(user, null, dto);
+                    }
+
+                    @Override
+                    public void onFailure(Call<PatientProfile> call, Throwable t) {
+                        callback.onError(t, null, null);
+                    }
+                });
+    }
+
+    private String buildAuthHeader(AuthTokens tokens) {
+        String type = tokens.getTokenType() != null ? tokens.getTokenType() : "Bearer";
+        return type + " " + tokens.getAccessToken();
+    }
+
+    private String extractErrorBody(Response<?> response) {
+        try {
+            if (response.errorBody() != null) {
+                return response.errorBody().string();
+            }
+        } catch (IOException ignored) {
+        }
+        return null;
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/ApiClient.java =====
+package tn.esprit.data.remote;
+
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Call;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.http.Body;
+import retrofit2.http.POST;
+
+/**
+ * Provides a configured Retrofit instance to talk to the Spring Boot backend.
+ * Uses 10.0.2.2 so the Android emulator can reach localhost:8080 on your machine.
+ *
+ * NOTE: This client is intentionally small and focused on auth for now.
+ * Later we can split it into separate files (AuthApi, UserApi, DoctorApi...)
+ * to avoid it becoming a god-class.
+ */
+public class ApiClient {
+
+    private static final String BASE_URL = "http://10.0.2.2:8080/";
+    private static Retrofit retrofit;
+
+    private ApiClient() {
+        // No instances
+    }
+    public static <T> T createService(Class<T> serviceClass) {
+        return getRetrofit().create(serviceClass);
+    }
+
+    private static Retrofit getRetrofit() {
+        if (retrofit == null) {
+            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+            // Always log BODY for now (you can change to NONE for production)
+            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+
+            OkHttpClient client = new OkHttpClient.Builder()
+                    .addInterceptor(logging)
+                    .build();
+
+            retrofit = new Retrofit.Builder()
+                    .baseUrl(BASE_URL)
+                    .client(client)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build();
+        }
+        return retrofit;
+    }
+
+    public static AuthApiService getAuthApiService() {
+        return getRetrofit().create(AuthApiService.class);
+    }
+
+    /**
+     * Retrofit API for /auth endpoints.
+     */
+    public interface AuthApiService {
+
+        @POST("auth/login")
+        Call<TokenResponseDto> login(@Body LoginRequestDto request);
+
+        @POST("auth/signup")
+        Call<TokenResponseDto> signup(@Body SignupRequestDto request);
+
+        @POST("auth/refresh")
+        Call<TokenResponseDto> refresh(@Body RefreshTokenRequestDto request);
+    }
+
+    /**
+     * Matches backend dto.auth.LoginRequest (email, password).
+     */
+    public static class LoginRequestDto {
+        private String email;
+        private String password;
+
+        public LoginRequestDto(String email, String password) {
+            this.email = email;
+            this.password = password;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+    }
+
+    /**
+     * Matches backend dto.auth.SignupRequest
+     * (firstname, lastname, email, phone, password, role).
+     */
+    public static class SignupRequestDto {
+        private String firstname;
+        private String lastname;
+        private String email;
+        private String phone;
+        private String password;
+        private String role; // "DOCTOR" or "PATIENT"
+
+        public SignupRequestDto(String firstname,
+                                String lastname,
+                                String email,
+                                String phone,
+                                String password,
+                                String role) {
+            this.firstname = firstname;
+            this.lastname = lastname;
+            this.email = email;
+            this.phone = phone;
+            this.password = password;
+            this.role = role;
+        }
+
+        public String getFirstname() {
+            return firstname;
+        }
+
+        public void setFirstname(String firstname) {
+            this.firstname = firstname;
+        }
+
+        public String getLastname() {
+            return lastname;
+        }
+
+        public void setLastname(String lastname) {
+            this.lastname = lastname;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public void setPhone(String phone) {
+            this.phone = phone;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
+    }
+
+    /**
+     * Matches backend dto.auth.RefreshTokenRequest (refreshToken).
+     */
+    public static class RefreshTokenRequestDto {
+        private String refreshToken;
+
+        public RefreshTokenRequestDto(String refreshToken) {
+            this.refreshToken = refreshToken;
+        }
+
+        public String getRefreshToken() {
+            return refreshToken;
+        }
+
+        public void setRefreshToken(String refreshToken) {
+            this.refreshToken = refreshToken;
+        }
+    }
+
+    /**
+     * Matches backend dto.auth.TokenResponse
+     * (accessToken, refreshToken, tokenType, expiresIn).
+     */
+    public static class TokenResponseDto {
+        private String accessToken;
+        private String refreshToken;
+        private String tokenType;
+        private Long expiresIn;
+
+        public String getAccessToken() {
+            return accessToken;
+        }
+
+        public void setAccessToken(String accessToken) {
+            this.accessToken = accessToken;
+        }
+
+        public String getRefreshToken() {
+            return refreshToken;
+        }
+
+        public void setRefreshToken(String refreshToken) {
+            this.refreshToken = refreshToken;
+        }
+
+        public String getTokenType() {
+            return tokenType;
+        }
+
+        public void setTokenType(String tokenType) {
+            this.tokenType = tokenType;
+        }
+
+        public Long getExpiresIn() {
+            return expiresIn;
+        }
+
+        public void setExpiresIn(Long expiresIn) {
+            this.expiresIn = expiresIn;
+        }
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/doctor/DoctorApiService.java =====
+package tn.esprit.data.remote.doctor;
+
+import retrofit2.Call;
+import retrofit2.http.GET;
+import retrofit2.http.Header;
+import tn.esprit.domain.doctor.DoctorProfile;
+
+/**
+ * Retrofit API for doctor-specific operations.
+ *
+ * We directly return the domain DoctorProfile model.
+ */
+public interface DoctorApiService {
+
+    /**
+     * GET /doctors/me
+     * Authorization: Bearer <access_token>
+     */
+    @GET("doctors/me")
+    Call<DoctorProfile> getMyProfile(@Header("Authorization") String authorization);
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/user/UserApiService.java =====
+package tn.esprit.data.remote.user;
+
+import retrofit2.Call;
+import retrofit2.http.GET;
+import retrofit2.http.Header;
+import tn.esprit.domain.user.User;
+
+/**
+ * Retrofit API for general user operations.
+ *
+ * We directly return the domain User model to avoid extra mapping.
+ */
+public interface UserApiService {
+
+    /**
+     * GET /me
+     * Authorization: Bearer <access_token>
+     */
+    @GET("me")
+    Call<User> getCurrentUser(@Header("Authorization") String authorization);
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/patient/PatientApiService.java =====
+package tn.esprit.data.remote.patient;
+
+import retrofit2.Call;
+import retrofit2.http.GET;
+import retrofit2.http.Header;
+import tn.esprit.domain.patient.PatientProfile;
+
+/**
+ * Retrofit API for patient-specific operations.
+ *
+ * We directly return the domain PatientProfile model.
+ */
+public interface PatientApiService {
+
+    /**
+     * GET /patients/me
+     * Authorization: Bearer <access_token>
+     */
+    @GET("patients/me")
+    Call<PatientProfile> getMyProfile(@Header("Authorization") String authorization);
+}
 
 

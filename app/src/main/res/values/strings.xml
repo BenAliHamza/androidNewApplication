@@ -127,4 +127,64 @@
     <string name="profile_error_network">Network error. Please check your connection.</string>
     <string name="profile_error_unauthorized">Your session has expired. Please sign in again.</string>
 
+    <!-- Onboarding: patient first login -->
+    <string name="onboarding_patient_title">Complete your health profile</string>
+    <string name="onboarding_patient_subtitle">Just a few details to help your doctors take better care of you.</string>
+
+    <string name="onboarding_patient_dob_hint">Date of birth</string>
+    <string name="onboarding_patient_gender_hint">Gender</string>
+    <string name="onboarding_patient_blood_hint">Blood type</string>
+    <string name="onboarding_patient_height_hint">Height</string>
+    <string name="onboarding_patient_weight_hint">Weight</string>
+    <string name="onboarding_patient_height_suffix">cm</string>
+    <string name="onboarding_patient_weight_suffix">kg</string>
+    <string name="onboarding_patient_address_hint">Address</string>
+    <string name="onboarding_patient_city_hint">City</string>
+    <string name="onboarding_patient_country_hint">Country</string>
+    <string name="onboarding_patient_marital_hint">Marital status</string>
+    <string name="onboarding_patient_lifestyle_label">Lifestyle</string>
+    <string name="onboarding_patient_smoker_label">Smoker</string>
+    <string name="onboarding_patient_alcohol_label">Alcohol use</string>
+    <string name="onboarding_patient_notes_hint">Anything else your doctor should know? (optional)</string>
+
+    <string name="onboarding_patient_hint_later">You can update these details later from your profile.</string>
+    <string name="onboarding_patient_button_complete">Save and continue</string>
+
+    <string name="onboarding_patient_success">Profile completed. Welcome!</string>
+    <string name="onboarding_patient_error_network">Network error. Please check your connection.</string>
+    <string name="onboarding_patient_error_generic">Could not save your profile. Please try again.</string>
+    <string name="onboarding_patient_error_dob_format">Use format YYYY-MM-DD for date of birth.</string>
+    <string name="onboarding_patient_error_not_authenticated">Your session has expired. Please sign in again.</string>
+    <!-- Patient onboarding validation -->
+    <string name="onboarding_patient_error_dob_required">Date of birth is required</string>
+    <string name="onboarding_patient_error_gender_required">Gender is required</string>
+    <string name="onboarding_patient_error_blood_required">Blood type is required</string>
+    <string name="onboarding_patient_error_height_required">Height is required</string>
+    <string name="onboarding_patient_error_height_format">Enter a valid height (in cm)</string>
+    <string name="onboarding_patient_error_weight_required">Weight is required</string>
+    <string name="onboarding_patient_error_weight_format">Enter a valid weight (in kg)</string>
+    <string name="onboarding_patient_error_required_all">
+        Please fill in all required fields to continue.
+    </string>
+
+    <!-- Bottom bar labels (role-specific) -->
+    <string name="home_bottom_calendar">Calendar</string>
+    <string name="home_bottom_patients">Patients</string>
+    <string name="home_bottom_office">Office</string>
+    <string name="home_bottom_medications">Medications</string>
+    <string name="home_bottom_history">History</string>
+    <!-- Onboarding hard validation -->
+    <string name="onboarding_patient_error_address_required">Address is required</string>
+    <string name="onboarding_patient_error_city_required">City is required</string>
+    <string name="onboarding_patient_error_country_required">Country is required</string>
+    <string name="onboarding_patient_error_marital_required">Marital status is required</string>
+    <string name="onboarding_patient_step_label">Step 1 · Your profile</string>
+    <string name="onboarding_patient_section_basic">Basic information</string>
+    <string name="onboarding_patient_section_contact">Contact &amp; location</string>
+
+    <string name="onboarding_patient_button_skip">Skip for now</string>
+    <string name="onboarding_patient_skip_toast">You can complete your medical profile later from your Profile.</string>
+
+
+
 </resources>

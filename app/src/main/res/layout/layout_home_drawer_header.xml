@@ -30,6 +30,14 @@
             style="@style/TextAppearance.Docs.DrawerTitle"
             android:text="@string/home_drawer_user_name_placeholder" />
 
+        <!-- New: role line -->
+        <TextView
+            android:id="@+id/drawer_user_role"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            style="@style/TextAppearance.Docs.DrawerSubtitle"
+            android:text="@string/home_drawer_user_role_placeholder" />
+
         <TextView
             android:id="@+id/drawer_user_email"
             android:layout_width="wrap_content"

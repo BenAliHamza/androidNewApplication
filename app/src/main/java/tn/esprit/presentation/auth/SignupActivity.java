@@ -20,7 +20,6 @@ import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 
-import tn.esprit.MainActivity;
 import tn.esprit.R;
 import tn.esprit.data.auth.AuthLocalDataSource;
 import tn.esprit.data.auth.AuthRepository;
@@ -214,7 +213,8 @@ public class SignupActivity extends AppCompatActivity {
                         authLocalDataSource.saveTokens(tokens);
                         Toast.makeText(SignupActivity.this, "Account created", Toast.LENGTH_SHORT).show();
 
-                        Intent intent = new Intent(SignupActivity.this, MainActivity.class);
+                        // IMPORTANT: let AuthGate decide (onboarding vs home)
+                        Intent intent = new Intent(SignupActivity.this, AuthGateActivity.class);
                         startActivity(intent);
                         finish();
                     }

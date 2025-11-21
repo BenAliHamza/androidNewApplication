@@ -13,14 +13,20 @@ import androidx.core.view.WindowInsetsCompat;
 import tn.esprit.MainActivity;
 import tn.esprit.R;
 import tn.esprit.data.auth.AuthLocalDataSource;
-import tn.esprit.data.auth.AuthRepository;
+import tn.esprit.data.remote.ApiClient;
+import tn.esprit.data.remote.user.UserApiService;
 import tn.esprit.domain.auth.AuthTokens;
+import tn.esprit.domain.user.User;
+import tn.esprit.presentation.onboarding.PatientOnboardingActivity;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class AuthGateActivity extends AppCompatActivity {
 
     private View rootView;
     private AuthLocalDataSource authLocalDataSource;
-    private AuthRepository authRepository;
+    private UserApiService userApiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,7 +38,7 @@ public class AuthGateActivity extends AppCompatActivity {
         applyWindowInsets();
 
         authLocalDataSource = new AuthLocalDataSource(getApplicationContext());
-        authRepository = new AuthRepository();
+        userApiService = ApiClient.createService(UserApiService.class);
 
         checkSession();
     }
@@ -58,29 +64,56 @@ public class AuthGateActivity extends AppCompatActivity {
     private void checkSession() {
         AuthTokens existingTokens = authLocalDataSource.getTokens();
 
-        if (existingTokens == null ||
-                existingTokens.getRefreshToken() == null ||
-                existingTokens.getRefreshToken().isEmpty()) {
+        // No tokens or no access token -> go to login
+        if (existingTokens == null
+                || existingTokens.getAccessToken() == null
+                || existingTokens.getAccessToken().isEmpty()) {
             goToLogin();
             return;
         }
 
-        authRepository.refreshToken(
-                existingTokens.getRefreshToken(),
-                new AuthRepository.RefreshCallback() {
-                    @Override
-                    public void onSuccess(AuthTokens tokens) {
-                        authLocalDataSource.saveTokens(tokens);
-                        goToMain();
-                    }
+        // We already have tokens (from login/signup or previous session) -> just route
+        fetchUserAndRoute(existingTokens);
+    }
 
-                    @Override
-                    public void onError(Throwable throwable, Integer httpCode, String errorBody) {
-                        authLocalDataSource.clearTokens();
-                        goToLogin();
-                    }
+    private void fetchUserAndRoute(AuthTokens tokens) {
+        String authHeader = buildAuthHeader(tokens);
+
+        userApiService.getCurrentUser(authHeader).enqueue(new Callback<User>() {
+            @Override
+            public void onResponse(Call<User> call, Response<User> response) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    // If we can't load /me, fallback to login to be safe
+                    authLocalDataSource.clearTokens();
+                    goToLogin();
+                    return;
                 }
-        );
+
+                User user = response.body();
+                String role = user.getRole();
+                Boolean firstLoginFlag = user.getFirstLogin();
+                boolean isFirstLogin = firstLoginFlag != null && firstLoginFlag;
+
+                if ("PATIENT".equalsIgnoreCase(role) && isFirstLogin) {
+                    goToPatientOnboarding();
+                } else {
+                    // For DOCTOR and others (or non-first login), go to main home
+                    goToMain();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<User> call, Throwable t) {
+                // On network failure, safest is to go to login
+                authLocalDataSource.clearTokens();
+                goToLogin();
+            }
+        });
+    }
+
+    private String buildAuthHeader(AuthTokens tokens) {
+        String type = tokens.getTokenType() != null ? tokens.getTokenType() : "Bearer";
+        return type + " " + tokens.getAccessToken();
     }
 
     private void goToLogin() {
@@ -91,6 +124,12 @@ public class AuthGateActivity extends AppCompatActivity {
 
     private void goToMain() {
         Intent intent = new Intent(AuthGateActivity.this, MainActivity.class);
+        startActivity(intent);
+        finish();
+    }
+
+    private void goToPatientOnboarding() {
+        Intent intent = new Intent(AuthGateActivity.this, PatientOnboardingActivity.class);
         startActivity(intent);
         finish();
     }

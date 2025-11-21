@@ -18,7 +18,6 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 
-import tn.esprit.MainActivity;
 import tn.esprit.R;
 import tn.esprit.data.auth.AuthLocalDataSource;
 import tn.esprit.data.auth.AuthRepository;
@@ -130,8 +129,8 @@ public class LoginActivity extends AppCompatActivity {
 
                 Toast.makeText(LoginActivity.this, getString(R.string.login_success), Toast.LENGTH_SHORT).show();
 
-                // Navigate to main screen (placeholder for real dashboard later)
-                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                // IMPORTANT: let AuthGate decide (onboarding vs home)
+                Intent intent = new Intent(LoginActivity.this, AuthGateActivity.class);
                 startActivity(intent);
                 finish();
             }

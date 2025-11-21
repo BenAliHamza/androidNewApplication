@@ -37,6 +37,11 @@
             android:name=".presentation.auth.SignupActivity"
             android:exported="false" />
 
+        <!-- Patient onboarding (first login for PATIENT role) -->
+        <activity
+            android:name=".presentation.onboarding.PatientOnboardingActivity"
+            android:exported="false" />
+
         <!-- Profile screen (hosts ProfileFragment) -->
         <activity
             android:name=".presentation.profile.ProfileActivity"
