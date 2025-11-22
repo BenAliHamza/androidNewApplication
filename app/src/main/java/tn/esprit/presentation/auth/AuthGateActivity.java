@@ -13,11 +13,13 @@ import androidx.core.view.WindowInsetsCompat;
 import tn.esprit.MainActivity;
 import tn.esprit.R;
 import tn.esprit.data.auth.AuthLocalDataSource;
+import tn.esprit.data.auth.AuthRepository;
 import tn.esprit.data.remote.ApiClient;
 import tn.esprit.data.remote.user.UserApiService;
 import tn.esprit.domain.auth.AuthTokens;
 import tn.esprit.domain.user.User;
 import tn.esprit.presentation.onboarding.PatientOnboardingActivity;
+import tn.esprit.presentation.onboarding.DoctorPracticeSetupActivity;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -26,6 +28,7 @@ public class AuthGateActivity extends AppCompatActivity {
 
     private View rootView;
     private AuthLocalDataSource authLocalDataSource;
+    private AuthRepository authRepository;
     private UserApiService userApiService;
 
     @Override
@@ -38,6 +41,7 @@ public class AuthGateActivity extends AppCompatActivity {
         applyWindowInsets();
 
         authLocalDataSource = new AuthLocalDataSource(getApplicationContext());
+        authRepository = new AuthRepository();
         userApiService = ApiClient.createService(UserApiService.class);
 
         checkSession();
@@ -61,19 +65,27 @@ public class AuthGateActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * If we have an access token, we try /me directly.
+     * No automatic refresh here to avoid redirecting to login on first use.
+     *
+     * First-login routing:
+     * - PATIENT + isFirstLogin -> PatientOnboardingActivity (optional, 1 screen)
+     * - DOCTOR + isFirstLogin  -> DoctorPracticeSetupActivity (mandatory step 1;
+     *                           that activity will forward to DoctorProfileOnboardingActivity for optional step 2)
+     * - Otherwise              -> MainActivity
+     */
     private void checkSession() {
-        AuthTokens existingTokens = authLocalDataSource.getTokens();
+        AuthTokens tokens = authLocalDataSource.getTokens();
 
-        // No tokens or no access token -> go to login
-        if (existingTokens == null
-                || existingTokens.getAccessToken() == null
-                || existingTokens.getAccessToken().isEmpty()) {
+        if (tokens == null ||
+                tokens.getAccessToken() == null ||
+                tokens.getAccessToken().isEmpty()) {
             goToLogin();
             return;
         }
 
-        // We already have tokens (from login/signup or previous session) -> just route
-        fetchUserAndRoute(existingTokens);
+        fetchUserAndRoute(tokens);
     }
 
     private void fetchUserAndRoute(AuthTokens tokens) {
@@ -96,8 +108,9 @@ public class AuthGateActivity extends AppCompatActivity {
 
                 if ("PATIENT".equalsIgnoreCase(role) && isFirstLogin) {
                     goToPatientOnboarding();
+                } else if ("DOCTOR".equalsIgnoreCase(role) && isFirstLogin) {
+                    goToDoctorPracticeOnboarding();
                 } else {
-                    // For DOCTOR and others (or non-first login), go to main home
                     goToMain();
                 }
             }
@@ -130,6 +143,12 @@ public class AuthGateActivity extends AppCompatActivity {
 
     private void goToPatientOnboarding() {
         Intent intent = new Intent(AuthGateActivity.this, PatientOnboardingActivity.class);
+        startActivity(intent);
+        finish();
+    }
+
+    private void goToDoctorPracticeOnboarding() {
+        Intent intent = new Intent(AuthGateActivity.this, DoctorPracticeSetupActivity.class);
         startActivity(intent);
         finish();
     }

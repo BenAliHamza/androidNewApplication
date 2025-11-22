@@ -113,14 +113,6 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        // Bottom nav – placeholder behavior for now (no navigation yet)
-        if (bottomNavigationView != null) {
-            bottomNavigationView.setOnItemSelectedListener(item -> {
-                // For now: visual selection only; navigation for tabs comes later.
-                return true;
-            });
-        }
-
         // Initial defaults
         if (textGreeting != null) {
             int greetingResId = HomeUiHelper.resolveGreetingResId();
@@ -266,7 +258,32 @@ public class MainActivity extends AppCompatActivity {
             bottomNavigationView.inflateMenu(R.menu.menu_home_bottom);
         }
 
+        // Default selected tab
         bottomNavigationView.setSelectedItemId(R.id.menu_home);
+
+        // Wire navigation to NavController
+        setupBottomNavNavigation();
+    }
+
+    private void setupBottomNavNavigation() {
+        if (bottomNavigationView == null || navController == null) {
+            return;
+        }
+
+        bottomNavigationView.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+
+            if (id == R.id.menu_home) {
+                navController.navigate(R.id.homeFragment);
+                return true;
+            } else if (id == R.id.menu_profile) {
+                navController.navigate(R.id.profileFragment);
+                return true;
+            }
+
+            // Other items (settings, etc.) can be handled here later
+            return true;
+        });
     }
 
     private void performLogout() {

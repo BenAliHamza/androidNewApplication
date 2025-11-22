@@ -24,6 +24,7 @@ import tn.esprit.data.remote.patient.PatientApiService;
 import tn.esprit.data.remote.patient.PatientApiService.PatientProfileUpdateRequestDto;
 import tn.esprit.domain.auth.AuthTokens;
 import tn.esprit.domain.patient.PatientProfile;
+import tn.esprit.presentation.auth.AuthGateActivity;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -261,7 +262,7 @@ public class PatientOnboardingActivity extends AppCompatActivity {
     private void goToLoginFallback() {
         Intent intent = new Intent(
                 PatientOnboardingActivity.this,
-                tn.esprit.presentation.auth.LoginActivity.class
+                AuthGateActivity.class
         );
         startActivity(intent);
         finish();

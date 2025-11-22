@@ -1,710 +1,2037 @@
-===== FILE: ./app/src/main/java/tn/esprit/data/auth/AuthRepository.java =====
-package tn.esprit.data.auth;
-
-import tn.esprit.data.remote.ApiClient;
-import tn.esprit.data.remote.ApiClient.AuthApiService;
-import tn.esprit.data.remote.ApiClient.LoginRequestDto;
-import tn.esprit.data.remote.ApiClient.RefreshTokenRequestDto;
-import tn.esprit.data.remote.ApiClient.SignupRequestDto;
-import tn.esprit.data.remote.ApiClient.TokenResponseDto;
-import tn.esprit.domain.auth.AuthTokens;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-
-/**
- * Auth repository bridging presentation/domain with the remote /auth endpoints.
- */
-public class AuthRepository {
-
-    private final AuthApiService authApiService;
-
-    public AuthRepository() {
-        this.authApiService = ApiClient.getAuthApiService();
-    }
-
-    public interface LoginCallback {
-        void onSuccess(AuthTokens tokens);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
-    }
-
-    public interface SignupCallback {
-        void onSuccess(AuthTokens tokens);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
-    }
-
-    public interface RefreshCallback {
-        void onSuccess(AuthTokens tokens);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
-    }
-
-    /**
-     * Calls /auth/login with the given credentials.
-     */
-    public void login(String email, String password, final LoginCallback callback) {
-        LoginRequestDto request = new LoginRequestDto(email, password);
-
-        authApiService.login(request).enqueue(new Callback<TokenResponseDto>() {
-            @Override
-            public void onResponse(Call<TokenResponseDto> call, Response<TokenResponseDto> response) {
-                handleTokenResponse(response, new InternalCallback() {
-                    @Override
-                    public void onSuccess(AuthTokens tokens) {
-                        callback.onSuccess(tokens);
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable, Integer httpCode, String errorBody) {
-                        callback.onError(throwable, httpCode, errorBody);
-                    }
-                });
-            }
-
-            @Override
-            public void onFailure(Call<TokenResponseDto> call, Throwable t) {
-                callback.onError(t, null, null);
-            }
-        });
-    }
-
-    /**
-     * Calls /auth/signup with the given registration data.
-     */
-    public void signup(String firstname,
-                       String lastname,
-                       String email,
-                       String phone,
-                       String password,
-                       String role,
-                       final SignupCallback callback) {
-
-        SignupRequestDto request = new SignupRequestDto(
-                firstname,
-                lastname,
-                email,
-                phone,
-                password,
-                role
-        );
-
-        authApiService.signup(request).enqueue(new Callback<TokenResponseDto>() {
-            @Override
-            public void onResponse(Call<TokenResponseDto> call, Response<TokenResponseDto> response) {
-                handleTokenResponse(response, new InternalCallback() {
-                    @Override
-                    public void onSuccess(AuthTokens tokens) {
-                        callback.onSuccess(tokens);
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable, Integer httpCode, String errorBody) {
-                        callback.onError(throwable, httpCode, errorBody);
-                    }
-                });
-            }
-
-            @Override
-            public void onFailure(Call<TokenResponseDto> call, Throwable t) {
-                callback.onError(t, null, null);
-            }
-        });
-    }
-
-    /**
-     * Calls /auth/refresh with the given refresh token.
-     */
-    public void refreshToken(String refreshToken, final RefreshCallback callback) {
-        RefreshTokenRequestDto request = new RefreshTokenRequestDto(refreshToken);
-
-        authApiService.refresh(request).enqueue(new Callback<TokenResponseDto>() {
-            @Override
-            public void onResponse(Call<TokenResponseDto> call, Response<TokenResponseDto> response) {
-                handleTokenResponse(response, new InternalCallback() {
-                    @Override
-                    public void onSuccess(AuthTokens tokens) {
-                        callback.onSuccess(tokens);
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable, Integer httpCode, String errorBody) {
-                        callback.onError(throwable, httpCode, errorBody);
-                    }
-                });
-            }
-
-            @Override
-            public void onFailure(Call<TokenResponseDto> call, Throwable t) {
-                callback.onError(t, null, null);
-            }
-        });
-    }
-
-    /**
-     * Internal helper to convert TokenResponseDto -> AuthTokens and route callbacks.
-     */
-    private void handleTokenResponse(Response<TokenResponseDto> response, InternalCallback callback) {
-        if (!response.isSuccessful()) {
-            String errorBody = null;
-            try {
-                if (response.errorBody() != null) {
-                    errorBody = response.errorBody().string();
-                }
-            } catch (Exception ignored) {
-            }
-            callback.onError(null, response.code(), errorBody);
-            return;
-        }
-
-        TokenResponseDto body = response.body();
-        if (body == null) {
-            callback.onError(
-                    new IllegalStateException("Empty response body"),
-                    response.code(),
-                    null
-            );
-            return;
-        }
-
-        AuthTokens tokens = new AuthTokens(
-                body.getAccessToken(),
-                body.getRefreshToken(),
-                body.getTokenType(),
-                body.getExpiresIn()
-        );
-        callback.onSuccess(tokens);
-    }
-
-    private interface InternalCallback {
-        void onSuccess(AuthTokens tokens);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/auth/AuthLocalDataSource.java =====
-package tn.esprit.data.auth;
-
-import android.content.Context;
-import android.content.SharedPreferences;
-
-import tn.esprit.domain.auth.AuthTokens;
-
-/**
- * Local persistence for auth tokens using SharedPreferences.
- */
-public class AuthLocalDataSource {
-
-    private static final String PREFS_NAME = "auth_prefs";
-    private static final String KEY_ACCESS_TOKEN = "access_token";
-    private static final String KEY_REFRESH_TOKEN = "refresh_token";
-    private static final String KEY_TOKEN_TYPE = "token_type";
-    private static final String KEY_EXPIRES_IN = "expires_in";
-
-    private final SharedPreferences preferences;
-
-    public AuthLocalDataSource(Context context) {
-        this.preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-    }
-
-    public void saveTokens(AuthTokens tokens) {
-        if (tokens == null) return;
-        preferences.edit()
-                .putString(KEY_ACCESS_TOKEN, tokens.getAccessToken())
-                .putString(KEY_REFRESH_TOKEN, tokens.getRefreshToken())
-                .putString(KEY_TOKEN_TYPE, tokens.getTokenType())
-                .putLong(KEY_EXPIRES_IN, tokens.getExpiresIn() != null ? tokens.getExpiresIn() : -1L)
-                .apply();
-    }
-
-    public AuthTokens getTokens() {
-        String accessToken = preferences.getString(KEY_ACCESS_TOKEN, null);
-        String refreshToken = preferences.getString(KEY_REFRESH_TOKEN, null);
-        String tokenType = preferences.getString(KEY_TOKEN_TYPE, null);
-        long expiresIn = preferences.getLong(KEY_EXPIRES_IN, -1L);
-
-        if (accessToken == null || refreshToken == null || tokenType == null) {
-            return null;
-        }
-
-        Long expiresInValue = expiresIn >= 0 ? expiresIn : null;
-        return new AuthTokens(accessToken, refreshToken, tokenType, expiresInValue);
-    }
-
-    public void clearTokens() {
-        preferences.edit().clear().apply();
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/profile/ProfileRepository.java =====
-package tn.esprit.data.profile;
-
-import android.content.Context;
-
-import java.io.IOException;
-
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import tn.esprit.data.auth.AuthLocalDataSource;
-import tn.esprit.data.remote.ApiClient;
-import tn.esprit.data.remote.doctor.DoctorApiService;
-import tn.esprit.data.remote.patient.PatientApiService;
-import tn.esprit.data.remote.user.UserApiService;
-import tn.esprit.domain.auth.AuthTokens;
-import tn.esprit.domain.doctor.DoctorProfile;
-import tn.esprit.domain.patient.PatientProfile;
-import tn.esprit.domain.user.User;
-
-/**
- * Repository responsible for loading the current user's profile
- * (User + DoctorProfile or PatientProfile depending on role).
- *
- * Note: we now use the domain models directly as Retrofit response types,
- * so there is no extra mapping layer.
- */
-public class ProfileRepository {
-
-    private final AuthLocalDataSource authLocalDataSource;
-    private final UserApiService userApiService;
-    private final DoctorApiService doctorApiService;
-    private final PatientApiService patientApiService;
-
-    public ProfileRepository(Context context) {
-        this.authLocalDataSource = new AuthLocalDataSource(context.getApplicationContext());
-        this.userApiService = ApiClient.createService(UserApiService.class);
-        this.doctorApiService = ApiClient.createService(DoctorApiService.class);
-        this.patientApiService = ApiClient.createService(PatientApiService.class);
-    }
-
-    public interface ProfileCallback {
-        void onSuccess(User user, DoctorProfile doctorProfile, PatientProfile patientProfile);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
-    }
-
-    public void loadProfile(final ProfileCallback callback) {
-        AuthTokens tokens = authLocalDataSource.getTokens();
-        if (tokens == null || tokens.getAccessToken() == null) {
-            callback.onError(new IllegalStateException("Not authenticated"), null, null);
-            return;
-        }
-
-        final String authHeader = buildAuthHeader(tokens);
-
-        // 1) Load the base User (/me)
-        userApiService.getCurrentUser(authHeader).enqueue(new Callback<User>() {
-            @Override
-            public void onResponse(Call<User> call,
-                                   Response<User> response) {
-                if (!response.isSuccessful()) {
-                    String errorBody = extractErrorBody(response);
-                    callback.onError(null, response.code(), errorBody);
-                    return;
-                }
-
-                User user = response.body();
-                if (user == null) {
-                    callback.onError(new IllegalStateException("Empty user body"),
-                            response.code(), null);
-                    return;
-                }
-
-                String role = user.getRole() != null ? user.getRole() : "";
-
-                // 2) Depending on the role, load doctor or patient profile.
-                if ("DOCTOR".equalsIgnoreCase(role)) {
-                    loadDoctorProfile(authHeader, user, callback);
-                } else if ("PATIENT".equalsIgnoreCase(role)) {
-                    loadPatientProfile(authHeader, user, callback);
-                } else {
-                    // Unknown or admin role -> return only User
-                    callback.onSuccess(user, null, null);
-                }
-            }
-
-            @Override
-            public void onFailure(Call<User> call, Throwable t) {
-                callback.onError(t, null, null);
-            }
-        });
-    }
-
-    private void loadDoctorProfile(String authHeader,
-                                   final User user,
-                                   final ProfileCallback callback) {
-
-        doctorApiService.getMyProfile(authHeader)
-                .enqueue(new Callback<DoctorProfile>() {
-                    @Override
-                    public void onResponse(Call<DoctorProfile> call,
-                                           Response<DoctorProfile> response) {
-                        if (!response.isSuccessful()) {
-                            String errorBody = extractErrorBody(response);
-                            callback.onError(null, response.code(), errorBody);
-                            return;
-                        }
-
-                        DoctorProfile dto = response.body();
-                        // If null, still return user with null profile
-                        callback.onSuccess(user, dto, null);
-                    }
-
-                    @Override
-                    public void onFailure(Call<DoctorProfile> call, Throwable t) {
-                        callback.onError(t, null, null);
-                    }
-                });
-    }
-
-    private void loadPatientProfile(String authHeader,
-                                    final User user,
-                                    final ProfileCallback callback) {
-
-        patientApiService.getMyProfile(authHeader)
-                .enqueue(new Callback<PatientProfile>() {
-                    @Override
-                    public void onResponse(Call<PatientProfile> call,
-                                           Response<PatientProfile> response) {
-                        if (!response.isSuccessful()) {
-                            String errorBody = extractErrorBody(response);
-                            callback.onError(null, response.code(), errorBody);
-                            return;
-                        }
-
-                        PatientProfile dto = response.body();
-                        callback.onSuccess(user, null, dto);
-                    }
-
-                    @Override
-                    public void onFailure(Call<PatientProfile> call, Throwable t) {
-                        callback.onError(t, null, null);
-                    }
-                });
-    }
-
-    private String buildAuthHeader(AuthTokens tokens) {
-        String type = tokens.getTokenType() != null ? tokens.getTokenType() : "Bearer";
-        return type + " " + tokens.getAccessToken();
-    }
-
-    private String extractErrorBody(Response<?> response) {
-        try {
-            if (response.errorBody() != null) {
-                return response.errorBody().string();
-            }
-        } catch (IOException ignored) {
-        }
-        return null;
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/ApiClient.java =====
-package tn.esprit.data.remote;
-
-import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
-import retrofit2.Call;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
-import retrofit2.http.Body;
-import retrofit2.http.POST;
-
-/**
- * Provides a configured Retrofit instance to talk to the Spring Boot backend.
- * Uses 10.0.2.2 so the Android emulator can reach localhost:8080 on your machine.
- *
- * NOTE: This client is intentionally small and focused on auth for now.
- * Later we can split it into separate files (AuthApi, UserApi, DoctorApi...)
- * to avoid it becoming a god-class.
- */
-public class ApiClient {
-
-    private static final String BASE_URL = "http://10.0.2.2:8080/";
-    private static Retrofit retrofit;
-
-    private ApiClient() {
-        // No instances
-    }
-    public static <T> T createService(Class<T> serviceClass) {
-        return getRetrofit().create(serviceClass);
-    }
-
-    private static Retrofit getRetrofit() {
-        if (retrofit == null) {
-            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-            // Always log BODY for now (you can change to NONE for production)
-            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .addInterceptor(logging)
-                    .build();
-
-            retrofit = new Retrofit.Builder()
-                    .baseUrl(BASE_URL)
-                    .client(client)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build();
-        }
-        return retrofit;
-    }
-
-    public static AuthApiService getAuthApiService() {
-        return getRetrofit().create(AuthApiService.class);
-    }
-
-    /**
-     * Retrofit API for /auth endpoints.
-     */
-    public interface AuthApiService {
-
-        @POST("auth/login")
-        Call<TokenResponseDto> login(@Body LoginRequestDto request);
-
-        @POST("auth/signup")
-        Call<TokenResponseDto> signup(@Body SignupRequestDto request);
-
-        @POST("auth/refresh")
-        Call<TokenResponseDto> refresh(@Body RefreshTokenRequestDto request);
-    }
-
-    /**
-     * Matches backend dto.auth.LoginRequest (email, password).
-     */
-    public static class LoginRequestDto {
-        private String email;
-        private String password;
-
-        public LoginRequestDto(String email, String password) {
-            this.email = email;
-            this.password = password;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-    }
-
-    /**
-     * Matches backend dto.auth.SignupRequest
-     * (firstname, lastname, email, phone, password, role).
-     */
-    public static class SignupRequestDto {
-        private String firstname;
-        private String lastname;
-        private String email;
-        private String phone;
-        private String password;
-        private String role; // "DOCTOR" or "PATIENT"
-
-        public SignupRequestDto(String firstname,
-                                String lastname,
-                                String email,
-                                String phone,
-                                String password,
-                                String role) {
-            this.firstname = firstname;
-            this.lastname = lastname;
-            this.email = email;
-            this.phone = phone;
-            this.password = password;
-            this.role = role;
-        }
-
-        public String getFirstname() {
-            return firstname;
-        }
-
-        public void setFirstname(String firstname) {
-            this.firstname = firstname;
-        }
-
-        public String getLastname() {
-            return lastname;
-        }
-
-        public void setLastname(String lastname) {
-            this.lastname = lastname;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getPhone() {
-            return phone;
-        }
-
-        public void setPhone(String phone) {
-            this.phone = phone;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-
-        public String getRole() {
-            return role;
-        }
-
-        public void setRole(String role) {
-            this.role = role;
-        }
-    }
-
-    /**
-     * Matches backend dto.auth.RefreshTokenRequest (refreshToken).
-     */
-    public static class RefreshTokenRequestDto {
-        private String refreshToken;
-
-        public RefreshTokenRequestDto(String refreshToken) {
-            this.refreshToken = refreshToken;
-        }
-
-        public String getRefreshToken() {
-            return refreshToken;
-        }
-
-        public void setRefreshToken(String refreshToken) {
-            this.refreshToken = refreshToken;
-        }
-    }
-
-    /**
-     * Matches backend dto.auth.TokenResponse
-     * (accessToken, refreshToken, tokenType, expiresIn).
-     */
-    public static class TokenResponseDto {
-        private String accessToken;
-        private String refreshToken;
-        private String tokenType;
-        private Long expiresIn;
-
-        public String getAccessToken() {
-            return accessToken;
-        }
-
-        public void setAccessToken(String accessToken) {
-            this.accessToken = accessToken;
-        }
-
-        public String getRefreshToken() {
-            return refreshToken;
-        }
-
-        public void setRefreshToken(String refreshToken) {
-            this.refreshToken = refreshToken;
-        }
-
-        public String getTokenType() {
-            return tokenType;
-        }
-
-        public void setTokenType(String tokenType) {
-            this.tokenType = tokenType;
-        }
-
-        public Long getExpiresIn() {
-            return expiresIn;
-        }
-
-        public void setExpiresIn(Long expiresIn) {
-            this.expiresIn = expiresIn;
-        }
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/doctor/DoctorApiService.java =====
-package tn.esprit.data.remote.doctor;
-
-import retrofit2.Call;
-import retrofit2.http.GET;
-import retrofit2.http.Header;
-import tn.esprit.domain.doctor.DoctorProfile;
-
-/**
- * Retrofit API for doctor-specific operations.
- *
- * We directly return the domain DoctorProfile model.
- */
-public interface DoctorApiService {
-
-    /**
-     * GET /doctors/me
-     * Authorization: Bearer <access_token>
-     */
-    @GET("doctors/me")
-    Call<DoctorProfile> getMyProfile(@Header("Authorization") String authorization);
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/user/UserApiService.java =====
-package tn.esprit.data.remote.user;
-
-import retrofit2.Call;
-import retrofit2.http.GET;
-import retrofit2.http.Header;
-import tn.esprit.domain.user.User;
-
-/**
- * Retrofit API for general user operations.
- *
- * We directly return the domain User model to avoid extra mapping.
- */
-public interface UserApiService {
-
-    /**
-     * GET /me
-     * Authorization: Bearer <access_token>
-     */
-    @GET("me")
-    Call<User> getCurrentUser(@Header("Authorization") String authorization);
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/patient/PatientApiService.java =====
-package tn.esprit.data.remote.patient;
-
-import retrofit2.Call;
-import retrofit2.http.GET;
-import retrofit2.http.Header;
-import tn.esprit.domain.patient.PatientProfile;
-
-/**
- * Retrofit API for patient-specific operations.
- *
- * We directly return the domain PatientProfile model.
- */
-public interface PatientApiService {
-
-    /**
-     * GET /patients/me
-     * Authorization: Bearer <access_token>
-     */
-    @GET("patients/me")
-    Call<PatientProfile> getMyProfile(@Header("Authorization") String authorization);
-}
+===== FILE: ./app/src/main/res/layout/activity_login.xml =====
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/login_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/color_background"
+    android:padding="24dp"
+    tools:context="tn.esprit.presentation.auth.LoginActivity">
+
+    <!-- App logo -->
+    <ImageView
+        android:id="@+id/image_logo"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:src="@drawable/logo"
+        android:contentDescription="@string/app_name"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/text_title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintVertical_chainStyle="packed" />
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/text_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:text="@string/login_title"
+        android:textAppearance="?attr/textAppearanceHeadlineSmall"
+        android:textColor="@color/color_on_background"
+        app:layout_constraintTop_toBottomOf="@id/image_logo"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Subtitle -->
+    <TextView
+        android:id="@+id/text_subtitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center"
+        android:text="@string/login_subtitle"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="@color/color_on_background_secondary"
+        app:layout_constraintTop_toBottomOf="@id/text_title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Card container for form -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_login"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp"
+        app:cardUseCompatPadding="true"
+        app:layout_constraintTop_toBottomOf="@id/text_subtitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/layout_form"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="20dp">
+
+            <!-- Email field -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_email"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:hint="@string/login_email_hint"
+                app:boxStrokeColor="@color/color_primary"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/input_email"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textEmailAddress" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Password field -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_password"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="@string/login_password_hint"
+                app:endIconMode="password_toggle"
+                app:boxStrokeColor="@color/color_primary"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:layout_constraintTop_toBottomOf="@id/layout_email"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/input_password"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textPassword" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Login button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_login"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/login_button_text"
+                android:textAllCaps="false"
+                android:textStyle="bold"
+                app:cornerRadius="18dp"
+                app:iconGravity="textStart"
+                app:rippleColor="@color/color_primary_ripple"
+                app:layout_constraintTop_toBottomOf="@id/layout_password"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <!-- Signup hint -->
+            <TextView
+                android:id="@+id/text_signup_hint"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                android:text="@string/login_signup_hint"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="@color/color_on_background_secondary"
+                app:layout_constraintTop_toBottomOf="@id/button_login"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Full-screen loading overlay -->
+    <FrameLayout
+        android:id="@+id/loading_overlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#80000000"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ProgressBar
+            android:id="@+id/progress_loading"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            android:layout_gravity="center" />
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+===== FILE: ./app/src/main/res/layout/activity_patient_onboarding.xml =====
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/onboarding_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface">
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/onboarding_scroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        android:padding="24dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Header -->
+            <TextView
+                android:id="@+id/text_onboarding_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/onboarding_patient_title"
+                android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                android:textColor="?attr/colorOnSurface" />
+
+            <TextView
+                android:id="@+id/text_onboarding_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/onboarding_patient_subtitle"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <!-- Card container -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- Basic info -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/onboarding_patient_dob_hint"
+                        app:startIconDrawable="@android:drawable/ic_menu_month">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_dob"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="date"
+                            android:hint="@string/onboarding_patient_dob_placeholder" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="@string/onboarding_patient_gender_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_gender"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapWords" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="@string/onboarding_patient_blood_type_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_blood_type"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapCharacters" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Height / Weight row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal"
+                        android:weightSum="2">
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="@string/onboarding_patient_height_hint">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/input_height_cm"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:hint="@string/onboarding_patient_height_placeholder" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <Space
+                            android:layout_width="8dp"
+                            android:layout_height="0dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="@string/onboarding_patient_weight_hint">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/input_weight_kg"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:hint="@string/onboarding_patient_weight_placeholder" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+
+                    <!-- Address block -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/onboarding_patient_address_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_address"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapSentences" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal"
+                        android:weightSum="2">
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="@string/onboarding_patient_city_hint">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/input_city"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textCapWords" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <Space
+                            android:layout_width="8dp"
+                            android:layout_height="0dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="@string/onboarding_patient_country_hint">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/input_country"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textCapWords" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="@string/onboarding_patient_marital_status_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_marital_status"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapWords" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Lifestyle -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="horizontal">
+
+                        <CheckBox
+                            android:id="@+id/check_smoker"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/onboarding_patient_smoker" />
+
+                        <CheckBox
+                            android:id="@+id/check_alcohol"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/onboarding_patient_alcohol" />
+                    </LinearLayout>
+
+                    <!-- Notes -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/onboarding_patient_notes_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_notes"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapSentences|textMultiLine"
+                            android:minLines="3" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Buttons -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_complete_profile"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/onboarding_patient_button_complete" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_skip_for_now"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/onboarding_patient_button_skip" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Loading overlay -->
+    <FrameLayout
+        android:id="@+id/onboarding_loading_overlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@android:color/transparent"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#80000000" />
+
+        <ProgressBar
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center" />
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+===== FILE: ./app/src/main/res/layout/activity_auth_gate.xml =====
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/auth_gate_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/color_background"
+    tools:context="tn.esprit.presentation.auth.AuthGateActivity">
+
+    <ImageView
+        android:id="@+id/auth_gate_logo"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:src="@drawable/logo"
+        android:contentDescription="@string/app_name"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/auth_gate_message"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintVertical_chainStyle="packed" />
+
+    <TextView
+        android:id="@+id/auth_gate_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/auth_gate_message"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="@color/color_on_background_secondary"
+        app:layout_constraintTop_toBottomOf="@id/auth_gate_logo"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <ProgressBar
+        android:id="@+id/auth_gate_progress"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        app:layout_constraintTop_toBottomOf="@id/auth_gate_message"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+===== FILE: ./app/src/main/res/layout/activity_signup.xml =====
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/signup_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/color_background"
+    tools:context="tn.esprit.presentation.auth.SignupActivity">
+
+    <!-- Scrollable content -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/signup_scroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:id="@+id/signup_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:gravity="center_horizontal">
+
+            <!-- Title (no logo above) -->
+            <TextView
+                android:id="@+id/signup_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="48dp"
+                android:gravity="center"
+                android:text="Create account"
+                android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                android:textColor="@color/color_on_background" />
+
+            <!-- Subtitle -->
+            <TextView
+                android:id="@+id/signup_subtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:text="Join as a doctor or patient to manage appointments and records."
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="@color/color_on_background_secondary" />
+
+            <!-- Card for form -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_signup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="8dp"
+                app:cardUseCompatPadding="true">
+
+                <LinearLayout
+                    android:id="@+id/layout_signup_form"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <!-- First name -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_firstname"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="First name"
+                        app:boxStrokeColor="@color/color_primary"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusBottomEnd="16dp">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_firstname"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPersonName" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Last name -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_lastname"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="Last name"
+                        app:boxStrokeColor="@color/color_primary"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusBottomEnd="16dp">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_lastname"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPersonName" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Email -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_email"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="Email"
+                        app:boxStrokeColor="@color/color_primary"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusBottomEnd="16dp">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_email"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textEmailAddress" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Phone (optional) -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_phone"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="Phone (optional)"
+                        app:boxStrokeColor="@color/color_primary"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusBottomEnd="16dp">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_phone"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="phone" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Password -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_password"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="Password"
+                        app:endIconMode="password_toggle"
+                        app:boxStrokeColor="@color/color_primary"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusBottomEnd="16dp">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_password"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPassword" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Confirm password -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_confirm_password"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="Confirm password"
+                        app:endIconMode="password_toggle"
+                        app:boxStrokeColor="@color/color_primary"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusBottomEnd="16dp">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_confirm_password"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPassword" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Role label -->
+                    <TextView
+                        android:id="@+id/text_role_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="I am a"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/color_on_background" />
+
+                    <!-- Role chips -->
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chip_group_role"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        app:singleSelection="true"
+                        app:selectionRequired="false">
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_doctor"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Doctor" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_patient"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Patient" />
+                    </com.google.android.material.chip.ChipGroup>
+
+                    <!-- Signup button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_signup"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="Create account"
+                        android:textAllCaps="false"
+                        android:textStyle="bold"
+                        app:cornerRadius="18dp"
+                        app:rippleColor="@color/color_primary_ripple" />
+
+                    <!-- Back to login -->
+                    <TextView
+                        android:id="@+id/text_back_to_login"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:gravity="center"
+                        android:text="Already have an account? Sign in"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="@color/color_on_background_secondary"
+                        android:layout_marginBottom="8dp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Loading overlay -->
+    <FrameLayout
+        android:id="@+id/signup_loading_overlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#80000000"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ProgressBar
+            android:id="@+id/signup_progress"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            android:layout_gravity="center" />
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+===== FILE: ./app/src/main/res/layout/fragment_home.xml =====
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/home_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/color_background"
+    tools:context="tn.esprit.presentation.home.HomeFragment">
+
+    <!-- Scrollable content area -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/home_scroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:paddingHorizontal="24dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="24dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Highlight card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_highlight"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="16dp"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardElevation="0dp"
+                app:cardUseCompatPadding="false">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_home_highlight"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:id="@+id/text_highlight_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_highlight_title"
+                        android:textColor="@color/white"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/text_highlight_subtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/home_highlight_subtitle"
+                        android:textColor="#E0F2F1"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Stats row -->
+            <LinearLayout
+                android:id="@+id/layout_stats"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:layout_marginBottom="18dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_home_stat"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="10dp"
+                    android:layout_marginEnd="8dp">
+
+                    <TextView
+                        android:id="@+id/text_stat_today_count"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="2"
+                        android:textColor="@color/color_on_background"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/home_stats_today_label"
+                        android:textColor="@color/color_on_background_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_home_stat"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="10dp"
+                    android:layout_marginHorizontal="4dp">
+
+                    <TextView
+                        android:id="@+id/text_stat_week_count"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="8"
+                        android:textColor="@color/color_on_background"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/home_stats_week_label"
+                        android:textColor="@color/color_on_background_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_home_stat"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="10dp"
+                    android:layout_marginStart="8dp">
+
+                    <TextView
+                        android:id="@+id/text_stat_patients_count"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="24"
+                        android:textColor="@color/color_on_background"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/home_stats_patients_label"
+                        android:textColor="@color/color_on_background_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Quick actions title -->
+            <TextView
+                android:id="@+id/text_quick_actions_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/home_quick_actions_title"
+                android:textColor="@color/color_on_background"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <!-- Quick actions row -->
+            <LinearLayout
+                android:id="@+id/layout_quick_actions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/chip_quick_book"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_chip_outline"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="6dp"
+                    android:text="@string/home_quick_book"
+                    android:textColor="@color/color_on_background"
+                    android:textSize="13sp"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/chip_quick_messages"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_chip_outline"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="6dp"
+                    android:text="@string/home_quick_messages"
+                    android:textColor="@color/color_on_background"
+                    android:textSize="13sp"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/chip_quick_reports"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_chip_outline"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="6dp"
+                    android:text="@string/home_quick_reports"
+                    android:textColor="@color/color_on_background"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+===== FILE: ./app/src/main/res/layout/activity_doctor_profile_onboarding.xml =====
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/onboarding_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface">
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/onboarding_scroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        android:padding="24dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Header -->
+            <TextView
+                android:id="@+id/text_onboarding_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/onboarding_patient_title"
+                android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                android:textColor="?attr/colorOnSurface" />
+
+            <TextView
+                android:id="@+id/text_onboarding_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/onboarding_patient_subtitle"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <!-- Card container -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- Basic info -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/onboarding_patient_dob_hint"
+                        app:startIconDrawable="@android:drawable/ic_menu_month">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_dob"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="date"
+                            android:hint="@string/onboarding_patient_dob_placeholder" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="@string/onboarding_patient_gender_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_gender"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapWords" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="@string/onboarding_patient_blood_type_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_blood_type"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapCharacters" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Height / Weight row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal"
+                        android:weightSum="2">
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="@string/onboarding_patient_height_hint">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/input_height_cm"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:hint="@string/onboarding_patient_height_placeholder" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <Space
+                            android:layout_width="8dp"
+                            android:layout_height="0dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="@string/onboarding_patient_weight_hint">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/input_weight_kg"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:hint="@string/onboarding_patient_weight_placeholder" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+
+                    <!-- Address block -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/onboarding_patient_address_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_address"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapSentences" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal"
+                        android:weightSum="2">
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="@string/onboarding_patient_city_hint">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/input_city"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textCapWords" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <Space
+                            android:layout_width="8dp"
+                            android:layout_height="0dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="@string/onboarding_patient_country_hint">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/input_country"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textCapWords" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="@string/onboarding_patient_marital_status_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_marital_status"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapWords" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Lifestyle -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="horizontal">
+
+                        <CheckBox
+                            android:id="@+id/check_smoker"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/onboarding_patient_smoker" />
+
+                        <CheckBox
+                            android:id="@+id/check_alcohol"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/onboarding_patient_alcohol" />
+                    </LinearLayout>
+
+                    <!-- Notes -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/onboarding_patient_notes_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_notes"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapSentences|textMultiLine"
+                            android:minLines="3" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Buttons -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_complete_profile"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/onboarding_patient_button_complete" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_skip_for_now"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/onboarding_patient_button_skip" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Loading overlay -->
+    <FrameLayout
+        android:id="@+id/onboarding_loading_overlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@android:color/transparent"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#80000000" />
+
+        <ProgressBar
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center" />
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+===== FILE: ./app/src/main/res/layout/layout_home_drawer_header.xml =====
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="@dimen/drawer_header_padding"
+    android:background="@color/color_drawer_header_bg"
+    android:gravity="center_vertical">
+
+    <ImageView
+        android:id="@+id/drawer_avatar"
+        android:layout_width="@dimen/drawer_header_avatar_size"
+        android:layout_height="@dimen/drawer_header_avatar_size"
+        android:background="@drawable/bg_avatar_circle"
+        android:padding="@dimen/drawer_header_avatar_padding"
+        android:scaleType="centerInside"
+        android:src="@drawable/logo" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/drawer_header_spacing_horizontal"
+        android:orientation="vertical"
+        android:layout_weight="1">
+
+        <TextView
+            android:id="@+id/drawer_user_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            style="@style/TextAppearance.Docs.DrawerTitle"
+            android:text="@string/home_drawer_user_name_placeholder" />
+
+        <!-- New: role line -->
+        <TextView
+            android:id="@+id/drawer_user_role"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            style="@style/TextAppearance.Docs.DrawerSubtitle"
+            android:text="@string/home_drawer_user_role_placeholder" />
+
+        <TextView
+            android:id="@+id/drawer_user_email"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            style="@style/TextAppearance.Docs.DrawerSubtitle"
+            android:text="@string/home_drawer_email_placeholder" />
+    </LinearLayout>
+
+</LinearLayout>
+
+
+===== FILE: ./app/src/main/res/layout/activity_doctor_practice_setup.xml =====
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/doctor_setup_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface">
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:padding="24dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Header -->
+            <TextView
+                android:id="@+id/text_doctor_setup_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/doctor_setup_title"
+                android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                android:textColor="?attr/colorOnSurface" />
+
+            <TextView
+                android:id="@+id/text_doctor_setup_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/doctor_setup_subtitle"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <!-- Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- Specialty dropdown -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/doctor_setup_specialty_hint"
+                        app:startIconDrawable="@android:drawable/ic_menu_sort_by_size"
+                        app:endIconMode="dropdown_menu">
+
+                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                            android:id="@+id/input_specialty"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="none"
+                            android:focusable="false"
+                            android:cursorVisible="false" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Acts section -->
+                    <TextView
+                        android:id="@+id/text_acts_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/doctor_setup_acts_label"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <TextView
+                        android:id="@+id/text_acts_helper"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/doctor_setup_acts_helper"
+                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:id="@+id/text_acts_empty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/doctor_setup_acts_empty_default"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:visibility="gone" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chip_group_acts"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        app:singleLine="false"
+                        app:chipSpacing="8dp" />
+
+                    <!-- CTA button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_save_continue"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="24dp"
+                        android:text="@string/doctor_setup_button_continue" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Loading overlay -->
+    <FrameLayout
+        android:id="@+id/doctor_setup_loading_overlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@android:color/transparent"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#80000000" />
+
+        <ProgressBar
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center" />
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+===== FILE: ./app/src/main/res/layout/activity_profile.xml =====
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/profile_activity_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/color_background"
+    tools:context="tn.esprit.presentation.profile.ProfileActivity">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar_profile"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/color_surface"
+        android:elevation="4dp"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
+        app:title="@string/profile_title"
+        app:titleTextColor="@color/color_on_background"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/profile_fragment_container"
+        android:name="tn.esprit.presentation.profile.ProfileFragment"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toBottomOf="@id/toolbar_profile"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:layout="@layout/fragment_profile" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+===== FILE: ./app/src/main/res/layout/fragment_profile.xml =====
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/profile_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/color_background"
+    tools:context="tn.esprit.presentation.profile.ProfileFragment">
+
+    <!-- Content -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/profile_scroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        android:clipToPadding="false"
+        android:padding="24dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:id="@+id/profile_content_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Header card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_profile_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="6dp"
+                app:cardUseCompatPadding="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:id="@+id/image_profile_avatar"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
+                            android:background="@drawable/bg_avatar_circle"
+                            android:padding="10dp"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/logo"
+                            android:contentDescription="@string/app_name" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/text_profile_name"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textAppearance="?attr/textAppearanceTitleMedium"
+                                android:textColor="@color/color_on_background"
+                                android:textStyle="bold"
+                                tools:text="Dr. Jane Doe" />
+
+                            <TextView
+                                android:id="@+id/text_profile_email"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="@color/color_on_background_secondary"
+                                tools:text="jane.doe@example.com" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/text_profile_role_chip"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_chip_outline"
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="6dp"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="@color/color_on_background"
+                            android:textStyle="bold"
+                            tools:text="Doctor" />
+                    </LinearLayout>
+
+                    <!-- Second row: phone + status chip -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:id="@+id/text_profile_phone"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="@color/color_on_background"
+                            tools:text="+216 21 234 567" />
+
+                        <TextView
+                            android:id="@+id/text_profile_status_chip"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_chip_outline"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="@color/color_on_background_secondary"
+                            android:textAllCaps="false"
+                            tools:text="ACTIVE" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Doctor section -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/group_doctor_section"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="4dp"
+                app:cardUseCompatPadding="true"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:id="@+id/text_doctor_section_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_section_doctor_title"
+                        android:textColor="@color/color_on_background"
+                        android:textStyle="bold"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/text_doctor_clinic"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/color_on_background_secondary"
+                        tools:text="Central Clinic, 12 Avenue Habib Bourguiba" />
+
+                    <TextView
+                        android:id="@+id/text_doctor_location"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="@color/color_on_background_secondary"
+                        tools:text="Tunis, Tunisia" />
+
+                    <TextView
+                        android:id="@+id/text_doctor_experience"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/color_on_background"
+                        tools:text="8 years of experience" />
+
+                    <TextView
+                        android:id="@+id/text_doctor_reg"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="@color/color_on_background_secondary"
+                        tools:text="Registration: 123456" />
+
+                    <TextView
+                        android:id="@+id/text_doctor_fee"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/color_on_background"
+                        tools:text="Consultation: 80.000 TND" />
+
+                    <TextView
+                        android:id="@+id/text_doctor_flags"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="@color/color_on_background_secondary"
+                        tools:text="Accepting new patients • Teleconsultation available" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Patient section -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/group_patient_section"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="4dp"
+                app:cardUseCompatPadding="true"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:id="@+id/text_patient_section_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_section_patient_title"
+                        android:textColor="@color/color_on_background"
+                        android:textStyle="bold"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/text_patient_dob"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/color_on_background_secondary"
+                        tools:text="1994-07-21" />
+
+                    <TextView
+                        android:id="@+id/text_patient_gender"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="@color/color_on_background_secondary"
+                        tools:text="Female" />
+
+                    <TextView
+                        android:id="@+id/text_patient_blood"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="@color/color_on_background_secondary"
+                        tools:text="Blood type: O+" />
+
+                    <TextView
+                        android:id="@+id/text_patient_height_weight"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/color_on_background"
+                        tools:text="170 cm • 65 kg" />
+
+                    <TextView
+                        android:id="@+id/text_patient_address"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="@color/color_on_background_secondary"
+                        tools:text="Rue de la Santé, Ariana, Tunisia" />
+
+                    <TextView
+                        android:id="@+id/text_patient_lifestyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="@color/color_on_background_secondary"
+                        tools:text="Non-smoker • No alcohol" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Loading overlay -->
+    <FrameLayout
+        android:id="@+id/profile_loading_overlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#80000000"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ProgressBar
+            android:id="@+id/profile_progress"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            android:layout_gravity="center" />
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+===== FILE: ./app/src/main/res/layout/activity_main.xml =====
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout_main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    tools:context="tn.esprit.MainActivity">
+
+    <!-- MAIN CONTENT AREA WITH HEADER + NAV HOST + BOTTOM NAV -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/main_root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/color_background">
+
+        <!-- Header / App bar (global) -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/home_app_bar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="24dp"
+            android:paddingTop="24dp"
+            android:paddingBottom="12dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <ImageView
+                android:id="@+id/image_avatar"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_avatar_circle"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/logo"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <LinearLayout
+                android:id="@+id/layout_header_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:orientation="vertical"
+                app:layout_constraintBottom_toBottomOf="@id/image_avatar"
+                app:layout_constraintStart_toEndOf="@id/image_avatar"
+                app:layout_constraintTop_toTopOf="@id/image_avatar">
+
+                <TextView
+                    android:id="@+id/text_greeting"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/home_greeting_morning"
+                    android:textColor="@color/color_on_background_secondary"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/text_user_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/home_drawer_user_name_placeholder"
+                    android:textColor="@color/color_on_background"
+                    android:textStyle="bold"
+                    android:textSize="18sp" />
+
+                <TextView
+                    android:id="@+id/text_user_role"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/profile_role_unknown"
+                    android:textColor="@color/color_on_background_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/button_menu"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/home_drawer_content_description"
+                android:padding="8dp"
+                android:src="@drawable/ic_menu_24"
+                app:tint="@color/color_on_background"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- NavHost: hosts HomeFragment, ProfileFragment, etc. -->
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/nav_host_main"
+            android:name="androidx.navigation.fragment.NavHostFragment"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:defaultNavHost="true"
+            app:navGraph="@navigation/nav_main"
+            app:layout_constraintTop_toBottomOf="@id/home_app_bar"
+            app:layout_constraintBottom_toTopOf="@id/bottom_nav_card"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:layout="@layout/fragment_home" />
+
+        <!-- Bottom nav: global -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/bottom_nav_card"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="4dp"
+            app:cardCornerRadius="26dp"
+            app:cardElevation="10dp"
+            app:cardUseCompatPadding="true"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <com.google.android.material.bottomnavigation.BottomNavigationView
+                android:id="@+id/bottom_nav"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
+                app:itemIconTint="@color/color_on_background_secondary"
+                app:itemTextColor="@color/color_on_background_secondary"
+                app:labelVisibilityMode="labeled"
+                app:menu="@menu/menu_home_bottom" />
+        </com.google.android.material.card.MaterialCardView>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- SIDE DRAWER (global) -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="260dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="@color/color_surface"
+        android:fitsSystemWindows="true"
+        app:headerLayout="@layout/layout_home_drawer_header"
+        app:itemTextColor="@color/color_on_background"
+        app:itemIconTint="@color/color_on_background_secondary"
+        app:menu="@menu/menu_home_drawer" />
+
+</androidx.drawerlayout.widget.DrawerLayout>
 
 

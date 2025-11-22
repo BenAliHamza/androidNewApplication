@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/onboarding_root"
+    android:id="@+id/doctor_profile_onboarding_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/colorSurface">
@@ -22,12 +22,22 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- Step label -->
+            <TextView
+                android:id="@+id/text_step"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/doctor_onboarding_profile_step"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
             <!-- Header -->
             <TextView
                 android:id="@+id/text_onboarding_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/onboarding_patient_title"
+                android:layout_marginTop="4dp"
+                android:text="@string/doctor_onboarding_profile_title"
                 android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
                 android:textColor="?attr/colorOnSurface" />
 
@@ -36,7 +46,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="@string/onboarding_patient_subtitle"
+                android:text="@string/doctor_onboarding_profile_subtitle"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -56,102 +66,49 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <!-- Basic info -->
+                    <!-- Bio -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/onboarding_patient_dob_hint"
-                        app:startIconDrawable="@android:drawable/ic_menu_month">
+                        android:hint="@string/doctor_onboarding_bio_hint">
 
                         <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/input_dob"
+                            android:id="@+id/input_bio"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="date"
-                            android:hint="@string/onboarding_patient_dob_placeholder" />
+                            android:minLines="3"
+                            android:inputType="textCapSentences|textMultiLine" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:hint="@string/onboarding_patient_gender_hint">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/input_gender"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="textCapWords" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:hint="@string/onboarding_patient_blood_type_hint">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/input_blood_type"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="textCapCharacters" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <!-- Height / Weight row -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:orientation="horizontal"
-                        android:weightSum="2">
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:hint="@string/onboarding_patient_height_hint">
-
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/input_height_cm"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:inputType="number"
-                                android:hint="@string/onboarding_patient_height_placeholder" />
-                        </com.google.android.material.textfield.TextInputLayout>
-
-                        <Space
-                            android:layout_width="8dp"
-                            android:layout_height="0dp" />
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:hint="@string/onboarding_patient_weight_hint">
-
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/input_weight_kg"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:inputType="number"
-                                android:hint="@string/onboarding_patient_weight_placeholder" />
-                        </com.google.android.material.textfield.TextInputLayout>
-                    </LinearLayout>
-
-                    <!-- Address block -->
+                    <!-- Years of experience -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="@string/onboarding_patient_address_hint">
+                        android:hint="@string/doctor_onboarding_experience_hint">
 
                         <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/input_address"
+                            android:id="@+id/input_years_experience"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Clinic address -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/doctor_onboarding_clinic_address_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_clinic_address"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="textCapSentences" />
                     </com.google.android.material.textfield.TextInputLayout>
 
+                    <!-- City / Country row -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -163,7 +120,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="@string/onboarding_patient_city_hint">
+                            android:hint="@string/doctor_onboarding_city_hint">
 
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/input_city"
@@ -180,7 +137,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="@string/onboarding_patient_country_hint">
+                            android:hint="@string/doctor_onboarding_country_hint">
 
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/input_country"
@@ -190,20 +147,74 @@
                         </com.google.android.material.textfield.TextInputLayout>
                     </LinearLayout>
 
+                    <!-- Registration number -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:hint="@string/onboarding_patient_marital_status_hint">
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/doctor_onboarding_reg_hint">
 
                         <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/input_marital_status"
+                            android:id="@+id/input_medical_reg"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="textCapWords" />
+                            android:inputType="textCapCharacters" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Lifestyle -->
+                    <!-- Consultation fee -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/doctor_onboarding_fee_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_consultation_fee"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="numberDecimal" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Max daily appointments / Average duration row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal"
+                        android:weightSum="2">
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="@string/doctor_onboarding_max_daily_hint">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/input_max_daily"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <Space
+                            android:layout_width="8dp"
+                            android:layout_height="0dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="@string/doctor_onboarding_avg_duration_hint">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/input_avg_duration"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+
+                    <!-- Flags -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -211,50 +222,35 @@
                         android:orientation="horizontal">
 
                         <CheckBox
-                            android:id="@+id/check_smoker"
+                            android:id="@+id/check_accepts_new"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="@string/onboarding_patient_smoker" />
+                            android:text="@string/doctor_onboarding_accepts_new" />
 
                         <CheckBox
-                            android:id="@+id/check_alcohol"
+                            android:id="@+id/check_teleconsultation"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="@string/onboarding_patient_alcohol" />
+                            android:text="@string/doctor_onboarding_teleconsultation" />
                     </LinearLayout>
-
-                    <!-- Notes -->
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:hint="@string/onboarding_patient_notes_hint">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/input_notes"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="textCapSentences|textMultiLine"
-                            android:minLines="3" />
-                    </com.google.android.material.textfield.TextInputLayout>
 
                     <!-- Buttons -->
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_complete_profile"
+                        android:id="@+id/button_save_profile"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:text="@string/onboarding_patient_button_complete" />
+                        android:layout_marginTop="20dp"
+                        android:text="@string/doctor_onboarding_profile_button_save" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_skip_for_now"
+                        android:id="@+id/button_skip_profile"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="@string/onboarding_patient_button_skip" />
+                        android:text="@string/doctor_onboarding_profile_button_skip" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -263,7 +259,7 @@
 
     <!-- Loading overlay -->
     <FrameLayout
-        android:id="@+id/onboarding_loading_overlay"
+        android:id="@+id/doctor_profile_loading_overlay"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:background="@android:color/transparent"

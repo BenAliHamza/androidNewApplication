@@ -185,6 +185,57 @@
     <string name="onboarding_patient_button_skip">Skip for now</string>
     <string name="onboarding_patient_skip_toast">You can complete your medical profile later from your Profile.</string>
 
+    <!-- Doctor onboarding: practice setup -->
+    <string name="doctor_onboarding_practice_title">Set up your practice</string>
+    <string name="doctor_onboarding_practice_subtitle">Choose your specialty and the services you provide.</string>
+    <string name="doctor_onboarding_practice_step">Step 1 of 2</string>
+    <string name="doctor_onboarding_select_specialty_label">Select your specialty</string>
+    <string name="doctor_onboarding_select_acts_label">Select the acts you perform</string>
+    <string name="doctor_onboarding_practice_button_continue">Continue</string>
+    <string name="doctor_onboarding_practice_loading_specialties">Loading specialties\u2026</string>
+    <string name="doctor_onboarding_practice_loading_acts">Loading acts\u2026</string>
+    <string name="doctor_onboarding_practice_error_load">Could not load data. Please try again.</string>
+    <string name="doctor_onboarding_practice_error_no_selection">Please select a specialty and at least one act.</string>
+    <string name="doctor_onboarding_practice_success">Practice setup saved.</string>
 
+    <!-- Doctor onboarding: profile -->
+    <string name="doctor_onboarding_profile_title">Complete your profile</string>
+    <string name="doctor_onboarding_profile_subtitle">Add more details about your clinic and experience.</string>
+    <string name="doctor_onboarding_profile_step">Step 2 of 2</string>
+    <string name="doctor_onboarding_bio_hint">Short bio</string>
+    <string name="doctor_onboarding_experience_hint">Years of experience</string>
+    <string name="doctor_onboarding_clinic_address_hint">Clinic address</string>
+    <string name="doctor_onboarding_city_hint">City</string>
+    <string name="doctor_onboarding_country_hint">Country</string>
+    <string name="doctor_onboarding_reg_hint">Medical registration number</string>
+    <string name="doctor_onboarding_fee_hint">Consultation fee</string>
+    <string name="doctor_onboarding_max_daily_hint">Max daily appointments</string>
+    <string name="doctor_onboarding_avg_duration_hint">Average consultation duration (min)</string>
+    <string name="doctor_onboarding_accepts_new">Accepting new patients</string>
+    <string name="doctor_onboarding_teleconsultation">Teleconsultation available</string>
+    <string name="doctor_onboarding_profile_button_save">Save and continue</string>
+    <string name="doctor_onboarding_profile_button_skip">Skip for now</string>
+    <string name="doctor_onboarding_profile_success">Profile updated. You are all set!</string>
+    <string name="doctor_onboarding_profile_error_generic">Could not save profile. Please try again.</string>
+    <string name="doctor_onboarding_profile_error_network">Network error. Please check your connection.</string>
 
+    <string name="doctor_setup_title">Set up your practice</string>
+    <string name="doctor_setup_subtitle">Choose your main specialty and the services you offer. You can adjust these later in your profile.</string>
+
+    <string name="doctor_setup_specialty_hint">Main specialty</string>
+
+    <string name="doctor_setup_acts_label">Services &amp; acts you perform</string>
+    <string name="doctor_setup_acts_helper">Select one or more acts that you regularly perform. This helps patients understand what you offer.</string>
+    <string name="doctor_setup_acts_empty_default">Select a specialty first to see available acts.</string>
+
+    <string name="doctor_setup_button_continue">Continue</string>
+
+    <!-- Patient / Doctor shared patient-fields (new keys only) -->
+    <string name="onboarding_patient_dob_placeholder">YYYY-MM-DD</string>
+    <string name="onboarding_patient_blood_type_hint">Blood type (e.g. O+)</string>
+    <string name="onboarding_patient_height_placeholder">cm</string>
+    <string name="onboarding_patient_weight_placeholder">kg</string>
+    <string name="onboarding_patient_marital_status_hint">Marital status</string>
+    <string name="onboarding_patient_smoker">Smoker</string>
+    <string name="onboarding_patient_alcohol">Alcohol use</string>
 </resources>

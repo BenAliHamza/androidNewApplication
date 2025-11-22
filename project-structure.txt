@@ -27,6 +27,7 @@
 ./app/src/main/res/drawable/bg_chip_outline.xml
 ./app/src/main/res/drawable/bg_home_stat.xml
 ./app/src/main/res/drawable/ic_launcher_foreground.xml
+./app/src/main/res/drawable/bg_onboarding_step_pill.xml
 ./app/src/main/res/drawable/bg_bottom_bar.xml
 ./app/src/main/res/drawable/bg_avatar_circle.xml
 ./app/src/main/res/drawable/logo.png
@@ -38,10 +39,13 @@
 ./app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp
 ./app/src/main/res/layout
 ./app/src/main/res/layout/activity_login.xml
+./app/src/main/res/layout/activity_patient_onboarding.xml
 ./app/src/main/res/layout/activity_auth_gate.xml
 ./app/src/main/res/layout/activity_signup.xml
 ./app/src/main/res/layout/fragment_home.xml
+./app/src/main/res/layout/activity_doctor_profile_onboarding.xml
 ./app/src/main/res/layout/layout_home_drawer_header.xml
+./app/src/main/res/layout/activity_doctor_practice_setup.xml
 ./app/src/main/res/layout/activity_profile.xml
 ./app/src/main/res/layout/fragment_profile.xml
 ./app/src/main/res/layout/activity_main.xml
@@ -63,8 +67,10 @@
 ./app/src/main/res/xml/network_security_config.xml
 ./app/src/main/res/xml/data_extraction_rules.xml
 ./app/src/main/res/menu
+./app/src/main/res/menu/menu_home_bottom_doctor.xml
 ./app/src/main/res/menu/menu_home_drawer.xml
 ./app/src/main/res/menu/menu_home_bottom.xml
+./app/src/main/res/menu/menu_home_bottom_patient.xml
 ./app/src/main/res/mipmap-xhdpi
 ./app/src/main/res/mipmap-xhdpi/ic_launcher.webp
 ./app/src/main/res/mipmap-xhdpi/ic_launcher_round.webp
@@ -85,6 +91,7 @@
 ./app/src/main/java/tn/esprit/data/remote
 ./app/src/main/java/tn/esprit/data/remote/ApiClient.java
 ./app/src/main/java/tn/esprit/data/remote/doctor
+./app/src/main/java/tn/esprit/data/remote/doctor/SpecialtyApiService.java
 ./app/src/main/java/tn/esprit/data/remote/doctor/DoctorApiService.java
 ./app/src/main/java/tn/esprit/data/remote/user
 ./app/src/main/java/tn/esprit/data/remote/user/UserApiService.java
@@ -94,6 +101,8 @@
 ./app/src/main/java/tn/esprit/domain/auth
 ./app/src/main/java/tn/esprit/domain/auth/AuthTokens.java
 ./app/src/main/java/tn/esprit/domain/doctor
+./app/src/main/java/tn/esprit/domain/doctor/Act.java
+./app/src/main/java/tn/esprit/domain/doctor/Specialty.java
 ./app/src/main/java/tn/esprit/domain/doctor/DoctorProfile.java
 ./app/src/main/java/tn/esprit/domain/user
 ./app/src/main/java/tn/esprit/domain/user/User.java
@@ -101,6 +110,7 @@
 ./app/src/main/java/tn/esprit/domain/patient/PatientProfile.java
 ./app/src/main/java/tn/esprit/presentation
 ./app/src/main/java/tn/esprit/presentation/home
+./app/src/main/java/tn/esprit/presentation/home/HomeUiHelper.java
 ./app/src/main/java/tn/esprit/presentation/home/HomeFragment.java
 ./app/src/main/java/tn/esprit/presentation/auth
 ./app/src/main/java/tn/esprit/presentation/auth/LoginActivity.java
@@ -109,6 +119,10 @@
 ./app/src/main/java/tn/esprit/presentation/profile
 ./app/src/main/java/tn/esprit/presentation/profile/ProfileFragment.java
 ./app/src/main/java/tn/esprit/presentation/profile/ProfileActivity.java
+./app/src/main/java/tn/esprit/presentation/onboarding
+./app/src/main/java/tn/esprit/presentation/onboarding/DoctorPracticeSetupActivity.java
+./app/src/main/java/tn/esprit/presentation/onboarding/PatientOnboardingActivity.java
+./app/src/main/java/tn/esprit/presentation/onboarding/DoctorProfileOnboardingActivity.java
 ./script.sh
 ./local.properties
 ./gradle

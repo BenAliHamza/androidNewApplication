@@ -42,6 +42,16 @@
             android:name=".presentation.onboarding.PatientOnboardingActivity"
             android:exported="false" />
 
+        <!-- Doctor practice setup (first step for DOCTOR role) -->
+        <activity
+            android:name=".presentation.onboarding.DoctorPracticeSetupActivity"
+            android:exported="false" />
+
+        <!-- Doctor profile onboarding (optional second step for DOCTOR role) -->
+        <activity
+            android:name=".presentation.onboarding.DoctorProfileOnboardingActivity"
+            android:exported="false" />
+
         <!-- Profile screen (hosts ProfileFragment) -->
         <activity
             android:name=".presentation.profile.ProfileActivity"
@@ -51,6 +61,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="false" />
+
     </application>
 
 </manifest>
