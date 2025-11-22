@@ -10,6 +10,7 @@ import retrofit2.Response;
 import tn.esprit.data.auth.AuthLocalDataSource;
 import tn.esprit.data.remote.ApiClient;
 import tn.esprit.data.remote.doctor.DoctorApiService;
+import tn.esprit.data.remote.doctor.DoctorApiService.DoctorProfileUpdateRequestDto;
 import tn.esprit.data.remote.patient.PatientApiService;
 import tn.esprit.data.remote.user.UserApiService;
 import tn.esprit.domain.auth.AuthTokens;
@@ -20,6 +21,8 @@ import tn.esprit.domain.user.User;
 /**
  * Repository responsible for loading the current user's profile
  * (User + DoctorProfile or PatientProfile depending on role).
+ *
+ * Also exposes an update method for the doctor's profile.
  *
  * Note: we now use the domain models directly as Retrofit response types,
  * so there is no extra mapping layer.
@@ -43,6 +46,14 @@ public class ProfileRepository {
         void onError(Throwable throwable, Integer httpCode, String errorBody);
     }
 
+    public interface DoctorProfileUpdateCallback {
+        void onSuccess(DoctorProfile updatedProfile);
+        void onError(Throwable throwable, Integer httpCode, String errorBody);
+    }
+
+    /**
+     * Load current user + (doctor or patient) profile, depending on role.
+     */
     public void loadProfile(final ProfileCallback callback) {
         AuthTokens tokens = authLocalDataSource.getTokens();
         if (tokens == null || tokens.getAccessToken() == null) {
@@ -89,6 +100,52 @@ public class ProfileRepository {
             }
         });
     }
+
+    /**
+     * Update the current doctor's profile via /api/doctors/me.
+     */
+    public void updateDoctorProfile(DoctorProfileUpdateRequestDto request,
+                                    final DoctorProfileUpdateCallback callback) {
+        AuthTokens tokens = authLocalDataSource.getTokens();
+        if (tokens == null || tokens.getAccessToken() == null) {
+            callback.onError(new IllegalStateException("Not authenticated"), null, null);
+            return;
+        }
+
+        String authHeader = buildAuthHeader(tokens);
+
+        doctorApiService.updateMyProfile(authHeader, request)
+                .enqueue(new Callback<DoctorProfile>() {
+                    @Override
+                    public void onResponse(Call<DoctorProfile> call,
+                                           Response<DoctorProfile> response) {
+                        if (!response.isSuccessful()) {
+                            String errorBody = extractErrorBody(response);
+                            callback.onError(null, response.code(), errorBody);
+                            return;
+                        }
+
+                        DoctorProfile body = response.body();
+                        if (body == null) {
+                            callback.onError(
+                                    new IllegalStateException("Empty profile body"),
+                                    response.code(),
+                                    null
+                            );
+                            return;
+                        }
+
+                        callback.onSuccess(body);
+                    }
+
+                    @Override
+                    public void onFailure(Call<DoctorProfile> call, Throwable t) {
+                        callback.onError(t, null, null);
+                    }
+                });
+    }
+
+    // ----------------- Internals -----------------
 
     private void loadDoctorProfile(String authHeader,
                                    final User user,

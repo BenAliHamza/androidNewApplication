@@ -12,5 +12,58 @@
     <fragment
         android:id="@+id/profileFragment"
         android:name="tn.esprit.presentation.profile.ProfileFragment"
-        android:label="@string/profile_title" />
+        android:label="@string/profile_title">
+
+        <!-- From profile to EDIT (doctor) -->
+        <action
+            android:id="@+id/action_profileFragment_to_profileEditFragment"
+            app:destination="@id/profileEditFragment" />
+
+        <!-- From profile to EDIT (patient) -->
+        <action
+            android:id="@+id/action_profileFragment_to_editPatientProfileFragment"
+            app:destination="@id/editPatientProfileFragment" />
+    </fragment>
+
+    <!-- Doctor edit profile fragment -->
+    <fragment
+        android:id="@+id/profileEditFragment"
+        android:name="tn.esprit.presentation.profile.ProfileEditFragment"
+        android:label="@string/profile_edit_title">
+
+        <!-- From doctor edit to base user info display -->
+        <action
+            android:id="@+id/action_profileEditFragment_to_userBaseInfoFragment"
+            app:destination="@id/userBaseInfoFragment" />
+    </fragment>
+
+    <!-- Patient edit profile fragment -->
+    <fragment
+        android:id="@+id/editPatientProfileFragment"
+        android:name="tn.esprit.presentation.profile.EditPatientProfileFragment"
+        android:label="@string/profile_patient_edit_title">
+
+        <!-- From patient edit to base user info display -->
+        <action
+            android:id="@+id/action_editPatientProfileFragment_to_userBaseInfoFragment"
+            app:destination="@id/userBaseInfoFragment" />
+    </fragment>
+
+    <!-- Base user info display -->
+    <fragment
+        android:id="@+id/userBaseInfoFragment"
+        android:name="tn.esprit.presentation.profile.UserBaseInfoFragment"
+        android:label="Base info">
+
+        <action
+            android:id="@+id/action_userBaseInfoFragment_to_userBaseInfoEditFragment"
+            app:destination="@id/userBaseInfoEditFragment" />
+    </fragment>
+
+    <!-- Base user info edit -->
+    <fragment
+        android:id="@+id/userBaseInfoEditFragment"
+        android:name="tn.esprit.presentation.profile.UserBaseInfoEditFragment"
+        android:label="Edit base info" />
+
 </navigation>

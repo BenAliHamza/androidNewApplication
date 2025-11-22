@@ -1,58 +1,54 @@
 package tn.esprit.presentation.profile;
 
 import android.os.Bundle;
-import android.view.View;
 
-import androidx.activity.EdgeToEdge;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-
-import com.google.android.material.appbar.MaterialToolbar;
 
 import tn.esprit.R;
 
 public class ProfileActivity extends AppCompatActivity {
 
-    private View rootView;
-
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_profile);
 
-        rootView = findViewById(R.id.profile_activity_root);
-        applyWindowInsets();
-
-        MaterialToolbar toolbar = findViewById(R.id.toolbar_profile);
+        androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar_profile);
         setSupportActionBar(toolbar);
+
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(R.string.profile_title);
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle("Profile");
         }
 
-        toolbar.setNavigationOnClickListener(v ->
-                getOnBackPressedDispatcher().onBackPressed()
-        );
+        toolbar.setNavigationOnClickListener(v -> onBackPressed());
+
+        if (savedInstanceState == null) {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.profile_fragment_container, new ProfileFragment())
+                    .commit();
+        }
     }
 
-    private void applyWindowInsets() {
-        final int paddingLeft = rootView.getPaddingLeft();
-        final int paddingTop = rootView.getPaddingTop();
-        final int paddingRight = rootView.getPaddingRight();
-        final int paddingBottom = rootView.getPaddingBottom();
+    public void openEditProfile() {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .setCustomAnimations(
+                        android.R.anim.slide_in_left,
+                        android.R.anim.slide_out_right,
+                        android.R.anim.slide_in_left,
+                        android.R.anim.slide_out_right
+                )
+                .replace(R.id.profile_fragment_container, new ProfileEditFragment())
+                .addToBackStack("edit_profile")
+                .commit();
+    }
 
-        ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(
-                    paddingLeft + systemBars.left,
-                    paddingTop + systemBars.top,
-                    paddingRight + systemBars.right,
-                    paddingBottom + systemBars.bottom
-            );
-            return insets;
-        });
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
     }
 }

@@ -1,68 +1,138 @@
 package tn.esprit.presentation.profile;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
-import android.text.TextUtils;
+import android.provider.MediaStore;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.fragment.NavHostFragment;
 
-import com.google.android.material.snackbar.Snackbar;
+import java.math.BigDecimal;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 import tn.esprit.R;
-import tn.esprit.data.profile.ProfileRepository;
+import tn.esprit.data.auth.AuthLocalDataSource;
+import tn.esprit.data.remote.ApiClient;
+import tn.esprit.data.remote.user.UserImageApiService;
+import tn.esprit.domain.auth.AuthTokens;
 import tn.esprit.domain.doctor.DoctorProfile;
 import tn.esprit.domain.patient.PatientProfile;
 import tn.esprit.domain.user.User;
 
+/**
+ * Role-aware profile screen.
+ *
+ * - If the current user is a DOCTOR:
+ *      * Shows the doctor profile card (specialty, clinic, fees, availability).
+ *      * Uses DoctorProfile data from backend (/me + /api/doctors/me).
+ *      * "Edit profile" opens the doctor edit screen (ProfileEditFragment via Navigation
+ *        when available, or ProfileActivity as fallback).
+ * - If the current user is a PATIENT:
+ *      * Shows a patient profile summary card (blood type, height/weight, lifestyle, notes).
+ *      * Uses PatientProfile data from backend (/me + /api/patients/me).
+ *      * "Edit profile" opens EditPatientProfileFragment via Navigation.
+ *
+ * For BOTH roles:
+ *  - Top section allows viewing (and later changing) the profile image.
+ *    It uses the base User (/me) data, without any hard-coding.
+ */
 public class ProfileFragment extends Fragment {
 
-    private View rootView;
-    private View loadingOverlay;
+    private ProfileViewModel viewModel;
+
     private View contentContainer;
+    private ProgressBar progressBar;
 
-    // Header
+    // Avatar section (both roles)
+    private ImageView imageAvatar;
+    private View buttonChangeAvatar;
+
+    // Sections
+    private View sectionDoctor;
+    private View sectionPatient;
+
+    // Doctor views
     private TextView textName;
-    private TextView textRoleChip;
-    private TextView textEmail;
-    private TextView textPhone;
-    private TextView textStatus;
+    private TextView textSpecialty;
+    private TextView textLocation;
+    private TextView textFee;
+    private TextView textBio;
+    private TextView textAcceptsNew;
+    private TextView textTeleconsultation;
 
-    // Doctor section
-    private View groupDoctorSection;
-    private TextView textDoctorTitle;
-    private TextView textDoctorClinic;
-    private TextView textDoctorLocation;
-    private TextView textDoctorExperience;
-    private TextView textDoctorReg;
-    private TextView textDoctorFee;
-    private TextView textDoctorFlags;
-
-    // Patient section
-    private View groupPatientSection;
-    private TextView textPatientTitle;
-    private TextView textPatientDob;
-    private TextView textPatientGender;
-    private TextView textPatientBlood;
+    // Patient views
+    private TextView textPatientBloodType;
     private TextView textPatientHeightWeight;
-    private TextView textPatientAddress;
-    private TextView textPatientLifestyle;
+    private TextView textPatientFlags;
+    private TextView textPatientNotes;
 
-    private ProfileRepository profileRepository;
+    private Button buttonEdit;
+
+    // Cached role from /me
+    @Nullable
+    private String currentRole;
+
+    // For avatar upload
+    private UserImageApiService userImageApiService;
+    private AuthLocalDataSource authLocalDataSource;
+
+    private ActivityResultLauncher<Intent> imagePickerLauncher;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_profile, container, false);
+        View root = inflater.inflate(R.layout.fragment_profile, container, false);
+
+        contentContainer = root.findViewById(R.id.profile_content_container);
+        progressBar = root.findViewById(R.id.profile_progress);
+
+        // Avatar section
+        imageAvatar = root.findViewById(R.id.image_profile_avatar);
+        buttonChangeAvatar = root.findViewById(R.id.button_change_avatar);
+
+        sectionDoctor = root.findViewById(R.id.section_doctor);
+        sectionPatient = root.findViewById(R.id.section_patient);
+
+        // Doctor section views
+        textName = root.findViewById(R.id.text_profile_name);
+        textSpecialty = root.findViewById(R.id.text_profile_specialty);
+        textLocation = root.findViewById(R.id.text_profile_location);
+        textFee = root.findViewById(R.id.text_profile_fee);
+        textBio = root.findViewById(R.id.text_profile_bio);
+        textAcceptsNew = root.findViewById(R.id.text_profile_accepts_new);
+        textTeleconsultation = root.findViewById(R.id.text_profile_teleconsultation);
+
+        // Patient section views
+        textPatientBloodType = root.findViewById(R.id.text_patient_blood_type);
+        textPatientHeightWeight = root.findViewById(R.id.text_patient_height_weight);
+        textPatientFlags = root.findViewById(R.id.text_patient_flags);
+        textPatientNotes = root.findViewById(R.id.text_patient_notes);
+
+        buttonEdit = root.findViewById(R.id.button_edit_profile);
+
+        return root;
     }
 
     @Override
@@ -70,284 +140,404 @@ public class ProfileFragment extends Fragment {
                               @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        rootView = view.findViewById(R.id.profile_root);
-        loadingOverlay = view.findViewById(R.id.profile_loading_overlay);
-        contentContainer = view.findViewById(R.id.profile_content_container);
+        viewModel = new ViewModelProvider(requireActivity()).get(ProfileViewModel.class);
 
-        // Header
-        textName = view.findViewById(R.id.text_profile_name);
-        textRoleChip = view.findViewById(R.id.text_profile_role_chip);
-        textEmail = view.findViewById(R.id.text_profile_email);
-        textPhone = view.findViewById(R.id.text_profile_phone);
-        textStatus = view.findViewById(R.id.text_profile_status_chip);
+        userImageApiService = ApiClient.createService(UserImageApiService.class);
+        authLocalDataSource = new AuthLocalDataSource(requireContext().getApplicationContext());
 
-        // Doctor section
-        groupDoctorSection = view.findViewById(R.id.group_doctor_section);
-        textDoctorTitle = view.findViewById(R.id.text_doctor_section_title);
-        textDoctorClinic = view.findViewById(R.id.text_doctor_clinic);
-        textDoctorLocation = view.findViewById(R.id.text_doctor_location);
-        textDoctorExperience = view.findViewById(R.id.text_doctor_experience);
-        textDoctorReg = view.findViewById(R.id.text_doctor_reg);
-        textDoctorFee = view.findViewById(R.id.text_doctor_fee);
-        textDoctorFlags = view.findViewById(R.id.text_doctor_flags);
+        setupImagePicker();
 
-        // Patient section
-        groupPatientSection = view.findViewById(R.id.group_patient_section);
-        textPatientTitle = view.findViewById(R.id.text_patient_section_title);
-        textPatientDob = view.findViewById(R.id.text_patient_dob);
-        textPatientGender = view.findViewById(R.id.text_patient_gender);
-        textPatientBlood = view.findViewById(R.id.text_patient_blood);
-        textPatientHeightWeight = view.findViewById(R.id.text_patient_height_weight);
-        textPatientAddress = view.findViewById(R.id.text_patient_address);
-        textPatientLifestyle = view.findViewById(R.id.text_patient_lifestyle);
-
-        profileRepository = new ProfileRepository(requireContext());
-
-        applyWindowInsets();
-        loadProfile();
-    }
-
-    private void applyWindowInsets() {
-        if (rootView == null) return;
-
-        final int paddingLeft = rootView.getPaddingLeft();
-        final int paddingTop = rootView.getPaddingTop();
-        final int paddingRight = rootView.getPaddingRight();
-        final int paddingBottom = rootView.getPaddingBottom();
-
-        ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(
-                    paddingLeft + systemBars.left,
-                    paddingTop + systemBars.top,
-                    paddingRight + systemBars.right,
-                    paddingBottom + systemBars.bottom
-            );
-            return insets;
-        });
-    }
-
-    private void loadProfile() {
-        showLoading(true);
-
-        profileRepository.loadProfile(new ProfileRepository.ProfileCallback() {
-            @Override
-            public void onSuccess(User user,
-                                  DoctorProfile doctorProfile,
-                                  PatientProfile patientProfile) {
-                if (!isAdded()) return;
-                showLoading(false);
-
-                bindHeader(user);
-
-                if (doctorProfile != null) {
-                    bindDoctorProfile(doctorProfile);
-                } else if (patientProfile != null) {
-                    bindPatientProfile(patientProfile);
-                } else {
-                    groupDoctorSection.setVisibility(View.GONE);
-                    groupPatientSection.setVisibility(View.GONE);
-                }
+        // Loading state
+        viewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
+            boolean show = loading != null && loading;
+            if (progressBar != null) {
+                progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
             }
-
-            @Override
-            public void onError(Throwable throwable,
-                                Integer httpCode,
-                                String errorBody) {
-                if (!isAdded()) return;
-                showLoading(false);
-
-                String message;
-                if (throwable != null) {
-                    message = getString(R.string.profile_error_network);
-                } else if (httpCode != null && httpCode == 401) {
-                    message = getString(R.string.profile_error_unauthorized);
-                } else {
-                    message = getString(R.string.profile_error_generic);
-                }
-
-                Snackbar.make(rootView, message, Snackbar.LENGTH_LONG).show();
+            if (contentContainer != null) {
+                contentContainer.setVisibility(show ? View.INVISIBLE : View.VISIBLE);
             }
         });
+
+        // Base user (/me) => determines role + avatar
+        viewModel.getUser().observe(getViewLifecycleOwner(), this::onUserLoaded);
+
+        // Doctor profile (/api/doctors/me if role == DOCTOR)
+        viewModel.getDoctorProfile().observe(getViewLifecycleOwner(), this::bindDoctorProfile);
+
+        // Patient profile (/api/patients/me if role == PATIENT)
+        viewModel.getPatientProfile().observe(getViewLifecycleOwner(), this::bindPatientProfile);
+
+        // Optional: error messages
+        viewModel.getErrorMessage().observe(getViewLifecycleOwner(), message -> {
+            // You can show a Snackbar/Toast here if you want.
+        });
+
+        buttonEdit.setOnClickListener(v -> handleEditClick());
+
+        if (buttonChangeAvatar != null) {
+            buttonChangeAvatar.setOnClickListener(v -> openImagePicker());
+        }
+
+        // Trigger backend load (real data)
+        viewModel.loadProfile();
     }
 
-    private void showLoading(boolean show) {
-        if (loadingOverlay != null) {
-            loadingOverlay.setVisibility(show ? View.VISIBLE : View.GONE);
-        }
-        if (contentContainer != null) {
-            contentContainer.setAlpha(show ? 0.4f : 1f);
+    // -------------------------------------------------------------------------
+    // Role handling & base user
+    // -------------------------------------------------------------------------
+
+    private void onUserLoaded(@Nullable User user) {
+        currentRole = user != null ? user.getRole() : null;
+        applyRoleUi();
+        bindAvatar(user);
+    }
+
+    private void applyRoleUi() {
+        String roleUpper = currentRole != null ? currentRole.toUpperCase() : "";
+
+        if ("DOCTOR".equals(roleUpper)) {
+            // Doctor sees the doctor card; patient card hidden
+            if (sectionDoctor != null) sectionDoctor.setVisibility(View.VISIBLE);
+            if (sectionPatient != null) sectionPatient.setVisibility(View.GONE);
+
+            if (buttonEdit != null) {
+                buttonEdit.setVisibility(View.VISIBLE);
+                buttonEdit.setText(getString(R.string.profile_edit_title)); // "Edit profile"
+            }
+        } else if ("PATIENT".equals(roleUpper)) {
+            // Patient sees the patient summary card; doctor card hidden
+            if (sectionDoctor != null) sectionDoctor.setVisibility(View.GONE);
+            if (sectionPatient != null) sectionPatient.setVisibility(View.VISIBLE);
+
+            if (buttonEdit != null) {
+                buttonEdit.setVisibility(View.VISIBLE);
+                buttonEdit.setText(getString(R.string.profile_patient_edit_title)); // "Edit medical profile"
+            }
+        } else {
+            // Unknown role: hide both sections and the edit button
+            if (sectionDoctor != null) sectionDoctor.setVisibility(View.GONE);
+            if (sectionPatient != null) sectionPatient.setVisibility(View.GONE);
+            if (buttonEdit != null) {
+                buttonEdit.setVisibility(View.GONE);
+            }
         }
     }
 
-    private void bindHeader(User user) {
-        // Instead of user.getFullName(), build it from firstname + lastname
-        String fullName = joinNonEmpty(" ",
-                user.getFirstname(),
-                user.getLastname()
-        );
-        textName.setText(fullName);
+    private void handleEditClick() {
+        String roleUpper = currentRole != null ? currentRole.toUpperCase() : "";
 
-        String role = user.getRole();
-        if ("DOCTOR".equalsIgnoreCase(role)) {
-            textRoleChip.setText(getString(R.string.profile_role_doctor));
-        } else if ("PATIENT".equalsIgnoreCase(role)) {
-            textRoleChip.setText(getString(R.string.profile_role_patient));
-        } else {
-            textRoleChip.setText(getString(R.string.profile_role_unknown));
-        }
-
-        textEmail.setText(
-                !TextUtils.isEmpty(user.getEmail()) ? user.getEmail() : "-"
-        );
-
-        if (!TextUtils.isEmpty(user.getPhone())) {
-            textPhone.setText(user.getPhone());
-        } else {
-            textPhone.setText(getString(R.string.profile_phone_placeholder));
-        }
-
-        String status = user.getStatus();
-        if (!TextUtils.isEmpty(status)) {
-            textStatus.setText(status);
-            textStatus.setVisibility(View.VISIBLE);
-        } else {
-            textStatus.setVisibility(View.GONE);
+        if ("DOCTOR".equals(roleUpper)) {
+            // Prefer Navigation when available (MainActivity + nav_main),
+            // but fallback to ProfileActivity so we do not break existing behavior.
+            try {
+                NavHostFragment.findNavController(this)
+                        .navigate(R.id.action_profileFragment_to_profileEditFragment);
+            } catch (Exception e) {
+                if (getActivity() instanceof ProfileActivity) {
+                    ((ProfileActivity) getActivity()).openEditProfile();
+                } else {
+                    Intent intent = new Intent(requireContext(), ProfileActivity.class);
+                    startActivity(intent);
+                }
+            }
+        } else if ("PATIENT".equals(roleUpper)) {
+            // PATIENT: navigate to EditPatientProfileFragment via Navigation component.
+            try {
+                NavHostFragment.findNavController(this)
+                        .navigate(R.id.action_profileFragment_to_editPatientProfileFragment);
+            } catch (IllegalArgumentException ignored) {
+                // If nav graph does not declare editPatientProfileFragment yet,
+                // we silently ignore; at least we don't crash.
+            }
         }
     }
 
-    private void bindDoctorProfile(DoctorProfile profile) {
-        groupDoctorSection.setVisibility(View.VISIBLE);
-        groupPatientSection.setVisibility(View.GONE);
+    // -------------------------------------------------------------------------
+    // Avatar: display + upload
+    // -------------------------------------------------------------------------
 
-        textDoctorTitle.setText(R.string.profile_section_doctor_title);
+    private void bindAvatar(@Nullable User user) {
+        if (imageAvatar == null) return;
 
-        textDoctorClinic.setText(
-                valueOrDash(profile.getClinicAddress())
+        // Fallback avatar drawable (what you already use now)
+        int fallbackRes = R.drawable.ic_launcher_foreground; // or your logo/avatar
+
+        if (user == null || user.getProfileImage() == null || user.getProfileImage().isEmpty()) {
+            imageAvatar.setImageResource(fallbackRes);
+            return;
+        }
+
+        // If you have Glide/Picasso in the project, you can use it here.
+        // For now, we keep it simple: just try to load via Uri.
+        try {
+            Uri uri = Uri.parse(user.getProfileImage());
+            imageAvatar.setImageURI(uri);
+        } catch (Exception e) {
+            imageAvatar.setImageResource(fallbackRes);
+        }
+    }
+
+    private void setupImagePicker() {
+        imagePickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() != android.app.Activity.RESULT_OK ||
+                            result.getData() == null ||
+                            result.getData().getData() == null) {
+                        return;
+                    }
+
+                    Uri imageUri = result.getData().getData();
+                    if (imageUri != null) {
+                        uploadAvatar(imageUri);
+                    }
+                }
         );
+    }
 
-        String location = joinNonEmpty(", ",
-                profile.getCity(),
-                profile.getCountry()
-        );
-        textDoctorLocation.setText(valueOrDash(location));
+    private void openImagePicker() {
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        intent.setType("image/*");
+        imagePickerLauncher.launch(intent);
+    }
 
-        if (profile.getYearsOfExperience() != null) {
-            String exp = getString(
-                    R.string.profile_doctor_experience_format,
-                    profile.getYearsOfExperience()
+    private void uploadAvatar(@NonNull Uri imageUri) {
+        AuthTokens tokens = authLocalDataSource.getTokens();
+        if (tokens == null || tokens.getAccessToken() == null || tokens.getAccessToken().isEmpty()) {
+            Toast.makeText(requireContext(),
+                    getString(R.string.profile_error_not_authenticated),
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        String type = tokens.getTokenType() != null ? tokens.getTokenType() : "Bearer";
+        String authHeader = type + " " + tokens.getAccessToken();
+
+        try {
+            // Read the image bytes from the content resolver
+            byte[] bytes = requireContext().getContentResolver()
+                    .openInputStream(imageUri)
+                    .readAllBytes();
+
+            RequestBody requestBody = RequestBody.create(
+                    bytes,
+                    MediaType.parse("image/*")
             );
-            textDoctorExperience.setText(exp);
-        } else {
-            textDoctorExperience.setText("-");
-        }
 
-        textDoctorReg.setText(
-                valueOrDash(profile.getMedicalRegistrationNumber())
-        );
-
-        if (profile.getConsultationFee() != null) {
-            String fee = getString(
-                    R.string.profile_doctor_fee_format,
-                    profile.getConsultationFee().toString()
+            MultipartBody.Part part = MultipartBody.Part.createFormData(
+                    "image",
+                    "avatar.jpg",
+                    requestBody
             );
-            textDoctorFee.setText(fee);
-        } else {
-            textDoctorFee.setText("-");
+
+            userImageApiService.uploadMyProfileImage(authHeader, part)
+                    .enqueue(new Callback<User>() {
+                        @Override
+                        public void onResponse(Call<User> call, Response<User> response) {
+                            if (!isAdded()) return;
+
+                            if (!response.isSuccessful() || response.body() == null) {
+                                Toast.makeText(requireContext(),
+                                        getString(R.string.profile_error_generic),
+                                        Toast.LENGTH_LONG).show();
+                                return;
+                            }
+
+                            User updated = response.body();
+                            // Update ViewModel so header + profile react
+                            viewModel.setUser(updated);
+                            bindAvatar(updated);
+
+                            Toast.makeText(requireContext(),
+                                    "Profile image updated",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onFailure(Call<User> call, Throwable t) {
+                            if (!isAdded()) return;
+                            Toast.makeText(requireContext(),
+                                    getString(R.string.profile_error_network),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+
+        } catch (Exception e) {
+            Toast.makeText(requireContext(),
+                    getString(R.string.profile_error_generic),
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Doctor binding
+    // -------------------------------------------------------------------------
+
+    private void bindDoctorProfile(@Nullable DoctorProfile profile) {
+        // If we don't have a doctor profile (e.g. PATIENT account),
+        // clear and exit. The whole doctor section is hidden by applyRoleUi().
+        if (profile == null) {
+            if (textName != null) textName.setText("");
+            if (textSpecialty != null) textSpecialty.setText("");
+            if (textLocation != null) textLocation.setText("");
+            if (textFee != null) textFee.setText("—");
+            if (textBio != null) textBio.setText("");
+            if (textAcceptsNew != null) textAcceptsNew.setText("");
+            if (textTeleconsultation != null) textTeleconsultation.setText("");
+            return;
         }
 
+        // Name
+        String displayName;
+        if (profile.getFirstname() != null && profile.getLastname() != null) {
+            displayName = profile.getFirstname() + " " + profile.getLastname();
+        } else if (profile.getFirstname() != null) {
+            displayName = profile.getFirstname();
+        } else {
+            displayName = getString(R.string.profile_role_doctor);
+        }
+        if (textName != null) {
+            textName.setText(displayName);
+        }
+
+        // Specialty
+        if (textSpecialty != null) {
+            if (profile.getSpecialty() != null && profile.getSpecialty().getName() != null) {
+                textSpecialty.setText(profile.getSpecialty().getName());
+            } else {
+                textSpecialty.setText("");
+            }
+        }
+
+        // Location (clinic, city, country)
+        if (textLocation != null) {
+            StringBuilder locationBuilder = new StringBuilder();
+            if (profile.getClinicAddress() != null) {
+                locationBuilder.append(profile.getClinicAddress());
+            }
+            if (profile.getCity() != null) {
+                if (locationBuilder.length() > 0) locationBuilder.append(", ");
+                locationBuilder.append(profile.getCity());
+            }
+            if (profile.getCountry() != null) {
+                if (locationBuilder.length() > 0) locationBuilder.append(", ");
+                locationBuilder.append(profile.getCountry());
+            }
+            textLocation.setText(locationBuilder.length() == 0
+                    ? ""
+                    : locationBuilder.toString());
+        }
+
+        // Fee
+        if (textFee != null) {
+            BigDecimal fee = profile.getConsultationFee();
+            if (fee != null) {
+                textFee.setText(fee.toPlainString() + " TND");
+            } else {
+                textFee.setText("—");
+            }
+        }
+
+        // Bio
+        if (textBio != null) {
+            if (profile.getBio() != null && !profile.getBio().isEmpty()) {
+                textBio.setText(profile.getBio());
+            } else {
+                textBio.setText("");
+            }
+        }
+
+        // Accepting new patients
+        if (textAcceptsNew != null) {
+            Boolean acceptsNew = profile.getAcceptsNewPatients();
+            if (acceptsNew != null && acceptsNew) {
+                textAcceptsNew.setText(getString(R.string.profile_flag_accepts_new));
+            } else {
+                textAcceptsNew.setText("");
+            }
+        }
+
+        // Teleconsultation
+        if (textTeleconsultation != null) {
+            Boolean tele = profile.getTeleconsultationEnabled();
+            if (tele != null && tele) {
+                textTeleconsultation.setText(getString(R.string.profile_flag_teleconsultation));
+            } else {
+                textTeleconsultation.setText("");
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Patient binding
+    // -------------------------------------------------------------------------
+
+    private void bindPatientProfile(@Nullable PatientProfile profile) {
+        if (textPatientBloodType == null
+                || textPatientHeightWeight == null
+                || textPatientFlags == null
+                || textPatientNotes == null) {
+            return;
+        }
+
+        if (profile == null) {
+            textPatientBloodType.setText("");
+            textPatientHeightWeight.setText("");
+            textPatientFlags.setText(getString(R.string.profile_flags_none));
+            textPatientNotes.setText("");
+            return;
+        }
+
+        // Blood type
+        String blood = profile.getBloodType();
+        if (blood != null && !blood.isEmpty()) {
+            String label = getString(R.string.profile_patient_blood_type_prefix, blood);
+            textPatientBloodType.setText(label);
+        } else {
+            textPatientBloodType.setText("");
+        }
+
+        // Height / weight
+        Integer height = profile.getHeightCm();
+        Integer weight = profile.getWeightKg();
+        if (height != null && weight != null) {
+            textPatientHeightWeight.setText(
+                    getString(R.string.profile_patient_height_weight, height, weight)
+            );
+        } else if (height != null) {
+            textPatientHeightWeight.setText(
+                    getString(R.string.profile_patient_height_only_format, height)
+            );
+        } else if (weight != null) {
+            textPatientHeightWeight.setText(
+                    getString(R.string.profile_patient_weight_only_format, weight)
+            );
+        } else {
+            textPatientHeightWeight.setText("");
+        }
+
+        // Lifestyle flags (smoker / alcohol)
         StringBuilder flags = new StringBuilder();
-        if (Boolean.TRUE.equals(profile.getAcceptsNewPatients())) {
-            flags.append(getString(R.string.profile_flag_accepts_new)).append(" • ");
+        Boolean smoker = profile.getSmoker();
+        Boolean alcohol = profile.getAlcoholUse();
+
+        if (smoker != null && smoker) {
+            flags.append(getString(R.string.profile_flag_smoker));
         }
-        if (Boolean.TRUE.equals(profile.getTeleconsultationEnabled())) {
-            flags.append(getString(R.string.profile_flag_teleconsultation)).append(" • ");
+        if (alcohol != null && alcohol) {
+            if (flags.length() > 0) flags.append(" • ");
+            flags.append(getString(R.string.profile_flag_alcohol));
         }
-        if (flags.length() > 0) {
-            flags.setLength(flags.length() - 3); // remove last separator
-            textDoctorFlags.setText(flags.toString());
+        if (flags.length() == 0) {
+            flags.append(getString(R.string.profile_flags_none));
+        }
+        textPatientFlags.setText(flags.toString());
+
+        // Notes
+        if (profile.getNotes() != null && !profile.getNotes().isEmpty()) {
+            textPatientNotes.setText(profile.getNotes());
         } else {
-            textDoctorFlags.setText(getString(R.string.profile_flags_none));
+            textPatientNotes.setText("");
         }
-    }
-
-    private void bindPatientProfile(PatientProfile profile) {
-        groupDoctorSection.setVisibility(View.GONE);
-        groupPatientSection.setVisibility(View.VISIBLE);
-
-        textPatientTitle.setText(R.string.profile_section_patient_title);
-
-        textPatientDob.setText(
-                valueOrDash(profile.getDateOfBirth())
-        );
-
-        textPatientGender.setText(
-                valueOrDash(profile.getGender())
-        );
-
-        textPatientBlood.setText(
-                valueOrDash(profile.getBloodType())
-        );
-
-        String heightWeight;
-        if (profile.getHeightCm() != null && profile.getWeightKg() != null) {
-            heightWeight = getString(
-                    R.string.profile_patient_height_weight_format,
-                    profile.getHeightCm(),
-                    profile.getWeightKg()
-            );
-        } else if (profile.getHeightCm() != null) {
-            heightWeight = getString(
-                    R.string.profile_patient_height_only_format,
-                    profile.getHeightCm()
-            );
-        } else if (profile.getWeightKg() != null) {
-            heightWeight = getString(
-                    R.string.profile_patient_weight_only_format,
-                    profile.getWeightKg()
-            );
-        } else {
-            heightWeight = "-";
-        }
-        textPatientHeightWeight.setText(heightWeight);
-
-        String address = joinNonEmpty(", ",
-                profile.getAddress(),
-                profile.getCity(),
-                profile.getCountry()
-        );
-        textPatientAddress.setText(valueOrDash(address));
-
-        StringBuilder lifestyle = new StringBuilder();
-        if (Boolean.TRUE.equals(profile.getSmoker())) {
-            lifestyle.append(getString(R.string.profile_flag_smoker)).append(" • ");
-        }
-        if (Boolean.TRUE.equals(profile.getAlcoholUse())) {
-            lifestyle.append(getString(R.string.profile_flag_alcohol)).append(" • ");
-        }
-        if (lifestyle.length() > 0) {
-            lifestyle.setLength(lifestyle.length() - 3);
-            textPatientLifestyle.setText(lifestyle.toString());
-        } else {
-            textPatientLifestyle.setText(getString(R.string.profile_flags_none));
-        }
-    }
-
-    // --- Helpers ---
-
-    private String valueOrDash(String value) {
-        if (TextUtils.isEmpty(value)) return "-";
-        return value;
-    }
-
-    private String joinNonEmpty(String separator, String... parts) {
-        StringBuilder sb = new StringBuilder();
-        for (String p : parts) {
-            if (!TextUtils.isEmpty(p)) {
-                if (sb.length() > 0) sb.append(separator);
-                sb.append(p);
-            }
-        }
-        return sb.length() == 0 ? "" : sb.toString();
     }
 }

@@ -103,7 +103,6 @@
     <string name="profile_patient_height_weight">%1$d cm · %2$d kg</string>
     <string name="profile_patient_smoker_yes">Smoker</string>
     <string name="profile_patient_smoker_no">Non-smoker</string>
-    <!-- keep your existing content above -->
 
     <!-- Profile -->
 
@@ -112,6 +111,7 @@
 
     <string name="profile_doctor_experience_format">%1$d years of experience</string>
     <string name="profile_doctor_fee_format">Consultation: %1$s</string>
+    <string name="profile_doctor_reg_format">Registration: %1$s</string>
 
     <string name="profile_patient_height_weight_format">%1$d cm • %2$d kg</string>
     <string name="profile_patient_height_only_format">%1$d cm</string>
@@ -173,6 +173,7 @@
     <string name="home_bottom_office">Office</string>
     <string name="home_bottom_medications">Medications</string>
     <string name="home_bottom_history">History</string>
+
     <!-- Onboarding hard validation -->
     <string name="onboarding_patient_error_address_required">Address is required</string>
     <string name="onboarding_patient_error_city_required">City is required</string>
@@ -238,4 +239,29 @@
     <string name="onboarding_patient_marital_status_hint">Marital status</string>
     <string name="onboarding_patient_smoker">Smoker</string>
     <string name="onboarding_patient_alcohol">Alcohol use</string>
+
+    <!-- Profile edit feature (DOCTOR/general) -->
+    <string name="profile_edit_title">Edit profile</string>
+    <string name="profile_edit_subtitle">Update your information so it stays accurate and helpful.</string>
+    <string name="profile_edit_name_hint">Full name</string>
+    <string name="profile_edit_phone_hint">Phone</string>
+    <string name="profile_edit_bio_hint">Short bio</string>
+    <string name="profile_edit_clinic_address_hint">Clinic or address</string>
+    <string name="profile_edit_city_hint">City</string>
+    <string name="profile_edit_country_hint">Country</string>
+    <string name="profile_edit_fee_hint">Consultation fee</string>
+    <string name="profile_edit_save">Save changes</string>
+    <string name="profile_edit_cancel">Cancel</string>
+    <string name="profile_edit_saved_toast">Profile changes saved.</string>
+    <string name="profile_edit_back_content_description">Back to profile</string>
+
+    <!-- Profile edit feature (PATIENT) -->
+    <string name="profile_patient_edit_title">Edit medical profile</string>
+    <string name="profile_patient_edit_subtitle">Update your health details and lifestyle information.</string>
+
+    <!-- NEW: used by EditPatientProfileFragment when feature is not implemented -->
+    <string name="profile_edit_patient_not_implemented">
+        Editing patient profile is not yet implemented.
+    </string>
+
 </resources>
