@@ -216,6 +216,18 @@
                     android:textColor="@color/color_on_background"
                     android:textSize="13sp" />
             </LinearLayout>
+
+            <!-- Button for doctors -->
+            <Button
+                android:id="@+id/btnDoctorAppointments"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:backgroundTint="@color/color_primary"
+                android:text="Voir mes rendez-vous"
+                android:textColor="@color/white"
+                android:textStyle="bold"
+                android:paddingVertical="12dp"/>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

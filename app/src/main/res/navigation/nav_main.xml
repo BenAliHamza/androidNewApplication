@@ -4,52 +4,74 @@
     android:id="@+id/nav_main"
     app:startDestination="@id/homeFragment">
 
+    <!-- Home -->
     <fragment
         android:id="@+id/homeFragment"
         android:name="tn.esprit.presentation.home.HomeFragment"
-        android:label="@string/home_title" />
+        android:label="@string/home_title" >
 
+        <!-- From Home to patient appointment -->
+        <action
+            android:id="@+id/action_homeFragment_to_patientAppointmentFragment"
+            app:destination="@id/patientAppointmentFragment" />
+
+        <!-- From Home to doctor appointments -->
+        <action
+            android:id="@+id/action_homeFragment_to_doctorAppointmentsFragment"
+            app:destination="@id/doctorAppointmentsFragment" />
+    </fragment>
+
+    <!-- Patient appointments -->
+    <fragment
+        android:id="@+id/patientAppointmentFragment"
+        android:name="tn.esprit.presentation.appointments.PatientAppointmentFragment"
+        android:label="Prendre rendez-vous"
+        app:enterAnim="@android:anim/slide_in_left"
+        app:exitAnim="@android:anim/slide_out_right" />
+
+    <!-- Doctor appointments -->
+    <fragment
+        android:id="@+id/doctorAppointmentsFragment"
+        android:name="tn.esprit.presentation.appointments.DoctorAppointmentsFragment"
+        android:label="Mes rendez-vous"
+        app:enterAnim="@android:anim/slide_in_left"
+        app:exitAnim="@android:anim/slide_out_right" />
+
+    <!-- Profile -->
     <fragment
         android:id="@+id/profileFragment"
         android:name="tn.esprit.presentation.profile.ProfileFragment"
         android:label="@string/profile_title">
 
-        <!-- From profile to EDIT (doctor) -->
         <action
             android:id="@+id/action_profileFragment_to_profileEditFragment"
             app:destination="@id/profileEditFragment" />
 
-        <!-- From profile to EDIT (patient) -->
         <action
             android:id="@+id/action_profileFragment_to_editPatientProfileFragment"
             app:destination="@id/editPatientProfileFragment" />
     </fragment>
 
-    <!-- Doctor edit profile fragment -->
     <fragment
         android:id="@+id/profileEditFragment"
         android:name="tn.esprit.presentation.profile.ProfileEditFragment"
         android:label="@string/profile_edit_title">
 
-        <!-- From doctor edit to base user info display -->
         <action
             android:id="@+id/action_profileEditFragment_to_userBaseInfoFragment"
             app:destination="@id/userBaseInfoFragment" />
     </fragment>
 
-    <!-- Patient edit profile fragment -->
     <fragment
         android:id="@+id/editPatientProfileFragment"
         android:name="tn.esprit.presentation.profile.EditPatientProfileFragment"
         android:label="@string/profile_patient_edit_title">
 
-        <!-- From patient edit to base user info display -->
         <action
             android:id="@+id/action_editPatientProfileFragment_to_userBaseInfoFragment"
             app:destination="@id/userBaseInfoFragment" />
     </fragment>
 
-    <!-- Base user info display -->
     <fragment
         android:id="@+id/userBaseInfoFragment"
         android:name="tn.esprit.presentation.profile.UserBaseInfoFragment"
@@ -60,7 +82,6 @@
             app:destination="@id/userBaseInfoEditFragment" />
     </fragment>
 
-    <!-- Base user info edit -->
     <fragment
         android:id="@+id/userBaseInfoEditFragment"
         android:name="tn.esprit.presentation.profile.UserBaseInfoEditFragment"
