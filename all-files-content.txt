@@ -1,1185 +1,1616 @@
-===== FILE: ./app/src/main/java/tn/esprit/data/auth/AuthRepository.java =====
-package tn.esprit.data.auth;
+===== FILE: ./app/src/main/java/tn/esprit/presentation/profile/UserBaseInfoEditFragment.java =====
+package tn.esprit.presentation.profile;
 
-import tn.esprit.data.remote.ApiClient;
-import tn.esprit.data.remote.ApiClient.AuthApiService;
-import tn.esprit.data.remote.ApiClient.LoginRequestDto;
-import tn.esprit.data.remote.ApiClient.RefreshTokenRequestDto;
-import tn.esprit.data.remote.ApiClient.SignupRequestDto;
-import tn.esprit.data.remote.ApiClient.TokenResponseDto;
-import tn.esprit.domain.auth.AuthTokens;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+import android.app.Activity;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Toast;
 
-/**
- * Auth repository bridging presentation/domain with the remote /auth endpoints.
- */
-public class AuthRepository {
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.navigation.fragment.NavHostFragment;
 
-    private final AuthApiService authApiService;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
 
-    public AuthRepository() {
-        this.authApiService = ApiClient.getAuthApiService();
+import tn.esprit.MainActivity;
+import tn.esprit.R;
+import tn.esprit.data.profile.ProfileRepository;
+import tn.esprit.data.remote.user.UserAccountApiService.UserUpdateRequestDto;
+import tn.esprit.domain.doctor.DoctorProfile;
+import tn.esprit.domain.patient.PatientProfile;
+import tn.esprit.domain.user.User;
+
+public class UserBaseInfoEditFragment extends Fragment {
+
+    private TextInputEditText inputFirstname;
+    private TextInputEditText inputLastname;
+    private TextInputEditText inputEmail;
+    private TextInputEditText inputPhone;
+    private View loadingOverlay;
+
+    private ProfileRepository profileRepository;
+    private User currentUser;
+
+    public UserBaseInfoEditFragment() {
+        // Required empty ctor
     }
 
-    public interface LoginCallback {
-        void onSuccess(AuthTokens tokens);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        profileRepository = new ProfileRepository(requireContext());
     }
 
-    public interface SignupCallback {
-        void onSuccess(AuthTokens tokens);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_user_base_info_edit, container, false);
     }
 
-    public interface RefreshCallback {
-        void onSuccess(AuthTokens tokens);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
+    @Override
+    public void onViewCreated(@NonNull View view,
+                              @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        inputFirstname = view.findViewById(R.id.input_firstname);
+        inputLastname = view.findViewById(R.id.input_lastname);
+        inputEmail = view.findViewById(R.id.input_email);
+        inputPhone = view.findViewById(R.id.input_phone);
+        loadingOverlay = view.findViewById(R.id.base_edit_loading_overlay);
+
+        MaterialButton buttonCancel = view.findViewById(R.id.button_cancel_base_info);
+        MaterialButton buttonSave = view.findViewById(R.id.button_save_base_info);
+
+        if (buttonCancel != null) {
+            buttonCancel.setOnClickListener(v ->
+                    NavHostFragment.findNavController(this).navigateUp());
+        }
+        if (buttonSave != null) {
+            buttonSave.setOnClickListener(v -> saveBaseInfo());
+        }
+
+        loadUser();
     }
 
-    /**
-     * Calls /auth/login with the given credentials.
-     */
-    public void login(String email, String password, final LoginCallback callback) {
-        LoginRequestDto request = new LoginRequestDto(email, password);
+    private void showLoading(boolean show) {
+        if (loadingOverlay != null) {
+            loadingOverlay.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+    }
 
-        authApiService.login(request).enqueue(new Callback<TokenResponseDto>() {
+    private void loadUser() {
+        showLoading(true);
+        profileRepository.loadProfile(new ProfileRepository.ProfileCallback() {
             @Override
-            public void onResponse(Call<TokenResponseDto> call, Response<TokenResponseDto> response) {
-                handleTokenResponse(response, new InternalCallback() {
-                    @Override
-                    public void onSuccess(AuthTokens tokens) {
-                        callback.onSuccess(tokens);
-                    }
+            public void onSuccess(User user,
+                                  DoctorProfile doctorProfile,
+                                  PatientProfile patientProfile) {
+                if (!isAdded()) return;
+                showLoading(false);
+                currentUser = user;
 
-                    @Override
-                    public void onError(Throwable throwable, Integer httpCode, String errorBody) {
-                        callback.onError(throwable, httpCode, errorBody);
+                if (user != null) {
+                    if (inputFirstname != null) {
+                        inputFirstname.setText(user.getFirstname());
                     }
-                });
+                    if (inputLastname != null) {
+                        inputLastname.setText(user.getLastname());
+                    }
+                    if (inputEmail != null) {
+                        inputEmail.setText(user.getEmail());
+                    }
+                    if (inputPhone != null) {
+                        inputPhone.setText(user.getPhone());
+                    }
+                }
             }
 
             @Override
-            public void onFailure(Call<TokenResponseDto> call, Throwable t) {
-                callback.onError(t, null, null);
-            }
-        });
-    }
-
-    /**
-     * Calls /auth/signup with the given registration data.
-     */
-    public void signup(String firstname,
-                       String lastname,
-                       String email,
-                       String phone,
-                       String password,
-                       String role,
-                       final SignupCallback callback) {
-
-        SignupRequestDto request = new SignupRequestDto(
-                firstname,
-                lastname,
-                email,
-                phone,
-                password,
-                role
-        );
-
-        authApiService.signup(request).enqueue(new Callback<TokenResponseDto>() {
-            @Override
-            public void onResponse(Call<TokenResponseDto> call, Response<TokenResponseDto> response) {
-                handleTokenResponse(response, new InternalCallback() {
-                    @Override
-                    public void onSuccess(AuthTokens tokens) {
-                        callback.onSuccess(tokens);
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable, Integer httpCode, String errorBody) {
-                        callback.onError(throwable, httpCode, errorBody);
-                    }
-                });
-            }
-
-            @Override
-            public void onFailure(Call<TokenResponseDto> call, Throwable t) {
-                callback.onError(t, null, null);
-            }
-        });
-    }
-
-    /**
-     * Calls /auth/refresh with the given refresh token.
-     */
-    public void refreshToken(String refreshToken, final RefreshCallback callback) {
-        RefreshTokenRequestDto request = new RefreshTokenRequestDto(refreshToken);
-
-        authApiService.refresh(request).enqueue(new Callback<TokenResponseDto>() {
-            @Override
-            public void onResponse(Call<TokenResponseDto> call, Response<TokenResponseDto> response) {
-                handleTokenResponse(response, new InternalCallback() {
-                    @Override
-                    public void onSuccess(AuthTokens tokens) {
-                        callback.onSuccess(tokens);
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable, Integer httpCode, String errorBody) {
-                        callback.onError(throwable, httpCode, errorBody);
-                    }
-                });
-            }
-
-            @Override
-            public void onFailure(Call<TokenResponseDto> call, Throwable t) {
-                callback.onError(t, null, null);
+            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                if (!isAdded()) return;
+                showLoading(false);
+                Toast.makeText(requireContext(),
+                        R.string.profile_error_loading,
+                        Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    /**
-     * Internal helper to convert TokenResponseDto -> AuthTokens and route callbacks.
-     */
-    private void handleTokenResponse(Response<TokenResponseDto> response, InternalCallback callback) {
-        if (!response.isSuccessful()) {
-            String errorBody = null;
+    private void saveBaseInfo() {
+        if (currentUser == null) {
+            Toast.makeText(requireContext(),
+                    R.string.profile_error_loading,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        UserUpdateRequestDto request = new UserUpdateRequestDto();
+
+        if (inputFirstname != null) {
+            String first = trimOrNull(inputFirstname.getText());
+            request.setFirstname(first);
+        }
+        if (inputLastname != null) {
+            String last = trimOrNull(inputLastname.getText());
+            request.setLastname(last);
+        }
+        if (inputEmail != null) {
+            String email = trimOrNull(inputEmail.getText());
+            if (TextUtils.isEmpty(email)) {
+                Toast.makeText(requireContext(),
+                        R.string.profile_error_invalid_email,
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            request.setEmail(email);
+        }
+        if (inputPhone != null) {
+            request.setPhone(trimOrNull(inputPhone.getText()));
+        }
+
+        showLoading(true);
+        profileRepository.updateBaseUser(request, new ProfileRepository.BaseUserUpdateCallback() {
+            @Override
+            public void onSuccess(User updatedUser) {
+                if (!isAdded()) return;
+                showLoading(false);
+                Toast.makeText(requireContext(),
+                        R.string.profile_saved,
+                        Toast.LENGTH_SHORT).show();
+
+                Activity activity = getActivity();
+                if (activity instanceof MainActivity) {
+                    ((MainActivity) activity).refreshUserProfileUi();
+                }
+
+                // Go back to base info view
+                NavHostFragment.findNavController(UserBaseInfoEditFragment.this).navigateUp();
+            }
+
+            @Override
+            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                if (!isAdded()) return;
+                showLoading(false);
+                Toast.makeText(requireContext(),
+                        R.string.profile_error_saving,
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    @Nullable
+    private String trimOrNull(@Nullable CharSequence cs) {
+        if (cs == null) return null;
+        String s = cs.toString().trim();
+        return s.isEmpty() ? null : s;
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/presentation/profile/UserBaseInfoFragment.java =====
+package tn.esprit.presentation.profile;
+
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.navigation.fragment.NavHostFragment;
+
+import tn.esprit.R;
+import tn.esprit.data.profile.ProfileRepository;
+import tn.esprit.domain.doctor.DoctorProfile;
+import tn.esprit.domain.patient.PatientProfile;
+import tn.esprit.domain.user.User;
+
+public class UserBaseInfoFragment extends Fragment {
+
+    private TextView textFullname;
+    private TextView textEmail;
+    private TextView textPhone;
+    private TextView textRole;
+
+    private ProfileRepository profileRepository;
+
+    public UserBaseInfoFragment() {
+        // Required empty ctor
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        profileRepository = new ProfileRepository(requireContext());
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_user_base_info, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view,
+                              @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        textFullname = view.findViewById(R.id.text_base_fullname);
+        textEmail = view.findViewById(R.id.text_base_email);
+        textPhone = view.findViewById(R.id.text_base_phone);
+        textRole = view.findViewById(R.id.text_base_role);
+        Button buttonEdit = view.findViewById(R.id.button_edit_base_info);
+
+        if (buttonEdit != null) {
+            buttonEdit.setOnClickListener(v ->
+                    NavHostFragment.findNavController(this)
+                            .navigate(R.id.action_userBaseInfoFragment_to_userBaseInfoEditFragment));
+        }
+
+        loadBaseInfo();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Reload in case user updated base info and navigated back.
+        loadBaseInfo();
+    }
+
+    private void loadBaseInfo() {
+        profileRepository.loadProfile(new ProfileRepository.ProfileCallback() {
+            @Override
+            public void onSuccess(User user,
+                                  DoctorProfile doctorProfile,
+                                  PatientProfile patientProfile) {
+                if (!isAdded()) return;
+
+                if (user == null) {
+                    Toast.makeText(requireContext(),
+                            R.string.profile_error_loading,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                String displayName = null;
+                String first = user.getFirstname() != null ? user.getFirstname() : "";
+                String last = user.getLastname() != null ? user.getLastname() : "";
+                String combined = (first + " " + last).trim();
+                if (!combined.isEmpty()) {
+                    displayName = combined;
+                } else if (!TextUtils.isEmpty(user.getEmail())) {
+                    displayName = user.getEmail();
+                }
+
+                if (TextUtils.isEmpty(displayName)) {
+                    displayName = getString(R.string.home_drawer_user_name_placeholder);
+                }
+
+                if (textFullname != null) textFullname.setText(displayName);
+                if (textEmail != null) textEmail.setText(user.getEmail() != null ? user.getEmail() : "");
+                if (textPhone != null) textPhone.setText(user.getPhone() != null ? user.getPhone() : "");
+                if (textRole != null) textRole.setText(user.getRole() != null ? user.getRole() : "");
+            }
+
+            @Override
+            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                if (!isAdded()) return;
+                Toast.makeText(requireContext(),
+                        R.string.profile_error_loading,
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/presentation/profile/ProfileFragment.java =====
+package tn.esprit.presentation.profile;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.navigation.fragment.NavHostFragment;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+
+import java.math.BigDecimal;
+
+import tn.esprit.MainActivity;
+import tn.esprit.R;
+import tn.esprit.data.profile.ProfileRepository;
+import tn.esprit.domain.doctor.DoctorProfile;
+import tn.esprit.domain.patient.PatientProfile;
+import tn.esprit.domain.user.User;
+import tn.esprit.presentation.home.HomeUiHelper;
+
+public class ProfileFragment extends Fragment {
+
+    private ProgressBar progressBar;
+
+    private ImageView imageProfileAvatar;
+    private MaterialCardView sectionDoctor;
+    private MaterialCardView sectionPatient;
+
+    // Header inside profile card
+    private android.widget.TextView textHeaderName;
+    private android.widget.TextView textHeaderRole;
+
+    // Doctor section
+    private android.widget.TextView textDoctorName;
+    private android.widget.TextView textDoctorSpecialty;
+    private android.widget.TextView textDoctorLocation;
+    private android.widget.TextView textDoctorFee;
+    private android.widget.TextView textDoctorBio;
+    private android.widget.TextView textDoctorAcceptsNew;
+    private android.widget.TextView textDoctorTeleconsult;
+
+    // Patient section
+    private android.widget.TextView textPatientBloodType;
+    private android.widget.TextView textPatientHeightWeight;
+    private android.widget.TextView textPatientFlags;
+    private android.widget.TextView textPatientNotes;
+
+    private MaterialButton buttonChangeAvatar;
+    private MaterialButton buttonEditProfile;
+
+    private ProfileRepository profileRepository;
+    private User currentUser;
+    private DoctorProfile currentDoctorProfile;
+    private PatientProfile currentPatientProfile;
+
+    public ProfileFragment() {
+        // Required empty constructor
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        profileRepository = new ProfileRepository(requireContext());
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_profile, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view,
+                              @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        progressBar = view.findViewById(R.id.profile_progress);
+        imageProfileAvatar = view.findViewById(R.id.image_profile_avatar);
+        sectionDoctor = view.findViewById(R.id.section_doctor);
+        sectionPatient = view.findViewById(R.id.section_patient);
+
+        textHeaderName = view.findViewById(R.id.text_profile_header_name);
+        textHeaderRole = view.findViewById(R.id.text_profile_header_role);
+
+        textDoctorName = view.findViewById(R.id.text_profile_name);
+        textDoctorSpecialty = view.findViewById(R.id.text_profile_specialty);
+        textDoctorLocation = view.findViewById(R.id.text_profile_location);
+        textDoctorFee = view.findViewById(R.id.text_profile_fee);
+        textDoctorBio = view.findViewById(R.id.text_profile_bio);
+        textDoctorAcceptsNew = view.findViewById(R.id.text_profile_accepts_new);
+        textDoctorTeleconsult = view.findViewById(R.id.text_profile_teleconsultation);
+
+        textPatientBloodType = view.findViewById(R.id.text_patient_blood_type);
+        textPatientHeightWeight = view.findViewById(R.id.text_patient_height_weight);
+        textPatientFlags = view.findViewById(R.id.text_patient_flags);
+        textPatientNotes = view.findViewById(R.id.text_patient_notes);
+
+        buttonChangeAvatar = view.findViewById(R.id.button_change_avatar);
+        buttonEditProfile = view.findViewById(R.id.button_edit_profile);
+
+        if (buttonEditProfile != null) {
+            buttonEditProfile.setOnClickListener(v -> onEditProfileClicked());
+        }
+
+        // (Avatar change will be wired in a later batch where we handle full image flow.)
+
+        loadProfile();
+    }
+
+    private void loadProfile() {
+        if (progressBar != null) {
+            progressBar.setVisibility(View.VISIBLE);
+        }
+        if (sectionDoctor != null) sectionDoctor.setVisibility(View.GONE);
+        if (sectionPatient != null) sectionPatient.setVisibility(View.GONE);
+
+        profileRepository.loadProfile(new ProfileRepository.ProfileCallback() {
+            @Override
+            public void onSuccess(User user,
+                                  DoctorProfile doctorProfile,
+                                  PatientProfile patientProfile) {
+                if (!isAdded()) return;
+
+                currentUser = user;
+                currentDoctorProfile = doctorProfile;
+                currentPatientProfile = patientProfile;
+
+                if (progressBar != null) {
+                    progressBar.setVisibility(View.GONE);
+                }
+
+                bindUser(user);
+
+                String role = user != null ? user.getRole() : null;
+                if (role != null && "DOCTOR".equalsIgnoreCase(role)) {
+                    bindDoctorSection(doctorProfile);
+                } else if (role != null && "PATIENT".equalsIgnoreCase(role)) {
+                    bindPatientSection(patientProfile);
+                } else {
+                    // Unknown role: hide both specific sections.
+                    if (sectionDoctor != null) sectionDoctor.setVisibility(View.GONE);
+                    if (sectionPatient != null) sectionPatient.setVisibility(View.GONE);
+                }
+            }
+
+            @Override
+            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                if (!isAdded()) return;
+                if (progressBar != null) {
+                    progressBar.setVisibility(View.GONE);
+                }
+                Toast.makeText(requireContext(),
+                        R.string.profile_error_loading,
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void bindUser(@Nullable User user) {
+        String displayName = null;
+        String role = null;
+
+        if (user != null) {
+            String first = user.getFirstname() != null ? user.getFirstname() : "";
+            String last = user.getLastname() != null ? user.getLastname() : "";
+            String combined = (first + " " + last).trim();
+            if (!combined.isEmpty()) {
+                displayName = combined;
+            } else if (!TextUtils.isEmpty(user.getEmail())) {
+                displayName = user.getEmail();
+            }
+
+            role = user.getRole();
+        }
+
+        if (TextUtils.isEmpty(displayName)) {
+            displayName = getString(R.string.home_drawer_user_name_placeholder);
+        }
+
+        if (textHeaderName != null) {
+            textHeaderName.setText(displayName);
+        }
+
+        // Role label
+        int roleLabelResId = HomeUiHelper.resolveRoleLabelResId(role);
+        String roleLabel = getString(roleLabelResId);
+        if (textHeaderRole != null) {
+            textHeaderRole.setText(roleLabel);
+        }
+    }
+
+    private void bindDoctorSection(@Nullable DoctorProfile doctorProfile) {
+        if (sectionDoctor != null) {
+            sectionDoctor.setVisibility(View.VISIBLE);
+        }
+        if (sectionPatient != null) {
+            sectionPatient.setVisibility(View.GONE);
+        }
+
+        String displayName = textHeaderName != null ? textHeaderName.getText().toString() : "";
+
+        if (textDoctorName != null) {
+            if (!TextUtils.isEmpty(displayName)) {
+                textDoctorName.setText(getString(R.string.profile_doctor_name_format, displayName));
+            } else {
+                textDoctorName.setText(getString(R.string.profile_title));
+            }
+        }
+
+        if (doctorProfile == null) {
+            // No extra data; leave defaults / placeholders.
+            return;
+        }
+
+        // Specialty – depending on your DoctorProfile, adjust getter (e.g. getSpecialtyName()).
+        if (textDoctorSpecialty != null) {
             try {
-                if (response.errorBody() != null) {
-                    errorBody = response.errorBody().string();
+                // If DoctorProfile has a "getSpecialtyName()" you can use it here.
+                // For now, fallback to empty if not available.
+                String specialty = null;
+                // TODO: wire actual specialty field from DoctorProfile if present.
+                if (!TextUtils.isEmpty(specialty)) {
+                    textDoctorSpecialty.setText(specialty);
+                } else {
+                    textDoctorSpecialty.setText("");
+                }
+            } catch (Exception ignored) {
+                textDoctorSpecialty.setText("");
+            }
+        }
+
+        if (textDoctorLocation != null) {
+            StringBuilder location = new StringBuilder();
+            try {
+                String clinic = doctorProfile.getClinicAddress();
+                String city = doctorProfile.getCity();
+                String country = doctorProfile.getCountry();
+                if (!TextUtils.isEmpty(clinic)) {
+                    location.append(clinic);
+                }
+                if (!TextUtils.isEmpty(city)) {
+                    if (location.length() > 0) location.append(", ");
+                    location.append(city);
+                }
+                if (!TextUtils.isEmpty(country)) {
+                    if (location.length() > 0) location.append(", ");
+                    location.append(country);
                 }
             } catch (Exception ignored) {
             }
-            callback.onError(null, response.code(), errorBody);
-            return;
+            textDoctorLocation.setText(location.toString());
         }
 
-        TokenResponseDto body = response.body();
-        if (body == null) {
-            callback.onError(
-                    new IllegalStateException("Empty response body"),
-                    response.code(),
-                    null
-            );
-            return;
+        if (textDoctorFee != null) {
+            try {
+                BigDecimal fee = doctorProfile.getConsultationFee();
+                if (fee != null) {
+                    String feeText = getString(R.string.profile_doctor_fee_format, fee.toPlainString());
+                    textDoctorFee.setText(feeText);
+                } else {
+                    textDoctorFee.setText("");
+                }
+            } catch (Exception ignored) {
+                textDoctorFee.setText("");
+            }
         }
 
-        AuthTokens tokens = new AuthTokens(
-                body.getAccessToken(),
-                body.getRefreshToken(),
-                body.getTokenType(),
-                body.getExpiresIn()
-        );
-        callback.onSuccess(tokens);
+        if (textDoctorBio != null) {
+            try {
+                String bio = doctorProfile.getBio();
+                textDoctorBio.setText(bio != null ? bio : "");
+            } catch (Exception ignored) {
+                textDoctorBio.setText("");
+            }
+        }
+
+        if (textDoctorAcceptsNew != null) {
+            try {
+                Boolean accepts = doctorProfile.getAcceptsNewPatients();
+                if (accepts != null && accepts) {
+                    textDoctorAcceptsNew.setText(getString(R.string.profile_flag_accepts_new));
+                } else {
+                    textDoctorAcceptsNew.setText(getString(R.string.profile_flag_not_accepts_new));
+                }
+            } catch (Exception ignored) {
+                textDoctorAcceptsNew.setText("");
+            }
+        }
+
+        if (textDoctorTeleconsult != null) {
+            try {
+                Boolean tele = doctorProfile.getTeleconsultationEnabled();
+                if (tele != null && tele) {
+                    textDoctorTeleconsult.setText(getString(R.string.profile_flag_teleconsultation));
+                } else {
+                    textDoctorTeleconsult.setText(getString(R.string.profile_flag_no_teleconsultation));
+                }
+            } catch (Exception ignored) {
+                textDoctorTeleconsult.setText("");
+            }
+        }
     }
 
-    private interface InternalCallback {
-        void onSuccess(AuthTokens tokens);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
+    private void bindPatientSection(@Nullable PatientProfile patientProfile) {
+        if (sectionPatient != null) {
+            sectionPatient.setVisibility(View.VISIBLE);
+        }
+        if (sectionDoctor != null) {
+            sectionDoctor.setVisibility(View.GONE);
+        }
+
+        if (patientProfile == null) {
+            return;
+        }
+
+        if (textPatientBloodType != null) {
+            try {
+                String blood = patientProfile.getBloodType();
+                if (!TextUtils.isEmpty(blood)) {
+                    textPatientBloodType.setText(getString(R.string.profile_patient_blood_type_format, blood));
+                } else {
+                    textPatientBloodType.setText("");
+                }
+            } catch (Exception ignored) {
+                textPatientBloodType.setText("");
+            }
+        }
+
+        if (textPatientHeightWeight != null) {
+            try {
+                Integer h = patientProfile.getHeightCm();
+                Integer w = patientProfile.getWeightKg();
+                if (h != null && w != null) {
+                    String hw = getString(R.string.profile_patient_height_weight_format, h, w);
+                    textPatientHeightWeight.setText(hw);
+                } else {
+                    textPatientHeightWeight.setText("");
+                }
+            } catch (Exception ignored) {
+                textPatientHeightWeight.setText("");
+            }
+        }
+
+        if (textPatientFlags != null) {
+            try {
+                Boolean smoker = patientProfile.getSmoker();
+                Boolean alcohol = patientProfile.getAlcoholUse();
+                StringBuilder flags = new StringBuilder();
+                if (smoker != null) {
+                    flags.append(smoker ? "Smoker" : "Non-smoker");
+                }
+                if (alcohol != null) {
+                    if (flags.length() > 0) flags.append(" • ");
+                    flags.append(alcohol ? "Alcohol use" : "No alcohol use");
+                }
+                textPatientFlags.setText(flags.toString());
+            } catch (Exception ignored) {
+                textPatientFlags.setText("");
+            }
+        }
+
+        if (textPatientNotes != null) {
+            try {
+                String notes = patientProfile.getNotes();
+                textPatientNotes.setText(notes != null ? notes : "");
+            } catch (Exception ignored) {
+                textPatientNotes.setText("");
+            }
+        }
+    }
+
+    private void onEditProfileClicked() {
+        if (currentUser == null) {
+            return;
+        }
+        String role = currentUser.getRole();
+        if (role != null && "DOCTOR".equalsIgnoreCase(role)) {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_profileFragment_to_profileEditFragment);
+        } else if (role != null && "PATIENT".equalsIgnoreCase(role)) {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_profileFragment_to_editPatientProfileFragment);
+        } else {
+            Toast.makeText(requireContext(),
+                    R.string.profile_error_unknown_role,
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Ensure header in MainActivity stays in sync if user has changed info elsewhere.
+        Activity activity = getActivity();
+        if (activity instanceof MainActivity) {
+            // MainActivity will reload from backend.
+            ((MainActivity) activity).refreshUserProfileUi();
+        }
     }
 }
 
 
-===== FILE: ./app/src/main/java/tn/esprit/data/auth/AuthLocalDataSource.java =====
-package tn.esprit.data.auth;
+===== FILE: ./app/src/main/java/tn/esprit/presentation/profile/ProfileEditFragment.java =====
+package tn.esprit.presentation.profile;
 
-import android.content.Context;
-import android.content.SharedPreferences;
+import android.app.Activity;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageButton;
+import android.widget.Toast;
 
-import tn.esprit.domain.auth.AuthTokens;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.navigation.fragment.NavHostFragment;
 
-/**
- * Local persistence for auth tokens using SharedPreferences.
- */
-public class AuthLocalDataSource {
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.textfield.TextInputEditText;
 
-    private static final String PREFS_NAME = "auth_prefs";
-    private static final String KEY_ACCESS_TOKEN = "access_token";
-    private static final String KEY_REFRESH_TOKEN = "refresh_token";
-    private static final String KEY_TOKEN_TYPE = "token_type";
-    private static final String KEY_EXPIRES_IN = "expires_in";
+import java.math.BigDecimal;
 
-    private final SharedPreferences preferences;
-
-    public AuthLocalDataSource(Context context) {
-        this.preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-    }
-
-    public void saveTokens(AuthTokens tokens) {
-        if (tokens == null) return;
-        preferences.edit()
-                .putString(KEY_ACCESS_TOKEN, tokens.getAccessToken())
-                .putString(KEY_REFRESH_TOKEN, tokens.getRefreshToken())
-                .putString(KEY_TOKEN_TYPE, tokens.getTokenType())
-                .putLong(KEY_EXPIRES_IN, tokens.getExpiresIn() != null ? tokens.getExpiresIn() : -1L)
-                .apply();
-    }
-
-    public AuthTokens getTokens() {
-        String accessToken = preferences.getString(KEY_ACCESS_TOKEN, null);
-        String refreshToken = preferences.getString(KEY_REFRESH_TOKEN, null);
-        String tokenType = preferences.getString(KEY_TOKEN_TYPE, null);
-        long expiresIn = preferences.getLong(KEY_EXPIRES_IN, -1L);
-
-        if (accessToken == null || refreshToken == null || tokenType == null) {
-            return null;
-        }
-
-        Long expiresInValue = expiresIn >= 0 ? expiresIn : null;
-        return new AuthTokens(accessToken, refreshToken, tokenType, expiresInValue);
-    }
-
-    public void clearTokens() {
-        preferences.edit().clear().apply();
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/profile/ProfileRepository.java =====
-package tn.esprit.data.profile;
-
-import android.content.Context;
-
-import java.io.IOException;
-
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import tn.esprit.data.auth.AuthLocalDataSource;
-import tn.esprit.data.remote.ApiClient;
-import tn.esprit.data.remote.doctor.DoctorApiService;
+import tn.esprit.MainActivity;
+import tn.esprit.R;
+import tn.esprit.data.profile.ProfileRepository;
 import tn.esprit.data.remote.doctor.DoctorApiService.DoctorProfileUpdateRequestDto;
-import tn.esprit.data.remote.patient.PatientApiService;
-import tn.esprit.data.remote.user.UserApiService;
-import tn.esprit.domain.auth.AuthTokens;
+import tn.esprit.domain.doctor.DoctorProfile;
+import tn.esprit.domain.patient.PatientProfile;
+import tn.esprit.domain.user.User;
+
+public class ProfileEditFragment extends Fragment {
+
+    private TextInputEditText inputName;
+    private TextInputEditText inputPhone;
+    private TextInputEditText inputClinic;
+    private TextInputEditText inputCity;
+    private TextInputEditText inputCountry;
+    private TextInputEditText inputRegNumber;
+    private TextInputEditText inputFee;
+    private TextInputEditText inputBio;
+    private SwitchMaterial switchAcceptsNew;
+    private SwitchMaterial switchTeleconsult;
+    private View loadingOverlay;
+
+    private ProfileRepository profileRepository;
+    private User currentUser;
+    private DoctorProfile currentDoctorProfile;
+
+    public ProfileEditFragment() {
+        // Required empty constructor
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        profileRepository = new ProfileRepository(requireContext());
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_profile_edit, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view,
+                              @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        ImageButton buttonBack = view.findViewById(R.id.button_back);
+        inputName = view.findViewById(R.id.input_name);
+        inputPhone = view.findViewById(R.id.input_phone);
+        inputClinic = view.findViewById(R.id.input_clinic);
+        inputCity = view.findViewById(R.id.input_city);
+        inputCountry = view.findViewById(R.id.input_country);
+        inputRegNumber = view.findViewById(R.id.input_reg_number);
+        inputFee = view.findViewById(R.id.input_fee);
+        inputBio = view.findViewById(R.id.input_bio);
+        switchAcceptsNew = view.findViewById(R.id.switch_accepts_new);
+        switchTeleconsult = view.findViewById(R.id.switch_teleconsult);
+        MaterialButton buttonSave = view.findViewById(R.id.button_save);
+        MaterialButton buttonCancel = view.findViewById(R.id.button_cancel);
+        MaterialButton buttonBaseInfo = view.findViewById(R.id.button_base_info);
+        loadingOverlay = view.findViewById(R.id.edit_loading_overlay);
+
+        if (buttonBack != null) {
+            buttonBack.setOnClickListener(v ->
+                    NavHostFragment.findNavController(this).navigateUp());
+        }
+        if (buttonCancel != null) {
+            buttonCancel.setOnClickListener(v ->
+                    NavHostFragment.findNavController(this).navigateUp());
+        }
+        if (buttonSave != null) {
+            buttonSave.setOnClickListener(v -> saveDoctorProfile());
+        }
+        if (buttonBaseInfo != null) {
+            buttonBaseInfo.setOnClickListener(v ->
+                    NavHostFragment.findNavController(this)
+                            .navigate(R.id.action_profileEditFragment_to_userBaseInfoFragment));
+        }
+
+        loadProfileForEdit();
+    }
+
+    private void showLoading(boolean show) {
+        if (loadingOverlay != null) {
+            loadingOverlay.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void loadProfileForEdit() {
+        showLoading(true);
+        profileRepository.loadProfile(new ProfileRepository.ProfileCallback() {
+            @Override
+            public void onSuccess(User user,
+                                  DoctorProfile doctorProfile,
+                                  PatientProfile patientProfile) {
+                if (!isAdded()) return;
+                showLoading(false);
+
+                currentUser = user;
+                currentDoctorProfile = doctorProfile;
+
+                // Prefill base user info (read-only semantics; actual editing in base info screen).
+                if (inputName != null && user != null) {
+                    String first = user.getFirstname() != null ? user.getFirstname() : "";
+                    String last = user.getLastname() != null ? user.getLastname() : "";
+                    String combined = (first + " " + last).trim();
+                    if (TextUtils.isEmpty(combined)) {
+                        combined = user.getEmail();
+                    }
+                    inputName.setText(combined);
+                }
+                if (inputPhone != null && user != null) {
+                    inputPhone.setText(user.getPhone());
+                }
+
+                if (doctorProfile != null) {
+                    if (inputClinic != null) {
+                        try {
+                            inputClinic.setText(doctorProfile.getClinicAddress());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputCity != null) {
+                        try {
+                            inputCity.setText(doctorProfile.getCity());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputCountry != null) {
+                        try {
+                            inputCountry.setText(doctorProfile.getCountry());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputRegNumber != null) {
+                        try {
+                            inputRegNumber.setText(doctorProfile.getMedicalRegistrationNumber());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputFee != null) {
+                        try {
+                            BigDecimal fee = doctorProfile.getConsultationFee();
+                            inputFee.setText(fee != null ? fee.toPlainString() : "");
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputBio != null) {
+                        try {
+                            inputBio.setText(doctorProfile.getBio());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (switchAcceptsNew != null) {
+                        try {
+                            Boolean accepts = doctorProfile.getAcceptsNewPatients();
+                            switchAcceptsNew.setChecked(accepts != null && accepts);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (switchTeleconsult != null) {
+                        try {
+                            Boolean tele = doctorProfile.getTeleconsultationEnabled();
+                            switchTeleconsult.setChecked(tele != null && tele);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
+            }
+
+            @Override
+            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                if (!isAdded()) return;
+                showLoading(false);
+                Toast.makeText(requireContext(),
+                        R.string.profile_error_loading,
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void saveDoctorProfile() {
+        if (currentUser == null) {
+            Toast.makeText(requireContext(),
+                    R.string.profile_error_unknown_role,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String role = currentUser.getRole();
+        if (role == null || !"DOCTOR".equalsIgnoreCase(role)) {
+            Toast.makeText(requireContext(),
+                    R.string.profile_error_unknown_role,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        DoctorProfileUpdateRequestDto request = new DoctorProfileUpdateRequestDto();
+
+        // We only edit clinic, city, country, reg number, fee, bio, flags here.
+        if (inputClinic != null) {
+            request.setClinicAddress(trimOrNull(inputClinic.getText()));
+        }
+        if (inputCity != null) {
+            request.setCity(trimOrNull(inputCity.getText()));
+        }
+        if (inputCountry != null) {
+            request.setCountry(trimOrNull(inputCountry.getText()));
+        }
+        if (inputRegNumber != null) {
+            request.setMedicalRegistrationNumber(trimOrNull(inputRegNumber.getText()));
+        }
+        if (inputBio != null) {
+            request.setBio(trimOrNull(inputBio.getText()));
+        }
+
+        if (inputFee != null) {
+            String feeText = trimOrNull(inputFee.getText());
+            if (!TextUtils.isEmpty(feeText)) {
+                try {
+                    request.setConsultationFee(new BigDecimal(feeText));
+                } catch (NumberFormatException e) {
+                    Toast.makeText(requireContext(),
+                            R.string.profile_error_invalid_fee,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+        }
+
+        if (switchAcceptsNew != null) {
+            request.setAcceptsNewPatients(switchAcceptsNew.isChecked());
+        }
+        if (switchTeleconsult != null) {
+            request.setTeleconsultationEnabled(switchTeleconsult.isChecked());
+        }
+
+        // Preserve fields that are not editable from UI so we don't accidentally null them.
+        if (currentDoctorProfile != null) {
+            try {
+                if (request.getYearsOfExperience() == null) {
+                    request.setYearsOfExperience(currentDoctorProfile.getYearsOfExperience());
+                }
+            } catch (Exception ignored) {
+            }
+            try {
+                if (request.getMaxDailyAppointments() == null) {
+                    request.setMaxDailyAppointments(currentDoctorProfile.getMaxDailyAppointments());
+                }
+            } catch (Exception ignored) {
+            }
+            try {
+                if (request.getAverageConsultationDurationMinutes() == null) {
+                    request.setAverageConsultationDurationMinutes(
+                            currentDoctorProfile.getAverageConsultationDurationMinutes()
+                    );
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        showLoading(true);
+        profileRepository.updateDoctorProfile(request, new ProfileRepository.DoctorProfileUpdateCallback() {
+            @Override
+            public void onSuccess(DoctorProfile updatedProfile) {
+                if (!isAdded()) return;
+                showLoading(false);
+                Toast.makeText(requireContext(),
+                        R.string.profile_saved,
+                        Toast.LENGTH_SHORT).show();
+
+                Activity activity = getActivity();
+                if (activity instanceof MainActivity) {
+                    ((MainActivity) activity).refreshUserProfileUi();
+                }
+                NavHostFragment.findNavController(ProfileEditFragment.this).navigateUp();
+            }
+
+            @Override
+            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                if (!isAdded()) return;
+                showLoading(false);
+                Toast.makeText(requireContext(),
+                        R.string.profile_error_saving,
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    @Nullable
+    private String trimOrNull(@Nullable CharSequence cs) {
+        if (cs == null) return null;
+        String s = cs.toString().trim();
+        return s.isEmpty() ? null : s;
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/presentation/profile/ProfileActivity.java =====
+package tn.esprit.presentation.profile;
+
+import android.os.Bundle;
+
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+
+import tn.esprit.R;
+
+public class ProfileActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_profile);
+
+        androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar_profile);
+        setSupportActionBar(toolbar);
+
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle("Profile");
+        }
+
+        toolbar.setNavigationOnClickListener(v -> onBackPressed());
+
+        if (savedInstanceState == null) {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.profile_fragment_container, new ProfileFragment())
+                    .commit();
+        }
+    }
+
+    public void openEditProfile() {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .setCustomAnimations(
+                        android.R.anim.slide_in_left,
+                        android.R.anim.slide_out_right,
+                        android.R.anim.slide_in_left,
+                        android.R.anim.slide_out_right
+                )
+                .replace(R.id.profile_fragment_container, new ProfileEditFragment())
+                .addToBackStack("edit_profile")
+                .commit();
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/presentation/profile/EditPatientProfileFragment.java =====
+package tn.esprit.presentation.profile;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.CheckBox;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.navigation.fragment.NavHostFragment;
+
+import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
+
+import tn.esprit.MainActivity;
+import tn.esprit.R;
+import tn.esprit.data.profile.ProfileRepository;
+import tn.esprit.data.remote.patient.PatientApiService.PatientProfileUpdateRequestDto;
+import tn.esprit.domain.doctor.DoctorProfile;
+import tn.esprit.domain.patient.PatientProfile;
+import tn.esprit.domain.user.User;
+
+public class EditPatientProfileFragment extends Fragment {
+
+    private TextInputEditText inputDob;
+    private TextInputEditText inputGender;
+    private TextInputEditText inputBloodType;
+    private TextInputEditText inputHeightCm;
+    private TextInputEditText inputWeightKg;
+    private TextInputEditText inputAddress;
+    private TextInputEditText inputCity;
+    private TextInputEditText inputCountry;
+    private TextInputEditText inputMaritalStatus;
+    private TextInputEditText inputNotes;
+    private CheckBox checkSmoker;
+    private CheckBox checkAlcohol;
+    private View loadingOverlay;
+
+    private ProfileRepository profileRepository;
+    private PatientProfile currentPatientProfile;
+    private User currentUser;
+
+    public EditPatientProfileFragment() {
+        // Required empty constructor
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        profileRepository = new ProfileRepository(requireContext());
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_edit_patient_profile, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view,
+                              @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        MaterialToolbar toolbar = view.findViewById(R.id.toolbar_edit_patient);
+        inputDob = view.findViewById(R.id.input_dob);
+        inputGender = view.findViewById(R.id.input_gender);
+        inputBloodType = view.findViewById(R.id.input_blood_type);
+        inputHeightCm = view.findViewById(R.id.input_height_cm);
+        inputWeightKg = view.findViewById(R.id.input_weight_kg);
+        inputAddress = view.findViewById(R.id.input_address);
+        inputCity = view.findViewById(R.id.input_city);
+        inputCountry = view.findViewById(R.id.input_country);
+        inputMaritalStatus = view.findViewById(R.id.input_marital_status);
+        inputNotes = view.findViewById(R.id.input_notes);
+        checkSmoker = view.findViewById(R.id.check_smoker);
+        checkAlcohol = view.findViewById(R.id.check_alcohol);
+        MaterialButton buttonComplete = view.findViewById(R.id.button_complete_profile);
+        MaterialButton buttonBaseInfo = view.findViewById(R.id.button_base_info);
+        loadingOverlay = view.findViewById(R.id.edit_patient_loading_overlay);
+
+        if (toolbar != null) {
+            toolbar.setNavigationOnClickListener(v ->
+                    NavHostFragment.findNavController(this).navigateUp());
+        }
+        if (buttonComplete != null) {
+            buttonComplete.setOnClickListener(v -> savePatientProfile());
+        }
+        if (buttonBaseInfo != null) {
+            buttonBaseInfo.setOnClickListener(v ->
+                    NavHostFragment.findNavController(this)
+                            .navigate(R.id.action_editPatientProfileFragment_to_userBaseInfoFragment));
+        }
+
+        loadProfileForEdit();
+    }
+
+    private void showLoading(boolean show) {
+        if (loadingOverlay != null) {
+            loadingOverlay.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void loadProfileForEdit() {
+        showLoading(true);
+        profileRepository.loadProfile(new ProfileRepository.ProfileCallback() {
+            @Override
+            public void onSuccess(User user,
+                                  DoctorProfile doctorProfile,
+                                  PatientProfile patientProfile) {
+                if (!isAdded()) return;
+                showLoading(false);
+
+                currentUser = user;
+                currentPatientProfile = patientProfile;
+
+                if (patientProfile != null) {
+                    try {
+                        if (inputDob != null) {
+                            // Assuming PatientProfile keeps dateOfBirth as a String or a
+                            // type whose toString() is ISO date.
+                            Object dob = patientProfile.getDateOfBirth();
+                            inputDob.setText(dob != null ? dob.toString() : "");
+                        }
+                    } catch (Exception ignored) {
+                    }
+                    if (inputGender != null) {
+                        try {
+                            inputGender.setText(patientProfile.getGender());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputBloodType != null) {
+                        try {
+                            inputBloodType.setText(patientProfile.getBloodType());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputHeightCm != null) {
+                        try {
+                            Integer h = patientProfile.getHeightCm();
+                            inputHeightCm.setText(h != null ? String.valueOf(h) : "");
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputWeightKg != null) {
+                        try {
+                            Integer w = patientProfile.getWeightKg();
+                            inputWeightKg.setText(w != null ? String.valueOf(w) : "");
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputAddress != null) {
+                        try {
+                            inputAddress.setText(patientProfile.getAddress());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputCity != null) {
+                        try {
+                            inputCity.setText(patientProfile.getCity());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputCountry != null) {
+                        try {
+                            inputCountry.setText(patientProfile.getCountry());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputMaritalStatus != null) {
+                        try {
+                            inputMaritalStatus.setText(patientProfile.getMaritalStatus());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputNotes != null) {
+                        try {
+                            inputNotes.setText(patientProfile.getNotes());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (checkSmoker != null) {
+                        try {
+                            Boolean smoker = patientProfile.getSmoker();
+                            checkSmoker.setChecked(smoker != null && smoker);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (checkAlcohol != null) {
+                        try {
+                            Boolean alcohol = patientProfile.getAlcoholUse();
+                            checkAlcohol.setChecked(alcohol != null && alcohol);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
+            }
+
+            @Override
+            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                if (!isAdded()) return;
+                showLoading(false);
+                Toast.makeText(requireContext(),
+                        R.string.profile_error_loading,
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void savePatientProfile() {
+        if (currentUser == null) {
+            Toast.makeText(requireContext(),
+                    R.string.profile_error_unknown_role,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String role = currentUser.getRole();
+        if (role == null || !"PATIENT".equalsIgnoreCase(role)) {
+            Toast.makeText(requireContext(),
+                    R.string.profile_error_unknown_role,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        PatientProfileUpdateRequestDto request = new PatientProfileUpdateRequestDto();
+
+        if (inputDob != null) {
+            request.setDateOfBirth(trimOrNull(inputDob.getText()));
+        }
+        if (inputGender != null) {
+            request.setGender(trimOrNull(inputGender.getText()));
+        }
+        if (inputBloodType != null) {
+            request.setBloodType(trimOrNull(inputBloodType.getText()));
+        }
+        if (inputAddress != null) {
+            request.setAddress(trimOrNull(inputAddress.getText()));
+        }
+        if (inputCity != null) {
+            request.setCity(trimOrNull(inputCity.getText()));
+        }
+        if (inputCountry != null) {
+            request.setCountry(trimOrNull(inputCountry.getText()));
+        }
+        if (inputMaritalStatus != null) {
+            request.setMaritalStatus(trimOrNull(inputMaritalStatus.getText()));
+        }
+        if (inputNotes != null) {
+            request.setNotes(trimOrNull(inputNotes.getText()));
+        }
+
+        if (inputHeightCm != null) {
+            String hText = trimOrNull(inputHeightCm.getText());
+            if (!TextUtils.isEmpty(hText)) {
+                try {
+                    request.setHeightCm(Integer.parseInt(hText));
+                } catch (NumberFormatException e) {
+                    Toast.makeText(requireContext(),
+                            R.string.profile_error_invalid_height,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+        }
+        if (inputWeightKg != null) {
+            String wText = trimOrNull(inputWeightKg.getText());
+            if (!TextUtils.isEmpty(wText)) {
+                try {
+                    request.setWeightKg(Integer.parseInt(wText));
+                } catch (NumberFormatException e) {
+                    Toast.makeText(requireContext(),
+                            R.string.profile_error_invalid_weight,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+        }
+
+        if (checkSmoker != null) {
+            request.setSmoker(checkSmoker.isChecked());
+        }
+        if (checkAlcohol != null) {
+            request.setAlcoholUse(checkAlcohol.isChecked());
+        }
+
+        showLoading(true);
+        profileRepository.updatePatientProfile(request, new ProfileRepository.PatientProfileUpdateCallback() {
+            @Override
+            public void onSuccess(PatientProfile updatedProfile) {
+                if (!isAdded()) return;
+                showLoading(false);
+                Toast.makeText(requireContext(),
+                        R.string.profile_saved,
+                        Toast.LENGTH_SHORT).show();
+
+                Activity activity = getActivity();
+                if (activity instanceof MainActivity) {
+                    ((MainActivity) activity).refreshUserProfileUi();
+                }
+                NavHostFragment.findNavController(EditPatientProfileFragment.this).navigateUp();
+            }
+
+            @Override
+            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                if (!isAdded()) return;
+                showLoading(false);
+                Toast.makeText(requireContext(),
+                        R.string.profile_error_saving,
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    @Nullable
+    private String trimOrNull(@Nullable CharSequence cs) {
+        if (cs == null) return null;
+        String s = cs.toString().trim();
+        return s.isEmpty() ? null : s;
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/presentation/profile/ProfileViewModel.java =====
+package tn.esprit.presentation.profile;
+
+import android.app.Application;
+
+import androidx.annotation.NonNull;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+
+import java.math.BigDecimal;
+
+import tn.esprit.data.profile.ProfileRepository;
 import tn.esprit.domain.doctor.DoctorProfile;
 import tn.esprit.domain.patient.PatientProfile;
 import tn.esprit.domain.user.User;
 
 /**
- * Repository responsible for loading the current user's profile
- * (User + DoctorProfile or PatientProfile depending on role).
+ * ViewModel that loads the current user's profile from the backend
+ * using ProfileRepository.
  *
- * Also exposes an update method for the doctor's profile.
+ * It exposes:
+ *  - base User (from /me)
+ *  - DoctorProfile (from /api/doctors/me) when role == DOCTOR
+ *  - PatientProfile (from /api/patients/me) when role == PATIENT
  *
- * Note: we now use the domain models directly as Retrofit response types,
- * so there is no extra mapping layer.
+ * There is NO hard-coded profile data here – everything comes from the backend.
  */
-public class ProfileRepository {
+public class ProfileViewModel extends AndroidViewModel {
 
-    private final AuthLocalDataSource authLocalDataSource;
-    private final UserApiService userApiService;
-    private final DoctorApiService doctorApiService;
-    private final PatientApiService patientApiService;
+    private final ProfileRepository profileRepository;
 
-    public ProfileRepository(Context context) {
-        this.authLocalDataSource = new AuthLocalDataSource(context.getApplicationContext());
-        this.userApiService = ApiClient.createService(UserApiService.class);
-        this.doctorApiService = ApiClient.createService(DoctorApiService.class);
-        this.patientApiService = ApiClient.createService(PatientApiService.class);
+    private final MutableLiveData<User> user = new MutableLiveData<>();
+    private final MutableLiveData<DoctorProfile> doctorProfile = new MutableLiveData<>();
+    private final MutableLiveData<PatientProfile> patientProfile = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
+    private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
+
+    public ProfileViewModel(@NonNull Application application) {
+        super(application);
+        profileRepository = new ProfileRepository(application.getApplicationContext());
     }
 
-    public interface ProfileCallback {
-        void onSuccess(User user, DoctorProfile doctorProfile, PatientProfile patientProfile);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
+    public LiveData<User> getUser() {
+        return user;
     }
 
-    public interface DoctorProfileUpdateCallback {
-        void onSuccess(DoctorProfile updatedProfile);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
+    public LiveData<DoctorProfile> getDoctorProfile() {
+        return doctorProfile;
+    }
+
+    public LiveData<PatientProfile> getPatientProfile() {
+        return patientProfile;
+    }
+
+    public LiveData<Boolean> getLoading() {
+        return loading;
+    }
+
+    public LiveData<String> getErrorMessage() {
+        return errorMessage;
     }
 
     /**
-     * Load current user + (doctor or patient) profile, depending on role.
+     * Loads the current user's profile from the backend.
+     * Internally uses:
+     *  - GET /me
+     *  - GET /api/doctors/me         (if role == DOCTOR)
+     *  - GET /api/patients/me        (if role == PATIENT)
+     *
+     * Behavior is 100% role-based and driven by real data.
      */
-    public void loadProfile(final ProfileCallback callback) {
-        AuthTokens tokens = authLocalDataSource.getTokens();
-        if (tokens == null || tokens.getAccessToken() == null) {
-            callback.onError(new IllegalStateException("Not authenticated"), null, null);
+    public void loadProfile() {
+        if (Boolean.TRUE.equals(loading.getValue())) {
+            // avoid double calls
             return;
         }
 
-        final String authHeader = buildAuthHeader(tokens);
+        loading.setValue(true);
+        errorMessage.setValue(null);
 
-        // 1) Load the base User (/me)
-        userApiService.getCurrentUser(authHeader).enqueue(new Callback<User>() {
+        profileRepository.loadProfile(new ProfileRepository.ProfileCallback() {
             @Override
-            public void onResponse(Call<User> call,
-                                   Response<User> response) {
-                if (!response.isSuccessful()) {
-                    String errorBody = extractErrorBody(response);
-                    callback.onError(null, response.code(), errorBody);
-                    return;
-                }
-
-                User user = response.body();
-                if (user == null) {
-                    callback.onError(new IllegalStateException("Empty user body"),
-                            response.code(), null);
-                    return;
-                }
-
-                String role = user.getRole() != null ? user.getRole() : "";
-
-                // 2) Depending on the role, load doctor or patient profile.
-                if ("DOCTOR".equalsIgnoreCase(role)) {
-                    loadDoctorProfile(authHeader, user, callback);
-                } else if ("PATIENT".equalsIgnoreCase(role)) {
-                    loadPatientProfile(authHeader, user, callback);
-                } else {
-                    // Unknown or admin role -> return only User
-                    callback.onSuccess(user, null, null);
-                }
+            public void onSuccess(User u,
+                                  DoctorProfile d,
+                                  PatientProfile p) {
+                loading.postValue(false);
+                user.postValue(u);
+                doctorProfile.postValue(d);
+                patientProfile.postValue(p);
             }
 
             @Override
-            public void onFailure(Call<User> call, Throwable t) {
-                callback.onError(t, null, null);
+            public void onError(Throwable throwable,
+                                Integer httpCode,
+                                String errorBody) {
+                loading.postValue(false);
+
+                String msg;
+                if (throwable != null) {
+                    msg = "Network error while loading profile.";
+                } else if (httpCode != null) {
+                    msg = "Server error " + httpCode;
+                } else {
+                    msg = "Unknown error while loading profile.";
+                }
+
+                if (errorBody != null && !errorBody.isEmpty()) {
+                    msg = msg + " " + errorBody;
+                }
+
+                errorMessage.postValue(msg);
             }
         });
     }
 
     /**
-     * Update the current doctor's profile via /api/doctors/me.
+     * Allows updating the in-memory User (from /me) after:
+     *  - PUT /me (base info update),
+     *  - profile image upload, etc.
      */
-    public void updateDoctorProfile(DoctorProfileUpdateRequestDto request,
-                                    final DoctorProfileUpdateCallback callback) {
-        AuthTokens tokens = authLocalDataSource.getTokens();
-        if (tokens == null || tokens.getAccessToken() == null) {
-            callback.onError(new IllegalStateException("Not authenticated"), null, null);
-            return;
+    public void setUser(User updatedUser) {
+        if (updatedUser == null) return;
+        user.setValue(updatedUser);
+    }
+
+    /**
+     * Updates the in-memory doctor profile after an edit.
+     * Call this after a successful backend update for doctor profiles.
+     */
+    public void updateBasicInfo(
+            String displayName,
+            String phone,
+            String clinic,
+            String city,
+            String country,
+            String regNumber,
+            BigDecimal fee,
+            String bio,
+            boolean acceptsNew,
+            boolean teleconsultation
+    ) {
+        DoctorProfile current = doctorProfile.getValue();
+        if (current == null) {
+            current = new DoctorProfile();
         }
 
-        String authHeader = buildAuthHeader(tokens);
-
-        doctorApiService.updateMyProfile(authHeader, request)
-                .enqueue(new Callback<DoctorProfile>() {
-                    @Override
-                    public void onResponse(Call<DoctorProfile> call,
-                                           Response<DoctorProfile> response) {
-                        if (!response.isSuccessful()) {
-                            String errorBody = extractErrorBody(response);
-                            callback.onError(null, response.code(), errorBody);
-                            return;
-                        }
-
-                        DoctorProfile body = response.body();
-                        if (body == null) {
-                            callback.onError(
-                                    new IllegalStateException("Empty profile body"),
-                                    response.code(),
-                                    null
-                            );
-                            return;
-                        }
-
-                        callback.onSuccess(body);
-                    }
-
-                    @Override
-                    public void onFailure(Call<DoctorProfile> call, Throwable t) {
-                        callback.onError(t, null, null);
-                    }
-                });
-    }
-
-    // ----------------- Internals -----------------
-
-    private void loadDoctorProfile(String authHeader,
-                                   final User user,
-                                   final ProfileCallback callback) {
-
-        doctorApiService.getMyProfile(authHeader)
-                .enqueue(new Callback<DoctorProfile>() {
-                    @Override
-                    public void onResponse(Call<DoctorProfile> call,
-                                           Response<DoctorProfile> response) {
-                        if (!response.isSuccessful()) {
-                            String errorBody = extractErrorBody(response);
-                            callback.onError(null, response.code(), errorBody);
-                            return;
-                        }
-
-                        DoctorProfile dto = response.body();
-                        // If null, still return user with null profile
-                        callback.onSuccess(user, dto, null);
-                    }
-
-                    @Override
-                    public void onFailure(Call<DoctorProfile> call, Throwable t) {
-                        callback.onError(t, null, null);
-                    }
-                });
-    }
-
-    private void loadPatientProfile(String authHeader,
-                                    final User user,
-                                    final ProfileCallback callback) {
-
-        patientApiService.getMyProfile(authHeader)
-                .enqueue(new Callback<PatientProfile>() {
-                    @Override
-                    public void onResponse(Call<PatientProfile> call,
-                                           Response<PatientProfile> response) {
-                        if (!response.isSuccessful()) {
-                            String errorBody = extractErrorBody(response);
-                            callback.onError(null, response.code(), errorBody);
-                            return;
-                        }
-
-                        PatientProfile dto = response.body();
-                        callback.onSuccess(user, null, dto);
-                    }
-
-                    @Override
-                    public void onFailure(Call<PatientProfile> call, Throwable t) {
-                        callback.onError(t, null, null);
-                    }
-                });
-    }
-
-    private String buildAuthHeader(AuthTokens tokens) {
-        String type = tokens.getTokenType() != null ? tokens.getTokenType() : "Bearer";
-        return type + " " + tokens.getAccessToken();
-    }
-
-    private String extractErrorBody(Response<?> response) {
-        try {
-            if (response.errorBody() != null) {
-                return response.errorBody().string();
+        // Split displayName into first / last name when possible
+        if (displayName != null && !displayName.trim().isEmpty()) {
+            String[] parts = displayName.trim().split(" ", 2);
+            current.setFirstname(parts[0]);
+            if (parts.length > 1) {
+                current.setLastname(parts[1]);
             }
-        } catch (IOException ignored) {
         }
-        return null;
-    }
-}
 
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/ApiClient.java =====
-package tn.esprit.data.remote;
-
-import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
-import retrofit2.Call;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
-import retrofit2.http.Body;
-import retrofit2.http.POST;
-
-/**
- * Provides a configured Retrofit instance to talk to the Spring Boot backend.
- * Uses 10.0.2.2 so the Android emulator can reach localhost:8080 on your machine.
- *
- * NOTE: This client is intentionally small and focused on auth for now.
- * Later we can split it into separate files (AuthApi, UserApi, DoctorApi...)
- * to avoid it becoming a god-class.
- */
-public class ApiClient {
-
-    private static final String BASE_URL = "http://10.0.2.2:8080/";
-    private static Retrofit retrofit;
-
-    private ApiClient() {
-        // No instances
-    }
-    public static <T> T createService(Class<T> serviceClass) {
-        return getRetrofit().create(serviceClass);
-    }
-
-    private static Retrofit getRetrofit() {
-        if (retrofit == null) {
-            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-            // Always log BODY for now (you can change to NONE for production)
-            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .addInterceptor(logging)
-                    .build();
-
-            retrofit = new Retrofit.Builder()
-                    .baseUrl(BASE_URL)
-                    .client(client)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build();
-        }
-        return retrofit;
-    }
-
-    public static AuthApiService getAuthApiService() {
-        return getRetrofit().create(AuthApiService.class);
-    }
-
-    /**
-     * Retrofit API for /auth endpoints.
-     */
-    public interface AuthApiService {
-
-        @POST("auth/login")
-        Call<TokenResponseDto> login(@Body LoginRequestDto request);
-
-        @POST("auth/signup")
-        Call<TokenResponseDto> signup(@Body SignupRequestDto request);
-
-        @POST("auth/refresh")
-        Call<TokenResponseDto> refresh(@Body RefreshTokenRequestDto request);
-    }
-
-    /**
-     * Matches backend dto.auth.LoginRequest (email, password).
-     */
-    public static class LoginRequestDto {
-        private String email;
-        private String password;
-
-        public LoginRequestDto(String email, String password) {
-            this.email = email;
-            this.password = password;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-    }
-
-    /**
-     * Matches backend dto.auth.SignupRequest
-     * (firstname, lastname, email, phone, password, role).
-     */
-    public static class SignupRequestDto {
-        private String firstname;
-        private String lastname;
-        private String email;
-        private String phone;
-        private String password;
-        private String role; // "DOCTOR" or "PATIENT"
-
-        public SignupRequestDto(String firstname,
-                                String lastname,
-                                String email,
-                                String phone,
-                                String password,
-                                String role) {
-            this.firstname = firstname;
-            this.lastname = lastname;
-            this.email = email;
-            this.phone = phone;
-            this.password = password;
-            this.role = role;
-        }
-
-        public String getFirstname() {
-            return firstname;
-        }
-
-        public void setFirstname(String firstname) {
-            this.firstname = firstname;
-        }
-
-        public String getLastname() {
-            return lastname;
-        }
-
-        public void setLastname(String lastname) {
-            this.lastname = lastname;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getPhone() {
-            return phone;
-        }
-
-        public void setPhone(String phone) {
-            this.phone = phone;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-
-        public String getRole() {
-            return role;
-        }
-
-        public void setRole(String role) {
-            this.role = role;
-        }
-    }
-
-    /**
-     * Matches backend dto.auth.RefreshTokenRequest (refreshToken).
-     */
-    public static class RefreshTokenRequestDto {
-        private String refreshToken;
-
-        public RefreshTokenRequestDto(String refreshToken) {
-            this.refreshToken = refreshToken;
-        }
-
-        public String getRefreshToken() {
-            return refreshToken;
-        }
-
-        public void setRefreshToken(String refreshToken) {
-            this.refreshToken = refreshToken;
-        }
-    }
-
-    /**
-     * Matches backend dto.auth.TokenResponse
-     * (accessToken, refreshToken, tokenType, expiresIn).
-     */
-    public static class TokenResponseDto {
-        private String accessToken;
-        private String refreshToken;
-        private String tokenType;
-        private Long expiresIn;
-
-        public String getAccessToken() {
-            return accessToken;
-        }
-
-        public void setAccessToken(String accessToken) {
-            this.accessToken = accessToken;
-        }
-
-        public String getRefreshToken() {
-            return refreshToken;
-        }
-
-        public void setRefreshToken(String refreshToken) {
-            this.refreshToken = refreshToken;
-        }
-
-        public String getTokenType() {
-            return tokenType;
-        }
-
-        public void setTokenType(String tokenType) {
-            this.tokenType = tokenType;
-        }
-
-        public Long getExpiresIn() {
-            return expiresIn;
-        }
-
-        public void setExpiresIn(Long expiresIn) {
-            this.expiresIn = expiresIn;
-        }
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/doctor/SpecialtyApiService.java =====
-package tn.esprit.data.remote.specialty;
-
-import java.math.BigDecimal;
-import java.util.List;
-
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.GET;
-import retrofit2.http.Header;
-import retrofit2.http.Path;
-
-public interface SpecialtyApiService {
-
-    @GET("/api/specialties")
-    Call<List<SpecialtyDto>> getAllSpecialties(
-            @Header("Authorization") String authHeader
-    );
-
-    @GET("/api/specialties/{specialtyId}/acts")
-    Call<List<ActDto>> getActsBySpecialty(
-            @Header("Authorization") String authHeader,
-            @Path("specialtyId") Long specialtyId
-    );
-
-    // --- DTOs mirroring your backend ---
-
-    public static class SpecialtyDto {
-        public Long id;
-        public String code;
-        public String name;
-        public String description;
-        public Boolean active;
-    }
-
-    public static class ActDto {
-        public Long id;
-        public String code;
-        public String name;
-        public String description;
-        public BigDecimal basePrice;
-        public Integer defaultDurationMinutes;
-        public Boolean teleconsultationAvailable;
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/doctor/DoctorApiService.java =====
-package tn.esprit.data.remote.doctor;
-
-import java.util.List;
-
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.GET;
-import retrofit2.http.Header;
-import retrofit2.http.PUT;
-import tn.esprit.domain.doctor.DoctorProfile;
-
-public interface DoctorApiService {
-
-    /**
-     * GET /api/doctors/me
-     * Returns the current doctor's profile.
-     */
-    @GET("/api/doctors/me")
-    Call<DoctorProfile> getMyProfile(
-            @Header("Authorization") String authHeader
-    );
-
-    /**
-     * PUT /api/doctors/me
-     * Updates the current doctor's profile (bio, clinicAddress, etc.).
-     */
-    @PUT("/api/doctors/me")
-    Call<DoctorProfile> updateMyProfile(
-            @Header("Authorization") String authHeader,
-            @Body DoctorProfileUpdateRequestDto request
-    );
-
-    /**
-     * PUT /api/doctors/me/practice-setup
-     * Onboarding step: choose one specialty and the acts performed.
-     */
-    @PUT("/api/doctors/me/practice-setup")
-    Call<DoctorProfile> setupPracticeForCurrentDoctor(
-            @Header("Authorization") String authHeader,
-            @Body DoctorPracticeSetupRequestDto request
-    );
-
-    // ----------- DTOs used as request bodies -----------
-
-    /**
-     * Mirrors backend DoctorProfileUpdateRequest.
-     */
-    /**
-     * Mirrors backend DoctorProfileUpdateRequest.
-     */
-    class DoctorProfileUpdateRequestDto {
-
-        private String bio;
-        private Integer yearsOfExperience;
-        private String clinicAddress;
-        private String city;
-        private String country;
-        private String medicalRegistrationNumber;
-        private java.math.BigDecimal consultationFee;
-        private Boolean acceptsNewPatients;
-        private Boolean teleconsultationEnabled;
-        private Integer maxDailyAppointments;
-        private Integer averageConsultationDurationMinutes;
-
-        // --- getters & setters ---
-
-        public String getBio() {
-            return bio;
-        }
-
-        public void setBio(String bio) {
-            this.bio = bio;
-        }
-
-        public Integer getYearsOfExperience() {
-            return yearsOfExperience;
-        }
-
-        public void setYearsOfExperience(Integer yearsOfExperience) {
-            this.yearsOfExperience = yearsOfExperience;
-        }
-
-        public String getClinicAddress() {
-            return clinicAddress;
-        }
-
-        public void setClinicAddress(String clinicAddress) {
-            this.clinicAddress = clinicAddress;
-        }
-
-        public String getCity() {
-            return city;
-        }
-
-        public void setCity(String city) {
-            this.city = city;
-        }
-
-        public String getCountry() {
-            return country;
-        }
-
-        public void setCountry(String country) {
-            this.country = country;
-        }
-
-        public String getMedicalRegistrationNumber() {
-            return medicalRegistrationNumber;
-        }
-
-        public void setMedicalRegistrationNumber(String medicalRegistrationNumber) {
-            this.medicalRegistrationNumber = medicalRegistrationNumber;
-        }
-
-        public java.math.BigDecimal getConsultationFee() {
-            return consultationFee;
-        }
-
-        public void setConsultationFee(java.math.BigDecimal consultationFee) {
-            this.consultationFee = consultationFee;
-        }
-
-        public Boolean getAcceptsNewPatients() {
-            return acceptsNewPatients;
-        }
-
-        public void setAcceptsNewPatients(Boolean acceptsNewPatients) {
-            this.acceptsNewPatients = acceptsNewPatients;
-        }
-
-        public Boolean getTeleconsultationEnabled() {
-            return teleconsultationEnabled;
-        }
-
-        public void setTeleconsultationEnabled(Boolean teleconsultationEnabled) {
-            this.teleconsultationEnabled = teleconsultationEnabled;
-        }
-
-        public Integer getMaxDailyAppointments() {
-            return maxDailyAppointments;
-        }
-
-        public void setMaxDailyAppointments(Integer maxDailyAppointments) {
-            this.maxDailyAppointments = maxDailyAppointments;
-        }
-
-        public Integer getAverageConsultationDurationMinutes() {
-            return averageConsultationDurationMinutes;
-        }
-
-        public void setAverageConsultationDurationMinutes(Integer averageConsultationDurationMinutes) {
-            this.averageConsultationDurationMinutes = averageConsultationDurationMinutes;
-        }
-    }
-
-    /**
-     * Mirrors backend DoctorPracticeSetupRequest.
-     */
-    class DoctorPracticeSetupRequestDto {
-        public Long specialtyId;
-        public List<Long> actIds;
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/user/UserApiService.java =====
-package tn.esprit.data.remote.user;
-
-import retrofit2.Call;
-import retrofit2.http.GET;
-import retrofit2.http.Header;
-import tn.esprit.domain.user.User;
-
-/**
- * Retrofit API for general user operations.
- *
- * We directly return the domain User model to avoid extra mapping.
- */
-public interface UserApiService {
-
-    /**
-     * GET /me
-     * Authorization: Bearer <access_token>
-     */
-    @GET("me")
-    Call<User> getCurrentUser(@Header("Authorization") String authorization);
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/user/UserImageApiService.java =====
-package tn.esprit.data.remote.user;
-
-import okhttp3.MultipartBody;
-import retrofit2.Call;
-import retrofit2.http.Header;
-import retrofit2.http.Multipart;
-import retrofit2.http.POST;
-import retrofit2.http.Part;
-
-import tn.esprit.domain.user.User;
-
-/**
- * API for user profile image:
- *
- *   POST /users/me/profile-image
- *   multipart/form-data with field "image"
- */
-public interface UserImageApiService {
-
-    @Multipart
-    @POST("/users/me/profile-image")
-    Call<User> uploadMyProfileImage(
-            @Header("Authorization") String authHeader,
-            @Part MultipartBody.Part image
-    );
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/user/UserAccountApiService.java =====
-package tn.esprit.data.remote.user;
-
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.Header;
-import retrofit2.http.PUT;
-
-import tn.esprit.domain.user.User;
-
-/**
- * API for base user information (firstname, lastname, email, phone).
- *
- * Uses:
- *   PUT /me
- */
-public interface UserAccountApiService {
-
-    class UserUpdateRequestDto {
-        private String firstname;
-        private String lastname;
-        private String email;
-        private String phone;
-
-        public String getFirstname() {
-            return firstname;
-        }
-
-        public void setFirstname(String firstname) {
-            this.firstname = firstname;
-        }
-
-        public String getLastname() {
-            return lastname;
-        }
-
-        public void setLastname(String lastname) {
-            this.lastname = lastname;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getPhone() {
-            return phone;
-        }
-
-        public void setPhone(String phone) {
-            this.phone = phone;
-        }
-    }
-
-    @PUT("/me")
-    Call<User> updateCurrentUser(
-            @Header("Authorization") String authHeader,
-            @Body UserUpdateRequestDto body
-    );
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/patient/PatientApiService.java =====
-package tn.esprit.data.remote.patient;
-
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.GET;
-import retrofit2.http.Header;
-import retrofit2.http.PUT;
-import tn.esprit.domain.patient.PatientProfile;
-
-/**
- * Retrofit API for patient-specific operations.
- *
- * We directly return the domain PatientProfile model.
- */
-public interface PatientApiService {
-
-    /**
-     * GET /patients/me
-     * Authorization: Bearer <access_token>
-     */
-    @GET("patients/me")
-    Call<PatientProfile> getMyProfile(@Header("Authorization") String authorization);
-
-    /**
-     * PUT /patients/me
-     * Authorization: Bearer <access_token>
-     *
-     * Body matches backend dto.patient.PatientProfileUpdateRequest
-     * (with dates formatted as ISO-8601 strings: yyyy-MM-dd).
-     */
-    @PUT("patients/me")
-    Call<PatientProfile> updateMyProfile(
-            @Header("Authorization") String authorization,
-            @Body PatientProfileUpdateRequestDto request
-    );
-
-    /**
-     * DTO mirroring backend PatientProfileUpdateRequest.
-     * Used directly as Retrofit request body (no extra mapping).
-     */
-    class PatientProfileUpdateRequestDto {
-
-        private String dateOfBirth; // ISO date string yyyy-MM-dd
-        private String gender;
-        private String bloodType;
-        private Integer heightCm;
-        private Integer weightKg;
-        private String address;
-        private String city;
-        private String country;
-        private String maritalStatus;
-        private Boolean smoker;
-        private Boolean alcoholUse;
-        private String notes;
-
-        public PatientProfileUpdateRequestDto() {
-        }
-
-        // Getters & setters
-
-        public String getDateOfBirth() {
-            return dateOfBirth;
-        }
-
-        public void setDateOfBirth(String dateOfBirth) {
-            this.dateOfBirth = dateOfBirth;
-        }
-
-        public String getGender() {
-            return gender;
-        }
-
-        public void setGender(String gender) {
-            this.gender = gender;
-        }
-
-        public String getBloodType() {
-            return bloodType;
-        }
-
-        public void setBloodType(String bloodType) {
-            this.bloodType = bloodType;
-        }
-
-        public Integer getHeightCm() {
-            return heightCm;
-        }
-
-        public void setHeightCm(Integer heightCm) {
-            this.heightCm = heightCm;
-        }
-
-        public Integer getWeightKg() {
-            return weightKg;
-        }
-
-        public void setWeightKg(Integer weightKg) {
-            this.weightKg = weightKg;
-        }
-
-        public String getAddress() {
-            return address;
-        }
-
-        public void setAddress(String address) {
-            this.address = address;
-        }
-
-        public String getCity() {
-            return city;
-        }
-
-        public void setCity(String city) {
-            this.city = city;
-        }
-
-        public String getCountry() {
-            return country;
-        }
-
-        public void setCountry(String country) {
-            this.country = country;
-        }
-
-        public String getMaritalStatus() {
-            return maritalStatus;
-        }
-
-        public void setMaritalStatus(String maritalStatus) {
-            this.maritalStatus = maritalStatus;
-        }
-
-        public Boolean getSmoker() {
-            return smoker;
-        }
-
-        public void setSmoker(Boolean smoker) {
-            this.smoker = smoker;
-        }
-
-        public Boolean getAlcoholUse() {
-            return alcoholUse;
-        }
-
-        public void setAlcoholUse(Boolean alcoholUse) {
-            this.alcoholUse = alcoholUse;
-        }
-
-        public String getNotes() {
-            return notes;
-        }
-
-        public void setNotes(String notes) {
-            this.notes = notes;
-        }
+        current.setPhone(phone);
+        current.setClinicAddress(clinic);
+        current.setCity(city);
+        current.setCountry(country);
+        current.setMedicalRegistrationNumber(regNumber);
+        current.setConsultationFee(fee);
+        current.setBio(bio);
+        current.setAcceptsNewPatients(acceptsNew);
+        current.setTeleconsultationEnabled(teleconsultation);
+
+        doctorProfile.setValue(current);
     }
 }
 

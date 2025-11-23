@@ -159,6 +159,47 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Refreshes the user info in the header + drawer
+     * WITHOUT touching bottom navigation selection or navigating anywhere.
+     *
+     * Called from Profile / edit fragments after the user updates their info.
+     */
+    public void refreshUserProfileUi() {
+        if (profileRepository == null) {
+            return;
+        }
+
+        profileRepository.loadProfile(new ProfileRepository.ProfileCallback() {
+            @Override
+            public void onSuccess(User user,
+                                  DoctorProfile doctorProfile,
+                                  PatientProfile patientProfile) {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+
+                String role = user != null ? user.getRole() : null;
+
+                // Update header + drawer only
+                applyHeaderForUser(user, role);
+                // IMPORTANT: do NOT call applyBottomNavForRole() here,
+                // otherwise it may re-select "Home" and navigate away
+                // from the Profile screen.
+            }
+
+            @Override
+            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                // Optional: you can show a toast or log, but do not navigate.
+                // Toast.makeText(MainActivity.this, R.string.profile_error_loading, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+
     private void loadUserAndApplyRole() {
         if (profileRepository == null) return;
 

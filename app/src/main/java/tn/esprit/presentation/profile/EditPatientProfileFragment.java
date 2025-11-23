@@ -1,12 +1,13 @@
 package tn.esprit.presentation.profile;
 
-import android.content.Intent;
+import android.app.Activity;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -15,37 +16,23 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-
+import tn.esprit.MainActivity;
 import tn.esprit.R;
-import tn.esprit.data.auth.AuthLocalDataSource;
 import tn.esprit.data.profile.ProfileRepository;
-import tn.esprit.data.remote.ApiClient;
-import tn.esprit.data.remote.patient.PatientApiService;
 import tn.esprit.data.remote.patient.PatientApiService.PatientProfileUpdateRequestDto;
-import tn.esprit.domain.auth.AuthTokens;
 import tn.esprit.domain.doctor.DoctorProfile;
 import tn.esprit.domain.patient.PatientProfile;
 import tn.esprit.domain.user.User;
-import tn.esprit.presentation.auth.AuthGateActivity;
 
 public class EditPatientProfileFragment extends Fragment {
-
-    private View rootView;
-    private View loadingOverlay;
-
-    private MaterialToolbar toolbar;
 
     private TextInputEditText inputDob;
     private TextInputEditText inputGender;
     private TextInputEditText inputBloodType;
-    private TextInputEditText inputHeight;
-    private TextInputEditText inputWeight;
+    private TextInputEditText inputHeightCm;
+    private TextInputEditText inputWeightKg;
     private TextInputEditText inputAddress;
     private TextInputEditText inputCity;
     private TextInputEditText inputCountry;
@@ -53,12 +40,21 @@ public class EditPatientProfileFragment extends Fragment {
     private TextInputEditText inputNotes;
     private CheckBox checkSmoker;
     private CheckBox checkAlcohol;
-    private MaterialButton buttonSave;
-    private MaterialButton buttonBaseInfo;
+    private View loadingOverlay;
 
     private ProfileRepository profileRepository;
-    private AuthLocalDataSource authLocalDataSource;
-    private PatientApiService patientApiService;
+    private PatientProfile currentPatientProfile;
+    private User currentUser;
+
+    public EditPatientProfileFragment() {
+        // Required empty constructor
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        profileRepository = new ProfileRepository(requireContext());
+    }
 
     @Nullable
     @Override
@@ -73,15 +69,12 @@ public class EditPatientProfileFragment extends Fragment {
                               @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        rootView = view.findViewById(R.id.edit_patient_root);
-        loadingOverlay = view.findViewById(R.id.edit_patient_loading_overlay);
-        toolbar = view.findViewById(R.id.toolbar_edit_patient);
-
+        MaterialToolbar toolbar = view.findViewById(R.id.toolbar_edit_patient);
         inputDob = view.findViewById(R.id.input_dob);
         inputGender = view.findViewById(R.id.input_gender);
         inputBloodType = view.findViewById(R.id.input_blood_type);
-        inputHeight = view.findViewById(R.id.input_height_cm);
-        inputWeight = view.findViewById(R.id.input_weight_kg);
+        inputHeightCm = view.findViewById(R.id.input_height_cm);
+        inputWeightKg = view.findViewById(R.id.input_weight_kg);
         inputAddress = view.findViewById(R.id.input_address);
         inputCity = view.findViewById(R.id.input_city);
         inputCountry = view.findViewById(R.id.input_country);
@@ -89,46 +82,34 @@ public class EditPatientProfileFragment extends Fragment {
         inputNotes = view.findViewById(R.id.input_notes);
         checkSmoker = view.findViewById(R.id.check_smoker);
         checkAlcohol = view.findViewById(R.id.check_alcohol);
-        buttonSave = view.findViewById(R.id.button_complete_profile);
-        buttonBaseInfo = view.findViewById(R.id.button_base_info);
+        MaterialButton buttonComplete = view.findViewById(R.id.button_complete_profile);
+        MaterialButton buttonBaseInfo = view.findViewById(R.id.button_base_info);
+        loadingOverlay = view.findViewById(R.id.edit_patient_loading_overlay);
 
-        profileRepository = new ProfileRepository(requireContext());
-        authLocalDataSource = new AuthLocalDataSource(requireContext().getApplicationContext());
-        patientApiService = ApiClient.createService(PatientApiService.class);
-
-        setupToolbar();
-        setupListeners();
-        loadExistingProfile();
-    }
-
-    private void setupToolbar() {
         if (toolbar != null) {
-            toolbar.setTitle(R.string.profile_patient_edit_title);
-            // Use a system drawable to avoid custom drawables
-            toolbar.setNavigationIcon(android.R.drawable.ic_media_previous);
-            toolbar.setNavigationOnClickListener(v -> {
-                try {
-                    NavHostFragment.findNavController(this).navigateUp();
-                } catch (IllegalStateException e) {
-                    requireActivity().onBackPressed();
-                }
-            });
+            toolbar.setNavigationOnClickListener(v ->
+                    NavHostFragment.findNavController(this).navigateUp());
         }
-    }
-
-    private void setupListeners() {
-        buttonSave.setOnClickListener(v -> submitProfile());
+        if (buttonComplete != null) {
+            buttonComplete.setOnClickListener(v -> savePatientProfile());
+        }
         if (buttonBaseInfo != null) {
             buttonBaseInfo.setOnClickListener(v ->
-                    NavHostFragment.findNavController(EditPatientProfileFragment.this)
-                            .navigate(R.id.userBaseInfoFragment)
-            );
+                    NavHostFragment.findNavController(this)
+                            .navigate(R.id.action_editPatientProfileFragment_to_userBaseInfoFragment));
+        }
+
+        loadProfileForEdit();
+    }
+
+    private void showLoading(boolean show) {
+        if (loadingOverlay != null) {
+            loadingOverlay.setVisibility(show ? View.VISIBLE : View.GONE);
         }
     }
 
-    private void loadExistingProfile() {
+    private void loadProfileForEdit() {
         showLoading(true);
-
         profileRepository.loadProfile(new ProfileRepository.ProfileCallback() {
             @Override
             public void onSuccess(User user,
@@ -137,221 +118,211 @@ public class EditPatientProfileFragment extends Fragment {
                 if (!isAdded()) return;
                 showLoading(false);
 
+                currentUser = user;
+                currentPatientProfile = patientProfile;
+
                 if (patientProfile != null) {
-                    bindPatientProfile(patientProfile);
+                    try {
+                        if (inputDob != null) {
+                            // Assuming PatientProfile keeps dateOfBirth as a String or a
+                            // type whose toString() is ISO date.
+                            Object dob = patientProfile.getDateOfBirth();
+                            inputDob.setText(dob != null ? dob.toString() : "");
+                        }
+                    } catch (Exception ignored) {
+                    }
+                    if (inputGender != null) {
+                        try {
+                            inputGender.setText(patientProfile.getGender());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputBloodType != null) {
+                        try {
+                            inputBloodType.setText(patientProfile.getBloodType());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputHeightCm != null) {
+                        try {
+                            Integer h = patientProfile.getHeightCm();
+                            inputHeightCm.setText(h != null ? String.valueOf(h) : "");
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputWeightKg != null) {
+                        try {
+                            Integer w = patientProfile.getWeightKg();
+                            inputWeightKg.setText(w != null ? String.valueOf(w) : "");
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputAddress != null) {
+                        try {
+                            inputAddress.setText(patientProfile.getAddress());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputCity != null) {
+                        try {
+                            inputCity.setText(patientProfile.getCity());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputCountry != null) {
+                        try {
+                            inputCountry.setText(patientProfile.getCountry());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputMaritalStatus != null) {
+                        try {
+                            inputMaritalStatus.setText(patientProfile.getMaritalStatus());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (inputNotes != null) {
+                        try {
+                            inputNotes.setText(patientProfile.getNotes());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (checkSmoker != null) {
+                        try {
+                            Boolean smoker = patientProfile.getSmoker();
+                            checkSmoker.setChecked(smoker != null && smoker);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (checkAlcohol != null) {
+                        try {
+                            Boolean alcohol = patientProfile.getAlcoholUse();
+                            checkAlcohol.setChecked(alcohol != null && alcohol);
+                        } catch (Exception ignored) {
+                        }
+                    }
                 }
             }
 
             @Override
-            public void onError(Throwable throwable,
-                                Integer httpCode,
-                                String errorBody) {
+            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
                 if (!isAdded()) return;
                 showLoading(false);
-
-                Snackbar.make(
-                        rootView,
-                        getString(R.string.profile_error_generic),
-                        Snackbar.LENGTH_LONG
-                ).show();
+                Toast.makeText(requireContext(),
+                        R.string.profile_error_loading,
+                        Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void bindPatientProfile(@NonNull PatientProfile profile) {
-        if (profile.getDateOfBirth() != null) {
-            inputDob.setText(profile.getDateOfBirth());
-        }
-        if (profile.getGender() != null) {
-            inputGender.setText(profile.getGender());
-        }
-        if (profile.getBloodType() != null) {
-            inputBloodType.setText(profile.getBloodType());
-        }
-        if (profile.getHeightCm() != null) {
-            inputHeight.setText(String.valueOf(profile.getHeightCm()));
-        }
-        if (profile.getWeightKg() != null) {
-            inputWeight.setText(String.valueOf(profile.getWeightKg()));
-        }
-        if (profile.getAddress() != null) {
-            inputAddress.setText(profile.getAddress());
-        }
-        if (profile.getCity() != null) {
-            inputCity.setText(profile.getCity());
-        }
-        if (profile.getCountry() != null) {
-            inputCountry.setText(profile.getCountry());
-        }
-        if (profile.getMaritalStatus() != null) {
-            inputMaritalStatus.setText(profile.getMaritalStatus());
-        }
-        if (profile.getNotes() != null) {
-            inputNotes.setText(profile.getNotes());
-        }
-        if (profile.getSmoker() != null) {
-            checkSmoker.setChecked(profile.getSmoker());
-        }
-        if (profile.getAlcoholUse() != null) {
-            checkAlcohol.setChecked(profile.getAlcoholUse());
-        }
-    }
-
-    private void submitProfile() {
-        String dob = textOf(inputDob);
-        String gender = textOf(inputGender);
-        String bloodType = textOf(inputBloodType);
-        String heightStr = textOf(inputHeight);
-        String weightStr = textOf(inputWeight);
-        String address = textOf(inputAddress);
-        String city = textOf(inputCity);
-        String country = textOf(inputCountry);
-        String maritalStatus = textOf(inputMaritalStatus);
-        String notes = textOf(inputNotes);
-        boolean smoker = checkSmoker.isChecked();
-        boolean alcoholUse = checkAlcohol.isChecked();
-
-        // Validate DOB format if provided
-        if (!TextUtils.isEmpty(dob) && !dob.matches("\\d{4}-\\d{2}-\\d{2}")) {
-            inputDob.setError(getString(R.string.onboarding_patient_error_dob_format));
+    private void savePatientProfile() {
+        if (currentUser == null) {
+            Toast.makeText(requireContext(),
+                    R.string.profile_error_unknown_role,
+                    Toast.LENGTH_SHORT).show();
             return;
-        } else {
-            inputDob.setError(null);
         }
-
-        Integer height = parseIntegerOrNull(heightStr);
-        Integer weight = parseIntegerOrNull(weightStr);
+        String role = currentUser.getRole();
+        if (role == null || !"PATIENT".equalsIgnoreCase(role)) {
+            Toast.makeText(requireContext(),
+                    R.string.profile_error_unknown_role,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         PatientProfileUpdateRequestDto request = new PatientProfileUpdateRequestDto();
-        request.setDateOfBirth(emptyToNull(dob));
-        request.setGender(emptyToNull(gender));
-        request.setBloodType(emptyToNull(bloodType));
-        request.setHeightCm(height);
-        request.setWeightKg(weight);
-        request.setAddress(emptyToNull(address));
-        request.setCity(emptyToNull(city));
-        request.setCountry(emptyToNull(country));
-        request.setMaritalStatus(emptyToNull(maritalStatus));
-        request.setSmoker(smoker);
-        request.setAlcoholUse(alcoholUse);
-        request.setNotes(emptyToNull(notes));
 
-        AuthTokens tokens = authLocalDataSource.getTokens();
-        if (tokens == null || tokens.getAccessToken() == null) {
-            Snackbar.make(
-                    rootView,
-                    getString(R.string.onboarding_patient_error_not_authenticated),
-                    Snackbar.LENGTH_LONG
-            ).show();
-            goToLoginFallback();
-            return;
+        if (inputDob != null) {
+            request.setDateOfBirth(trimOrNull(inputDob.getText()));
+        }
+        if (inputGender != null) {
+            request.setGender(trimOrNull(inputGender.getText()));
+        }
+        if (inputBloodType != null) {
+            request.setBloodType(trimOrNull(inputBloodType.getText()));
+        }
+        if (inputAddress != null) {
+            request.setAddress(trimOrNull(inputAddress.getText()));
+        }
+        if (inputCity != null) {
+            request.setCity(trimOrNull(inputCity.getText()));
+        }
+        if (inputCountry != null) {
+            request.setCountry(trimOrNull(inputCountry.getText()));
+        }
+        if (inputMaritalStatus != null) {
+            request.setMaritalStatus(trimOrNull(inputMaritalStatus.getText()));
+        }
+        if (inputNotes != null) {
+            request.setNotes(trimOrNull(inputNotes.getText()));
         }
 
-        String authHeader = buildAuthHeader(tokens);
+        if (inputHeightCm != null) {
+            String hText = trimOrNull(inputHeightCm.getText());
+            if (!TextUtils.isEmpty(hText)) {
+                try {
+                    request.setHeightCm(Integer.parseInt(hText));
+                } catch (NumberFormatException e) {
+                    Toast.makeText(requireContext(),
+                            R.string.profile_error_invalid_height,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+        }
+        if (inputWeightKg != null) {
+            String wText = trimOrNull(inputWeightKg.getText());
+            if (!TextUtils.isEmpty(wText)) {
+                try {
+                    request.setWeightKg(Integer.parseInt(wText));
+                } catch (NumberFormatException e) {
+                    Toast.makeText(requireContext(),
+                            R.string.profile_error_invalid_weight,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+        }
+
+        if (checkSmoker != null) {
+            request.setSmoker(checkSmoker.isChecked());
+        }
+        if (checkAlcohol != null) {
+            request.setAlcoholUse(checkAlcohol.isChecked());
+        }
 
         showLoading(true);
+        profileRepository.updatePatientProfile(request, new ProfileRepository.PatientProfileUpdateCallback() {
+            @Override
+            public void onSuccess(PatientProfile updatedProfile) {
+                if (!isAdded()) return;
+                showLoading(false);
+                Toast.makeText(requireContext(),
+                        R.string.profile_saved,
+                        Toast.LENGTH_SHORT).show();
 
-        patientApiService.updateMyProfile(authHeader, request)
-                .enqueue(new Callback<PatientProfile>() {
-                    @Override
-                    public void onResponse(Call<PatientProfile> call,
-                                           Response<PatientProfile> response) {
-                        if (!isAdded()) {
-                            return;
-                        }
-                        showLoading(false);
+                Activity activity = getActivity();
+                if (activity instanceof MainActivity) {
+                    ((MainActivity) activity).refreshUserProfileUi();
+                }
+                NavHostFragment.findNavController(EditPatientProfileFragment.this).navigateUp();
+            }
 
-                        if (!response.isSuccessful()) {
-                            Snackbar.make(
-                                    rootView,
-                                    getString(R.string.onboarding_patient_error_generic),
-                                    Snackbar.LENGTH_LONG
-                            ).show();
-                            return;
-                        }
-
-                        Snackbar.make(
-                                rootView,
-                                getString(R.string.onboarding_patient_success),
-                                Snackbar.LENGTH_LONG
-                        ).show();
-
-                        try {
-                            NavHostFragment.findNavController(EditPatientProfileFragment.this)
-                                    .navigateUp();
-                        } catch (IllegalStateException e) {
-                            requireActivity().onBackPressed();
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Call<PatientProfile> call, Throwable t) {
-                        if (!isAdded()) {
-                            return;
-                        }
-                        showLoading(false);
-                        Snackbar.make(
-                                rootView,
-                                getString(R.string.onboarding_patient_error_network),
-                                Snackbar.LENGTH_LONG
-                        ).show();
-                    }
-                });
+            @Override
+            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
+                if (!isAdded()) return;
+                showLoading(false);
+                Toast.makeText(requireContext(),
+                        R.string.profile_error_saving,
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
-    private String textOf(TextInputEditText editText) {
-        return editText.getText() != null
-                ? editText.getText().toString().trim()
-                : "";
-    }
-
-    private Integer parseIntegerOrNull(String value) {
-        if (TextUtils.isEmpty(value)) return null;
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
-    }
-
-    private String emptyToNull(String value) {
-        return TextUtils.isEmpty(value) ? null : value;
-    }
-
-    private String buildAuthHeader(AuthTokens tokens) {
-        String type = tokens.getTokenType() != null ? tokens.getTokenType() : "Bearer";
-        return type + " " + tokens.getAccessToken();
-    }
-
-    private void showLoading(boolean show) {
-        if (loadingOverlay != null) {
-            loadingOverlay.setVisibility(show ? View.VISIBLE : View.GONE);
-        }
-
-        boolean enabled = !show;
-
-        inputDob.setEnabled(enabled);
-        inputGender.setEnabled(enabled);
-        inputBloodType.setEnabled(enabled);
-        inputHeight.setEnabled(enabled);
-        inputWeight.setEnabled(enabled);
-        inputAddress.setEnabled(enabled);
-        inputCity.setEnabled(enabled);
-        inputCountry.setEnabled(enabled);
-        inputMaritalStatus.setEnabled(enabled);
-        inputNotes.setEnabled(enabled);
-        checkSmoker.setEnabled(enabled);
-        checkAlcohol.setEnabled(enabled);
-        buttonSave.setEnabled(enabled);
-        if (buttonBaseInfo != null) {
-            buttonBaseInfo.setEnabled(enabled);
-        }
-    }
-
-    private void goToLoginFallback() {
-        if (!isAdded()) return;
-        Intent intent = new Intent(requireContext(), AuthGateActivity.class);
-        startActivity(intent);
-        requireActivity().finish();
+    @Nullable
+    private String trimOrNull(@Nullable CharSequence cs) {
+        if (cs == null) return null;
+        String s = cs.toString().trim();
+        return s.isEmpty() ? null : s;
     }
 }

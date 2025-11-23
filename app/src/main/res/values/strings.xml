@@ -263,5 +263,31 @@
     <string name="profile_edit_patient_not_implemented">
         Editing patient profile is not yet implemented.
     </string>
+    <!-- Profile: missing keys used in Java code -->
+
+    <!-- Generic load/save errors -->
+    <string name="profile_error_loading">Could not load your profile. Please try again.</string>
+    <string name="profile_error_saving">Could not save your profile. Please try again.</string>
+
+    <!-- Validation errors -->
+    <string name="profile_error_invalid_email">Please enter a valid email address.</string>
+    <string name="profile_error_invalid_fee">Enter a valid consultation fee.</string>
+    <string name="profile_error_invalid_height">Enter a valid height (in cm).</string>
+    <string name="profile_error_invalid_weight">Enter a valid weight (in kg).</string>
+
+    <!-- Save success -->
+    <string name="profile_saved">Profile saved.</string>
+
+    <!-- Role / state errors -->
+    <string name="profile_error_unknown_role">Unknown user role. Please sign in again.</string>
+
+    <!-- Doctor-specific formatting & flags -->
+    <string name="profile_doctor_name_format">Dr. %1$s</string>
+    <string name="profile_flag_not_accepts_new">Not accepting new patients</string>
+    <string name="profile_flag_no_teleconsultation">Teleconsultation not available</string>
+
+    <!-- Patient-specific formatting -->
+    <string name="profile_patient_blood_type_format">Blood type %1$s</string>
+
 
 </resources>
