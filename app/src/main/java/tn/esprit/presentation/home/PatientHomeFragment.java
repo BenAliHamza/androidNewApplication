@@ -16,10 +16,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.navigation.NavController;
-import androidx.navigation.fragment.NavHostFragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -30,7 +30,8 @@ import tn.esprit.domain.doctor.DoctorSearchResult;
 
 public class PatientHomeFragment extends Fragment implements DoctorSearchResultAdapter.OnDoctorClickListener {
 
-    private static final long SEARCH_DEBOUNCE_MS = 350L;
+    // Faster typing response
+    private static final long SEARCH_DEBOUNCE_MS = 200L;
 
     private PatientHomeViewModel viewModel;
 
@@ -156,7 +157,7 @@ public class PatientHomeFragment extends Fragment implements DoctorSearchResultA
 
         boolean hasResults = list != null && !list.isEmpty();
 
-        if (trimmed.length() < 2) {
+        if (trimmed.length() < 3) {
             // Idle state: encourage user to start typing
             textEmpty.setText(R.string.home_patient_search_empty_idle);
             textEmpty.setVisibility(View.VISIBLE);
@@ -173,13 +174,35 @@ public class PatientHomeFragment extends Fragment implements DoctorSearchResultA
     public void onDoctorClicked(@NonNull DoctorSearchResult doctor) {
         if (!isAdded()) return;
 
-        NavController navController = NavHostFragment.findNavController(this);
+        Long doctorId = doctor.getDoctorId();
+        if (doctorId == null || doctorId <= 0L) {
+            // Defensive: backend should always send a valid id, but don't crash if not.
+            Toast.makeText(
+                    requireContext(),
+                    getString(R.string.doctor_public_error_missing_id),
+                    Toast.LENGTH_SHORT
+            ).show();
+            return;
+        }
 
         Bundle args = new Bundle();
-        if (doctor.getDoctorId() != null) {
-            args.putLong("doctorId", doctor.getDoctorId());
+        // Key must match the <argument android:name="doctorId" /> in nav_main
+        args.putLong("doctorId", doctorId);
+
+        try {
+            NavController navController = Navigation.findNavController(requireView());
+            navController.navigate(
+                    R.id.action_patientHomeFragment_to_doctorPublicProfileFragment,
+                    args
+            );
+        } catch (IllegalStateException e) {
+            // Fallback: don't crash if nav host is not available for some reason
+            Toast.makeText(
+                    requireContext(),
+                    "Could not open doctor profile.",
+                    Toast.LENGTH_SHORT
+            ).show();
         }
-        navController.navigate(R.id.doctorPublicProfileFragment, args);
     }
 
     @Override

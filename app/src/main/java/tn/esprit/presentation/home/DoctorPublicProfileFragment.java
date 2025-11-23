@@ -5,9 +5,12 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -16,44 +19,63 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.chip.Chip;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import tn.esprit.R;
 import tn.esprit.data.doctor.DoctorDirectoryRepository;
 import tn.esprit.domain.doctor.DoctorPublicProfile;
 
+/**
+ * Public doctor profile screen, opened from patient home search.
+ *
+ * Shows:
+ *  - avatar, name, specialty, city/country
+ *  - flags (accepting new patients, teleconsultation)
+ *  - fee, bio, clinic info
+ *  - list of acts
+ *  - CTAs (Book, Message) -- currently stubbed with toasts.
+ */
 public class DoctorPublicProfileFragment extends Fragment {
 
-    public static final String ARG_DOCTOR_ID = "arg_doctor_id";
+    private static final String ARG_DOCTOR_ID = "doctorId";
 
+    private DoctorDirectoryRepository doctorDirectoryRepository;
+
+    // Keep current profile for CTAs
+    @Nullable
+    private DoctorPublicProfile currentProfile;
+
+    // Views
     private ProgressBar progressBar;
-    private View contentRoot;
-    private TextView textError;
+    private View errorContainer;
+    private TextView errorText;
+    private View contentContainer;
 
     private ImageView imageAvatar;
     private TextView textName;
     private TextView textSpecialty;
     private TextView textLocation;
-
     private Chip chipAcceptingNew;
     private Chip chipTeleconsultation;
+    private TextView textConsultationFee;
 
     private TextView textBio;
     private TextView textExperience;
-    private TextView textFee;
 
     private TextView textClinicAddress;
-    private TextView textClinicLocation;
+    private TextView textClinicCityCountry;
 
     private RecyclerView recyclerActs;
     private TextView textActsEmpty;
 
-    private DoctorDirectoryRepository doctorDirectoryRepository;
-    private DoctorActAdapter actAdapter;
+    private Button buttonBook;
+    private Button buttonMessage;
 
-    private long doctorId = -1L;
+    private DoctorActAdapter actsAdapter;
 
     public DoctorPublicProfileFragment() {
         // Required empty constructor
@@ -72,115 +94,114 @@ public class DoctorPublicProfileFragment extends Fragment {
                               @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        doctorDirectoryRepository = new DoctorDirectoryRepository(requireContext());
+
         progressBar = view.findViewById(R.id.doctor_public_progress);
-        contentRoot = view.findViewById(R.id.doctor_public_content_root);
-        textError = view.findViewById(R.id.doctor_public_error);
+        errorContainer = view.findViewById(R.id.doctor_public_error);
+        errorText = view.findViewById(R.id.doctor_public_error_message);
+        contentContainer = view.findViewById(R.id.doctor_public_content);
 
-        imageAvatar = view.findViewById(R.id.doctor_public_avatar);
-        textName = view.findViewById(R.id.doctor_public_name);
-        textSpecialty = view.findViewById(R.id.doctor_public_specialty);
-        textLocation = view.findViewById(R.id.doctor_public_location);
+        imageAvatar = view.findViewById(R.id.image_doctor_avatar);
+        textName = view.findViewById(R.id.text_doctor_name);
+        textSpecialty = view.findViewById(R.id.text_doctor_specialty);
+        textLocation = view.findViewById(R.id.text_doctor_location);
+        chipAcceptingNew = view.findViewById(R.id.chip_accepting_new);
+        chipTeleconsultation = view.findViewById(R.id.chip_teleconsultation);
+        textConsultationFee = view.findViewById(R.id.text_consultation_fee);
 
-        chipAcceptingNew = view.findViewById(R.id.chip_doctor_accepting_new);
-        chipTeleconsultation = view.findViewById(R.id.chip_doctor_teleconsultation);
+        textBio = view.findViewById(R.id.text_bio);
+        textExperience = view.findViewById(R.id.text_experience);
 
-        textBio = view.findViewById(R.id.doctor_public_bio);
-        textExperience = view.findViewById(R.id.doctor_public_experience);
-        textFee = view.findViewById(R.id.doctor_public_fee);
+        textClinicAddress = view.findViewById(R.id.text_clinic_address);
+        textClinicCityCountry = view.findViewById(R.id.text_clinic_city_country);
 
-        textClinicAddress = view.findViewById(R.id.doctor_public_clinic_address);
-        textClinicLocation = view.findViewById(R.id.doctor_public_clinic_location);
+        recyclerActs = view.findViewById(R.id.recycler_acts);
+        textActsEmpty = view.findViewById(R.id.text_acts_empty);
 
-        recyclerActs = view.findViewById(R.id.recycler_doctor_acts);
-        textActsEmpty = view.findViewById(R.id.text_doctor_acts_empty);
+        buttonBook = view.findViewById(R.id.button_book);
+        buttonMessage = view.findViewById(R.id.button_message);
 
-        actAdapter = new DoctorActAdapter();
+        // Acts list
+        actsAdapter = new DoctorActAdapter();
         if (recyclerActs != null) {
             recyclerActs.setLayoutManager(new LinearLayoutManager(requireContext()));
-            recyclerActs.setAdapter(actAdapter);
+            recyclerActs.setAdapter(actsAdapter);
         }
 
-        doctorDirectoryRepository = new DoctorDirectoryRepository(requireContext().getApplicationContext());
+        // CTAs
+        if (buttonBook != null) {
+            buttonBook.setOnClickListener(v -> handleBookClick());
+        }
+        if (buttonMessage != null) {
+            buttonMessage.setOnClickListener(v -> handleMessageClick());
+        }
 
-        // Read doctorId from arguments
+        // Resolve doctorId from arguments
+        long doctorId = -1L;
         Bundle args = getArguments();
         if (args != null) {
             doctorId = args.getLong(ARG_DOCTOR_ID, -1L);
         }
 
         if (doctorId <= 0L) {
+            // Missing/invalid id → show error state
+            showLoading(false);
+            showContent(false);
             showError(getString(R.string.doctor_public_error_missing_id), false);
-        } else {
-            loadDoctorPublicProfile();
+            return;
         }
+
+        // Load profile
+        loadDoctorProfile(doctorId);
     }
 
-    private void loadDoctorPublicProfile() {
-        showLoading();
+    private void loadDoctorProfile(long doctorId) {
+        showLoading(true);
+        showError(null, false);
+        showContent(false);
+        currentProfile = null;
 
-        doctorDirectoryRepository.getDoctorPublicProfile(doctorId, new DoctorDirectoryRepository.PublicProfileCallback() {
-            @Override
-            public void onSuccess(DoctorPublicProfile profile) {
-                if (!isAdded()) return;
-                if (profile == null) {
-                    showError(getString(R.string.doctor_public_error_generic), true);
-                    return;
-                }
-                bindProfile(profile);
-            }
+        doctorDirectoryRepository.getDoctorPublicProfile(doctorId,
+                new DoctorDirectoryRepository.PublicProfileCallback() {
+                    @Override
+                    public void onSuccess(DoctorPublicProfile profile) {
+                        if (!isAdded()) return;
+                        currentProfile = profile;
+                        bindProfile(profile);
+                    }
 
-            @Override
-            public void onError(@Nullable Throwable throwable,
-                                @Nullable Integer httpCode,
-                                @Nullable String errorBody) {
-                if (!isAdded()) return;
+                    @Override
+                    public void onError(@Nullable Throwable throwable,
+                                        @Nullable Integer httpCode,
+                                        @Nullable String errorBody) {
+                        if (!isAdded()) return;
 
-                String msg = getString(R.string.doctor_public_error_generic);
-                showError(msg, true);
-            }
-        });
-    }
+                        currentProfile = null;
+                        showLoading(false);
+                        showContent(false);
 
-    private void showLoading() {
-        if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
-        if (contentRoot != null) contentRoot.setVisibility(View.INVISIBLE);
-        if (textError != null) {
-            textError.setVisibility(View.GONE);
-            textError.setOnClickListener(null);
-        }
-    }
+                        String msg = getString(R.string.doctor_public_error_generic);
+                        if (httpCode != null) {
+                            msg = msg + " (" + httpCode + ")";
+                        }
+                        if (errorBody != null && !errorBody.isEmpty()) {
+                            msg = msg + " " + errorBody;
+                        }
 
-    private void showError(String message, boolean retryable) {
-        if (progressBar != null) progressBar.setVisibility(View.GONE);
-        if (contentRoot != null) contentRoot.setVisibility(View.GONE);
-        if (textError != null) {
-            textError.setText(message);
-            textError.setVisibility(View.VISIBLE);
-            if (retryable) {
-                textError.setOnClickListener(v -> loadDoctorPublicProfile());
-            } else {
-                textError.setOnClickListener(null);
-            }
-        }
-    }
-
-    private void showContent() {
-        if (progressBar != null) progressBar.setVisibility(View.GONE);
-        if (contentRoot != null) contentRoot.setVisibility(View.VISIBLE);
-        if (textError != null) {
-            textError.setVisibility(View.GONE);
-            textError.setOnClickListener(null);
-        }
+                        showError(msg, true);
+                    }
+                });
     }
 
     private void bindProfile(@NonNull DoctorPublicProfile profile) {
-        showContent();
+        showLoading(false);
+        showError(null, false);
+        showContent(true);
 
         // Avatar
-        String imageUrl = profile.getProfileImageUrl();
-        if (!TextUtils.isEmpty(imageUrl)) {
+        if (!TextUtils.isEmpty(profile.getProfileImageUrl())) {
             Glide.with(this)
-                    .load(imageUrl)
+                    .load(profile.getProfileImageUrl())
                     .placeholder(R.drawable.logo)
                     .error(R.drawable.logo)
                     .circleCrop()
@@ -189,54 +210,79 @@ public class DoctorPublicProfileFragment extends Fragment {
             imageAvatar.setImageResource(R.drawable.logo);
         }
 
-        // Header: name, specialty, location
+        // Name
         String fullName = profile.getFullName();
-        if (fullName == null) fullName = "";
+        if (TextUtils.isEmpty(fullName)) {
+            fullName = getString(R.string.profile_role_doctor);
+        }
         textName.setText(fullName);
 
-        String specialty = profile.getSpecialtyName();
-        if (specialty == null) specialty = "";
-        textSpecialty.setText(specialty);
+        // Specialty
+        if (!TextUtils.isEmpty(profile.getSpecialtyName())) {
+            textSpecialty.setVisibility(View.VISIBLE);
+            textSpecialty.setText(profile.getSpecialtyName());
+        } else {
+            textSpecialty.setVisibility(View.GONE);
+        }
 
+        // Location: "City, Country"
+        String city = profile.getCity() != null ? profile.getCity().trim() : "";
+        String country = profile.getCountry() != null ? profile.getCountry().trim() : "";
         StringBuilder locationBuilder = new StringBuilder();
-        if (!TextUtils.isEmpty(profile.getCity())) {
-            locationBuilder.append(profile.getCity().trim());
+        if (!city.isEmpty()) {
+            locationBuilder.append(city);
         }
-        if (!TextUtils.isEmpty(profile.getCountry())) {
+        if (!country.isEmpty()) {
             if (locationBuilder.length() > 0) locationBuilder.append(", ");
-            locationBuilder.append(profile.getCountry().trim());
+            locationBuilder.append(country);
         }
-        textLocation.setText(locationBuilder.toString());
+        if (locationBuilder.length() > 0) {
+            textLocation.setVisibility(View.VISIBLE);
+            textLocation.setText(locationBuilder.toString());
+        } else {
+            textLocation.setVisibility(View.GONE);
+        }
 
-        // Flags
-        Boolean acceptsNew = profile.getAcceptingNewPatients();
-        Boolean tele = profile.getTeleconsultationEnabled();
-
+        // Flags: accepting new patients
+        Boolean acceptingNew = profile.getAcceptingNewPatients();
         if (chipAcceptingNew != null) {
-            if (Boolean.TRUE.equals(acceptsNew)) {
-                chipAcceptingNew.setVisibility(View.VISIBLE);
-                chipAcceptingNew.setText(R.string.profile_flag_accepts_new);
-            } else if (Boolean.FALSE.equals(acceptsNew)) {
-                chipAcceptingNew.setVisibility(View.VISIBLE);
-                chipAcceptingNew.setText(R.string.profile_flag_not_accepts_new);
-            } else {
+            if (acceptingNew == null) {
                 chipAcceptingNew.setVisibility(View.GONE);
-            }
-        }
-
-        if (chipTeleconsultation != null) {
-            if (Boolean.TRUE.equals(tele)) {
-                chipTeleconsultation.setVisibility(View.VISIBLE);
-                chipTeleconsultation.setText(R.string.profile_flag_teleconsultation);
-            } else if (Boolean.FALSE.equals(tele)) {
-                chipTeleconsultation.setVisibility(View.VISIBLE);
-                chipTeleconsultation.setText(R.string.profile_flag_no_teleconsultation);
             } else {
-                chipTeleconsultation.setVisibility(View.GONE);
+                chipAcceptingNew.setVisibility(View.VISIBLE);
+                if (acceptingNew) {
+                    chipAcceptingNew.setText(R.string.doctor_public_flag_accepts_new);
+                } else {
+                    chipAcceptingNew.setText(R.string.doctor_public_flag_not_accepting);
+                }
             }
         }
 
-        // About section
+        // Flags: teleconsultation
+        Boolean tele = profile.getTeleconsultationEnabled();
+        if (chipTeleconsultation != null) {
+            if (tele == null) {
+                chipTeleconsultation.setVisibility(View.GONE);
+            } else {
+                chipTeleconsultation.setVisibility(View.VISIBLE);
+                if (Boolean.TRUE.equals(tele)) {
+                    chipTeleconsultation.setText(R.string.doctor_public_flag_teleconsultation);
+                } else {
+                    chipTeleconsultation.setText(R.string.doctor_public_flag_no_teleconsultation);
+                }
+            }
+        }
+
+        // Fee formatting: "Consultation: X"
+        String feeFormatted = formatFee(profile.getConsultationFee());
+        if (feeFormatted != null) {
+            textConsultationFee.setVisibility(View.VISIBLE);
+            textConsultationFee.setText(feeFormatted);
+        } else {
+            textConsultationFee.setVisibility(View.GONE);
+        }
+
+        // Bio
         String bio = profile.getBio();
         if (TextUtils.isEmpty(bio)) {
             textBio.setText(R.string.doctor_public_bio_placeholder);
@@ -244,41 +290,141 @@ public class DoctorPublicProfileFragment extends Fragment {
             textBio.setText(bio.trim());
         }
 
+        // Experience
         Integer years = profile.getYearsOfExperience();
         if (years != null && years > 0) {
-            String expText = getString(R.string.profile_doctor_experience_format, years);
-            textExperience.setText(expText);
             textExperience.setVisibility(View.VISIBLE);
+            textExperience.setText(
+                    getString(R.string.profile_doctor_experience_format, years)
+            );
         } else {
             textExperience.setVisibility(View.GONE);
         }
 
-        if (profile.getConsultationFee() != null) {
-            String fee = profile.getConsultationFee().toPlainString();
-            String feeText = getString(R.string.profile_doctor_fee_format, fee);
-            textFee.setText(feeText);
-            textFee.setVisibility(View.VISIBLE);
-        } else {
-            textFee.setVisibility(View.GONE);
-        }
-
-        // Clinic section
-        String address = profile.getClinicAddress();
-        if (!TextUtils.isEmpty(address)) {
-            textClinicAddress.setText(address.trim());
-        } else {
+        // Clinic address
+        String clinicAddress = profile.getClinicAddress();
+        if (TextUtils.isEmpty(clinicAddress)) {
             textClinicAddress.setText(R.string.doctor_public_clinic_address_placeholder);
+        } else {
+            textClinicAddress.setText(clinicAddress.trim());
         }
-        textClinicLocation.setText(locationBuilder.toString());
 
-        // Acts
+        // Clinic city/country line
+        if (locationBuilder.length() > 0) {
+            textClinicCityCountry.setVisibility(View.VISIBLE);
+            textClinicCityCountry.setText(locationBuilder.toString());
+        } else {
+            textClinicCityCountry.setVisibility(View.GONE);
+        }
+
+        // Acts list
         List<DoctorPublicProfile.Act> acts = profile.getActs();
         if (acts == null || acts.isEmpty()) {
-            actAdapter.submitList(null);
             textActsEmpty.setVisibility(View.VISIBLE);
+            recyclerActs.setVisibility(View.GONE);
+            actsAdapter.submitList(null);
         } else {
-            actAdapter.submitList(acts);
             textActsEmpty.setVisibility(View.GONE);
+            recyclerActs.setVisibility(View.VISIBLE);
+            actsAdapter.submitList(acts);
         }
+
+        // CTAs state: disable Book when not accepting new patients
+        if (buttonBook != null) {
+            boolean canBook = acceptingNew == null || Boolean.TRUE.equals(acceptingNew);
+            buttonBook.setEnabled(canBook);
+            buttonBook.setAlpha(canBook ? 1f : 0.5f);
+        }
+    }
+
+    @Nullable
+    private String formatFee(@Nullable BigDecimal fee) {
+        if (fee == null) {
+            return null;
+        }
+        // Normalize (no trailing zeros like 50.00 → 50)
+        BigDecimal normalized = fee.stripTrailingZeros();
+        String plain = normalized.toPlainString();
+
+        // Reuse existing profile format string: "Consultation: %1$s"
+        return getString(R.string.profile_doctor_fee_format, plain);
+    }
+
+    private void showLoading(boolean loading) {
+        if (progressBar != null) {
+            progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void showError(@Nullable String message, boolean show) {
+        if (errorContainer != null) {
+            errorContainer.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+        if (errorText != null) {
+            if (message == null || message.trim().isEmpty()) {
+                errorText.setText(R.string.doctor_public_error_generic);
+            } else {
+                errorText.setText(message);
+            }
+        }
+    }
+
+    private void showContent(boolean show) {
+        if (contentContainer != null) {
+            contentContainer.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    // ---------- CTAs (stubbed) ----------
+
+    private void handleBookClick() {
+        if (!isAdded()) return;
+
+        if (currentProfile == null) {
+            Toast.makeText(
+                    requireContext(),
+                    getString(R.string.doctor_public_error_generic),
+                    Toast.LENGTH_SHORT
+            ).show();
+            return;
+        }
+
+        Boolean acceptingNew = currentProfile.getAcceptingNewPatients();
+        if (acceptingNew != null && !acceptingNew) {
+            // Doctor is not taking new patients
+            Toast.makeText(
+                    requireContext(),
+                    getString(R.string.doctor_public_flag_not_accepting),
+                    Toast.LENGTH_SHORT
+            ).show();
+            return;
+        }
+
+        // Future: navigate to booking flow.
+        Toast.makeText(
+                requireContext(),
+                "Booking is not implemented yet.",
+                Toast.LENGTH_SHORT
+        ).show();
+    }
+
+    private void handleMessageClick() {
+        if (!isAdded()) return;
+
+        if (currentProfile == null) {
+            Toast.makeText(
+                    requireContext(),
+                    getString(R.string.doctor_public_error_generic),
+                    Toast.LENGTH_SHORT
+            ).show();
+            return;
+        }
+
+        // Future: navigate to chat / messaging thread.
+        Toast.makeText(
+                requireContext(),
+                "Messaging is not implemented yet.",
+                Toast.LENGTH_SHORT
+        ).show();
     }
 }

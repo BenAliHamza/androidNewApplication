@@ -363,4 +363,20 @@
         Clinic address not provided.
     </string>
 
+    <!-- Doctor public profile: status flags -->
+    <string name="doctor_public_flag_accepts_new">Accepting new patients</string>
+    <string name="doctor_public_flag_not_accepting">Not accepting new patients</string>
+    <string name="doctor_public_flag_teleconsultation">Teleconsultation available</string>
+    <string name="doctor_public_flag_no_teleconsultation">No teleconsultation</string>
+
+    <!-- Doctor public profile: placeholders & CTAs -->
+    <string name="doctor_public_name_placeholder">Dr. Placeholder</string>
+    <string name="doctor_public_specialty_placeholder">Specialty</string>
+    <string name="doctor_public_location_placeholder">City, Country</string>
+    <string name="doctor_public_fee_placeholder">Consultation fee</string>
+    <string name="doctor_public_experience_placeholder">Experience</string>
+
+    <string name="doctor_public_cta_book">Book appointment</string>
+    <string name="doctor_public_cta_message">Send message</string>
+
 </resources>

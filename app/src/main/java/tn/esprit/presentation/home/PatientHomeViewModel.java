@@ -10,6 +10,7 @@ import androidx.lifecycle.MutableLiveData;
 import java.util.ArrayList;
 import java.util.List;
 
+import tn.esprit.R;
 import tn.esprit.data.doctor.DoctorDirectoryRepository;
 import tn.esprit.domain.doctor.DoctorSearchFilters;
 import tn.esprit.domain.doctor.DoctorSearchResult;
@@ -17,6 +18,8 @@ import tn.esprit.domain.doctor.DoctorSearchResult;
 public class PatientHomeViewModel extends AndroidViewModel {
 
     private static final int MAX_RESULTS = 5;
+    // Require a bit more text before hitting backend
+    private static final int MIN_QUERY_LENGTH = 3;
 
     private final DoctorDirectoryRepository doctorDirectoryRepository;
 
@@ -25,6 +28,9 @@ public class PatientHomeViewModel extends AndroidViewModel {
     private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>(null);
     private final MutableLiveData<Boolean> hasSearched = new MutableLiveData<>(false);
+
+    // Remember last query we actually sent to backend
+    private String lastExecutedQuery = null;
 
     public PatientHomeViewModel(@NonNull Application application) {
         super(application);
@@ -47,6 +53,10 @@ public class PatientHomeViewModel extends AndroidViewModel {
         return errorMessage;
     }
 
+    /**
+     * Indicates whether user has actually triggered a search at least once.
+     * Used to distinguish "idle" vs "no results" states in UI.
+     */
     public LiveData<Boolean> getHasSearched() {
         return hasSearched;
     }
@@ -58,17 +68,24 @@ public class PatientHomeViewModel extends AndroidViewModel {
         String trimmed = rawQuery != null ? rawQuery.trim() : "";
         query.setValue(trimmed);
 
-        // Now search as soon as there is at least 1 character.
-        if (trimmed.length() < 1) {
+        // If query is too short, reset to idle state.
+        if (trimmed.length() < MIN_QUERY_LENGTH) {
             loading.setValue(false);
             errorMessage.setValue(null);
             results.setValue(new ArrayList<>());
             hasSearched.setValue(false);
+            lastExecutedQuery = null;
+            return;
+        }
+
+        // Avoid refiring the same request when text hasn't changed
+        if (trimmed.equals(lastExecutedQuery)) {
             return;
         }
 
         loading.setValue(true);
         errorMessage.setValue(null);
+        lastExecutedQuery = trimmed;
 
         DoctorSearchFilters filters = DoctorSearchFilters.fromQuery(trimmed);
 
@@ -83,6 +100,7 @@ public class PatientHomeViewModel extends AndroidViewModel {
                     return;
                 }
 
+                // Limit to MAX_RESULTS for this quick search UI
                 List<DoctorSearchResult> limited;
                 if (searchResults.size() > MAX_RESULTS) {
                     limited = new ArrayList<>(searchResults.subList(0, MAX_RESULTS));
@@ -99,9 +117,12 @@ public class PatientHomeViewModel extends AndroidViewModel {
                 hasSearched.postValue(true);
 
                 String msg = null;
+
                 if (throwable != null) {
-                    msg = "Network error while searching for doctors.";
+                    // Generic, user-friendly error
+                    msg = getApplication().getString(R.string.home_patient_search_error_generic);
                 } else if (httpCode != null) {
+                    // Keep a simple fallback for HTTP codes
                     msg = "Search failed with code " + httpCode;
                 }
 
@@ -113,16 +134,24 @@ public class PatientHomeViewModel extends AndroidViewModel {
                     }
                 }
 
+                if (msg == null || msg.trim().isEmpty()) {
+                    msg = getApplication().getString(R.string.home_patient_search_error_generic);
+                }
+
                 errorMessage.postValue(msg);
             }
         });
     }
 
+    /**
+     * Explicitly clears the search field and results.
+     */
     public void clearSearch() {
         query.setValue("");
         results.setValue(new ArrayList<>());
         loading.setValue(false);
         errorMessage.setValue(null);
         hasSearched.setValue(false);
+        lastExecutedQuery = null;
     }
 }
