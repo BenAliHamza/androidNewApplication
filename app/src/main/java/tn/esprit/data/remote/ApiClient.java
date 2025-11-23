@@ -7,6 +7,8 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.http.Body;
 import retrofit2.http.POST;
+import tn.esprit.data.remote.appointment.AppointmentApiService;
+import android.content.Context;
 
 /**
  * Provides a configured Retrofit instance to talk to the Spring Boot backend.
@@ -23,6 +25,10 @@ public class ApiClient {
 
     private ApiClient() {
         // No instances
+    }
+
+    public static AppointmentApiService getAppointmentApiService(Context context) {
+        return getRetrofitWithAuth(context).create(AppointmentApiService.class);
     }
     public static <T> T createService(Class<T> serviceClass) {
         return getRetrofit().create(serviceClass);
