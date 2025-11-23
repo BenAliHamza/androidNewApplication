@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -52,11 +53,17 @@ public class UserBaseInfoFragment extends Fragment {
                               @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        ImageButton buttonBack = view.findViewById(R.id.button_back_base_info);
         textFullname = view.findViewById(R.id.text_base_fullname);
         textEmail = view.findViewById(R.id.text_base_email);
         textPhone = view.findViewById(R.id.text_base_phone);
         textRole = view.findViewById(R.id.text_base_role);
         Button buttonEdit = view.findViewById(R.id.button_edit_base_info);
+
+        if (buttonBack != null) {
+            buttonBack.setOnClickListener(v ->
+                    NavHostFragment.findNavController(this).navigateUp());
+        }
 
         if (buttonEdit != null) {
             buttonEdit.setOnClickListener(v ->

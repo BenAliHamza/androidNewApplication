@@ -311,6 +311,8 @@
     <!-- Base info / user account -->
     <string name="user_base_info_button_edit">Edit base information</string>
     <string name="profile_base_info_button">Base information</string>
+    <string name="user_base_info_title">Base information</string>
+    <string name="user_base_info_edit_title">Edit base information</string>
 
     <!-- Base info edit hints -->
     <string name="user_base_edit_firstname_hint">First name</string>
