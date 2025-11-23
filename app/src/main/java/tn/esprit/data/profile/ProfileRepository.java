@@ -2,12 +2,13 @@ package tn.esprit.data.profile;
 
 import android.content.Context;
 
-import java.io.IOException;
+import androidx.annotation.Nullable;
 
 import okhttp3.MultipartBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
 import tn.esprit.data.auth.AuthLocalDataSource;
 import tn.esprit.data.remote.ApiClient;
 import tn.esprit.data.remote.doctor.DoctorApiService;
@@ -25,18 +26,23 @@ import tn.esprit.domain.patient.PatientProfile;
 import tn.esprit.domain.user.User;
 
 /**
- * Repository responsible for loading the current user's profile
- * (User + DoctorProfile or PatientProfile depending on role).
+ * Central place to load and update the current user's profile:
  *
- * Also exposes update methods for doctor profile, patient profile,
- * base user (/me) information and profile image.
+ *  - GET /me                             → User
+ *  - GET /api/doctors/me                 → DoctorProfile (when role = DOCTOR)
+ *  - GET /patients/me                    → PatientProfile (when role = PATIENT)
+ *  - PUT /api/doctors/me                 → update doctor profile
+ *  - PUT /patients/me                    → update patient profile
+ *  - PUT /me                             → update base user info
+ *  - POST /users/me/profile-image        → upload avatar image
  *
- * Note: we now use the domain models directly as Retrofit response types,
- * so there is no extra mapping layer.
+ * All calls use the AuthLocalDataSource to fetch the current access token.
  */
 public class ProfileRepository {
 
+    private final Context appContext;
     private final AuthLocalDataSource authLocalDataSource;
+
     private final UserApiService userApiService;
     private final DoctorApiService doctorApiService;
     private final PatientApiService patientApiService;
@@ -44,8 +50,9 @@ public class ProfileRepository {
     private final UserImageApiService userImageApiService;
 
     public ProfileRepository(Context context) {
-        Context appContext = context.getApplicationContext();
+        this.appContext = context.getApplicationContext();
         this.authLocalDataSource = new AuthLocalDataSource(appContext);
+
         this.userApiService = ApiClient.createService(UserApiService.class);
         this.doctorApiService = ApiClient.createService(DoctorApiService.class);
         this.patientApiService = ApiClient.createService(PatientApiService.class);
@@ -53,322 +60,413 @@ public class ProfileRepository {
         this.userImageApiService = ApiClient.createService(UserImageApiService.class);
     }
 
+    // ------------------------------------------------------------
+    // Callbacks
+    // ------------------------------------------------------------
+
     public interface ProfileCallback {
-        void onSuccess(User user, DoctorProfile doctorProfile, PatientProfile patientProfile);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
+        void onSuccess(User user,
+                       @Nullable DoctorProfile doctorProfile,
+                       @Nullable PatientProfile patientProfile);
+
+        void onError(Throwable throwable,
+                     @Nullable Integer httpCode,
+                     @Nullable String errorBody);
     }
 
     public interface DoctorProfileUpdateCallback {
         void onSuccess(DoctorProfile updatedProfile);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
+
+        void onError(Throwable throwable,
+                     @Nullable Integer httpCode,
+                     @Nullable String errorBody);
     }
 
     public interface PatientProfileUpdateCallback {
         void onSuccess(PatientProfile updatedProfile);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
+
+        void onError(Throwable throwable,
+                     @Nullable Integer httpCode,
+                     @Nullable String errorBody);
     }
 
     public interface BaseUserUpdateCallback {
         void onSuccess(User updatedUser);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
+
+        void onError(Throwable throwable,
+                     @Nullable Integer httpCode,
+                     @Nullable String errorBody);
     }
 
     public interface ProfileImageUpdateCallback {
         void onSuccess(User updatedUser);
-        void onError(Throwable throwable, Integer httpCode, String errorBody);
+
+        void onError(Throwable throwable,
+                     @Nullable Integer httpCode,
+                     @Nullable String errorBody);
     }
 
-    /**
-     * Load current user + (doctor or patient) profile, depending on role.
-     */
-    public void loadProfile(final ProfileCallback callback) {
+    // ------------------------------------------------------------
+    // Load full profile (User + Doctor/Patient depending on role)
+    // ------------------------------------------------------------
+
+    public void loadProfile(ProfileCallback callback) {
         AuthTokens tokens = authLocalDataSource.getTokens();
         if (tokens == null || tokens.getAccessToken() == null) {
-            callback.onError(new IllegalStateException("Not authenticated"), null, null);
+            if (callback != null) {
+                callback.onError(null, 401, "Not authenticated");
+            }
             return;
         }
 
-        final String authHeader = buildAuthHeader(tokens);
+        final String authHeader = "Bearer " + tokens.getAccessToken();
 
-        // 1) Load the base User (/me)
         userApiService.getCurrentUser(authHeader).enqueue(new Callback<User>() {
             @Override
             public void onResponse(Call<User> call,
                                    Response<User> response) {
+                if (callback == null) return;
+
                 if (!response.isSuccessful()) {
-                    String errorBody = extractErrorBody(response);
-                    callback.onError(null, response.code(), errorBody);
+                    callback.onError(
+                            null,
+                            response.code(),
+                            safeErrorBody(response)
+                    );
                     return;
                 }
 
                 User user = response.body();
                 if (user == null) {
-                    callback.onError(new IllegalStateException("Empty user body"),
-                            response.code(), null);
+                    callback.onError(
+                            null,
+                            response.code(),
+                            "Empty body from /me"
+                    );
                     return;
                 }
 
-                String role = user.getRole() != null ? user.getRole() : "";
-
-                // 2) Depending on the role, load doctor or patient profile.
-                if ("DOCTOR".equalsIgnoreCase(role)) {
-                    loadDoctorProfile(authHeader, user, callback);
-                } else if ("PATIENT".equalsIgnoreCase(role)) {
-                    loadPatientProfile(authHeader, user, callback);
+                String role = user.getRole();
+                if (role != null && "DOCTOR".equalsIgnoreCase(role)) {
+                    fetchDoctorProfile(user, authHeader, callback);
+                } else if (role != null && "PATIENT".equalsIgnoreCase(role)) {
+                    fetchPatientProfile(user, authHeader, callback);
                 } else {
-                    // Unknown or admin role -> return only User
                     callback.onSuccess(user, null, null);
                 }
             }
 
             @Override
             public void onFailure(Call<User> call, Throwable t) {
-                callback.onError(t, null, null);
+                if (callback != null) {
+                    callback.onError(t, null, null);
+                }
             }
         });
     }
 
-    /**
-     * Update the current doctor's profile via /api/doctors/me.
-     */
+    private void fetchDoctorProfile(User user,
+                                    String authHeader,
+                                    ProfileCallback callback) {
+        doctorApiService.getMyProfile(authHeader).enqueue(new Callback<DoctorProfile>() {
+            @Override
+            public void onResponse(Call<DoctorProfile> call,
+                                   Response<DoctorProfile> response) {
+                if (callback == null) return;
+
+                if (!response.isSuccessful()) {
+                    // If doctor profile is not yet created, backend may return 404.
+                    if (response.code() == 404) {
+                        callback.onSuccess(user, null, null);
+                    } else {
+                        callback.onError(
+                                null,
+                                response.code(),
+                                safeErrorBody(response)
+                        );
+                    }
+                    return;
+                }
+
+                callback.onSuccess(user, response.body(), null);
+            }
+
+            @Override
+            public void onFailure(Call<DoctorProfile> call, Throwable t) {
+                if (callback != null) {
+                    callback.onError(t, null, null);
+                }
+            }
+        });
+    }
+
+    private void fetchPatientProfile(User user,
+                                     String authHeader,
+                                     ProfileCallback callback) {
+        patientApiService.getMyProfile(authHeader).enqueue(new Callback<PatientProfile>() {
+            @Override
+            public void onResponse(Call<PatientProfile> call,
+                                   Response<PatientProfile> response) {
+                if (callback == null) return;
+
+                if (!response.isSuccessful()) {
+                    // If patient profile is not yet created, backend may return 404.
+                    if (response.code() == 404) {
+                        callback.onSuccess(user, null, null);
+                    } else {
+                        callback.onError(
+                                null,
+                                response.code(),
+                                safeErrorBody(response)
+                        );
+                    }
+                    return;
+                }
+
+                callback.onSuccess(user, null, response.body());
+            }
+
+            @Override
+            public void onFailure(Call<PatientProfile> call, Throwable t) {
+                if (callback != null) {
+                    callback.onError(t, null, null);
+                }
+            }
+        });
+    }
+
+    // ------------------------------------------------------------
+    // Doctor profile update
+    // ------------------------------------------------------------
+
     public void updateDoctorProfile(DoctorProfileUpdateRequestDto request,
-                                    final DoctorProfileUpdateCallback callback) {
+                                    DoctorProfileUpdateCallback callback) {
         AuthTokens tokens = authLocalDataSource.getTokens();
         if (tokens == null || tokens.getAccessToken() == null) {
-            callback.onError(new IllegalStateException("Not authenticated"), null, null);
+            if (callback != null) {
+                callback.onError(null, 401, "Not authenticated");
+            }
             return;
         }
-
-        String authHeader = buildAuthHeader(tokens);
+        String authHeader = "Bearer " + tokens.getAccessToken();
 
         doctorApiService.updateMyProfile(authHeader, request)
                 .enqueue(new Callback<DoctorProfile>() {
                     @Override
                     public void onResponse(Call<DoctorProfile> call,
                                            Response<DoctorProfile> response) {
-                        if (!response.isSuccessful()) {
-                            String errorBody = extractErrorBody(response);
-                            callback.onError(null, response.code(), errorBody);
-                            return;
-                        }
+                        if (callback == null) return;
 
-                        DoctorProfile body = response.body();
-                        if (body == null) {
+                        if (!response.isSuccessful()) {
                             callback.onError(
-                                    new IllegalStateException("Empty profile body"),
+                                    null,
                                     response.code(),
-                                    null
+                                    safeErrorBody(response)
                             );
                             return;
                         }
-
-                        callback.onSuccess(body);
+                        callback.onSuccess(response.body());
                     }
 
                     @Override
                     public void onFailure(Call<DoctorProfile> call, Throwable t) {
-                        callback.onError(t, null, null);
+                        if (callback != null) {
+                            callback.onError(t, null, null);
+                        }
                     }
                 });
     }
 
-    /**
-     * Update the current patient's profile via /patients/me.
-     */
+    // ------------------------------------------------------------
+    // Patient profile update
+    // ------------------------------------------------------------
+
     public void updatePatientProfile(PatientProfileUpdateRequestDto request,
-                                     final PatientProfileUpdateCallback callback) {
+                                     PatientProfileUpdateCallback callback) {
         AuthTokens tokens = authLocalDataSource.getTokens();
         if (tokens == null || tokens.getAccessToken() == null) {
-            callback.onError(new IllegalStateException("Not authenticated"), null, null);
+            if (callback != null) {
+                callback.onError(null, 401, "Not authenticated");
+            }
             return;
         }
-
-        String authHeader = buildAuthHeader(tokens);
+        String authHeader = "Bearer " + tokens.getAccessToken();
 
         patientApiService.updateMyProfile(authHeader, request)
                 .enqueue(new Callback<PatientProfile>() {
                     @Override
                     public void onResponse(Call<PatientProfile> call,
                                            Response<PatientProfile> response) {
-                        if (!response.isSuccessful()) {
-                            String errorBody = extractErrorBody(response);
-                            callback.onError(null, response.code(), errorBody);
-                            return;
-                        }
+                        if (callback == null) return;
 
-                        PatientProfile body = response.body();
-                        if (body == null) {
+                        if (!response.isSuccessful()) {
                             callback.onError(
-                                    new IllegalStateException("Empty patient profile body"),
+                                    null,
                                     response.code(),
-                                    null
+                                    safeErrorBody(response)
                             );
                             return;
                         }
-
-                        callback.onSuccess(body);
+                        callback.onSuccess(response.body());
                     }
 
                     @Override
                     public void onFailure(Call<PatientProfile> call, Throwable t) {
-                        callback.onError(t, null, null);
+                        if (callback != null) {
+                            callback.onError(t, null, null);
+                        }
                     }
                 });
     }
 
-    /**
-     * Update base user information (/me) via UserAccountApiService.
-     */
+    // ------------------------------------------------------------
+    // Base user update (/me)
+    // ------------------------------------------------------------
+
     public void updateBaseUser(UserUpdateRequestDto request,
-                               final BaseUserUpdateCallback callback) {
+                               BaseUserUpdateCallback callback) {
         AuthTokens tokens = authLocalDataSource.getTokens();
         if (tokens == null || tokens.getAccessToken() == null) {
-            callback.onError(new IllegalStateException("Not authenticated"), null, null);
+            if (callback != null) {
+                callback.onError(null, 401, "Not authenticated");
+            }
             return;
         }
-
-        String authHeader = buildAuthHeader(tokens);
+        String authHeader = "Bearer " + tokens.getAccessToken();
 
         userAccountApiService.updateCurrentUser(authHeader, request)
                 .enqueue(new Callback<User>() {
                     @Override
-                    public void onResponse(Call<User> call, Response<User> response) {
-                        if (!response.isSuccessful()) {
-                            String errorBody = extractErrorBody(response);
-                            callback.onError(null, response.code(), errorBody);
-                            return;
-                        }
+                    public void onResponse(Call<User> call,
+                                           Response<User> response) {
+                        if (callback == null) return;
 
-                        User body = response.body();
-                        if (body == null) {
+                        if (!response.isSuccessful()) {
                             callback.onError(
-                                    new IllegalStateException("Empty user body"),
+                                    null,
                                     response.code(),
-                                    null
+                                    safeErrorBody(response)
                             );
                             return;
                         }
-
-                        callback.onSuccess(body);
+                        callback.onSuccess(response.body());
                     }
 
                     @Override
                     public void onFailure(Call<User> call, Throwable t) {
-                        callback.onError(t, null, null);
+                        if (callback != null) {
+                            callback.onError(t, null, null);
+                        }
                     }
                 });
     }
 
-    /**
-     * Upload user profile image via /users/me/profile-image.
-     */
-    public void uploadProfileImage(MultipartBody.Part imagePart,
-                                   final ProfileImageUpdateCallback callback) {
+    // ------------------------------------------------------------
+    // Doctor practice setup (onboarding)
+    // ------------------------------------------------------------
+
+    public void setupDoctorPractice(DoctorPracticeSetupRequestDto request,
+                                    DoctorProfileUpdateCallback callback) {
         AuthTokens tokens = authLocalDataSource.getTokens();
         if (tokens == null || tokens.getAccessToken() == null) {
-            callback.onError(new IllegalStateException("Not authenticated"), null, null);
+            if (callback != null) {
+                callback.onError(null, 401, "Not authenticated");
+            }
             return;
         }
+        String authHeader = "Bearer " + tokens.getAccessToken();
 
-        String authHeader = buildAuthHeader(tokens);
-
-        userImageApiService.uploadMyProfileImage(authHeader, imagePart)
-                .enqueue(new Callback<User>() {
-                    @Override
-                    public void onResponse(Call<User> call, Response<User> response) {
-                        if (!response.isSuccessful()) {
-                            String errorBody = extractErrorBody(response);
-                            callback.onError(null, response.code(), errorBody);
-                            return;
-                        }
-
-                        User body = response.body();
-                        if (body == null) {
-                            callback.onError(
-                                    new IllegalStateException("Empty user body"),
-                                    response.code(),
-                                    null
-                            );
-                            return;
-                        }
-
-                        callback.onSuccess(body);
-                    }
-
-                    @Override
-                    public void onFailure(Call<User> call, Throwable t) {
-                        callback.onError(t, null, null);
-                    }
-                });
-    }
-
-    // ----------------- Internals -----------------
-
-    private void loadDoctorProfile(String authHeader,
-                                   final User user,
-                                   final ProfileCallback callback) {
-
-        doctorApiService.getMyProfile(authHeader)
+        doctorApiService.setupPracticeForCurrentDoctor(authHeader, request)
                 .enqueue(new Callback<DoctorProfile>() {
                     @Override
                     public void onResponse(Call<DoctorProfile> call,
                                            Response<DoctorProfile> response) {
+                        if (callback == null) return;
+
                         if (!response.isSuccessful()) {
-                            String errorBody = extractErrorBody(response);
-                            callback.onError(null, response.code(), errorBody);
+                            callback.onError(
+                                    null,
+                                    response.code(),
+                                    safeErrorBody(response)
+                            );
                             return;
                         }
-
-                        DoctorProfile dto = response.body();
-                        // If null, still return user with null profile
-                        callback.onSuccess(user, dto, null);
+                        callback.onSuccess(response.body());
                     }
 
                     @Override
                     public void onFailure(Call<DoctorProfile> call, Throwable t) {
-                        callback.onError(t, null, null);
+                        if (callback != null) {
+                            callback.onError(t, null, null);
+                        }
                     }
                 });
     }
 
-    private void loadPatientProfile(String authHeader,
-                                    final User user,
-                                    final ProfileCallback callback) {
+    // ------------------------------------------------------------
+    // Profile image upload
+    // ------------------------------------------------------------
 
-        patientApiService.getMyProfile(authHeader)
-                .enqueue(new Callback<PatientProfile>() {
+    public void uploadProfileImage(MultipartBody.Part imagePart,
+                                   ProfileImageUpdateCallback callback) {
+        if (imagePart == null) {
+            if (callback != null) {
+                callback.onError(
+                        null,
+                        null,
+                        "Image part is null"
+                );
+            }
+            return;
+        }
+
+        AuthTokens tokens = authLocalDataSource.getTokens();
+        if (tokens == null || tokens.getAccessToken() == null) {
+            if (callback != null) {
+                callback.onError(null, 401, "Not authenticated");
+            }
+            return;
+        }
+        String authHeader = "Bearer " + tokens.getAccessToken();
+
+        userImageApiService.uploadMyProfileImage(authHeader, imagePart)
+                .enqueue(new Callback<User>() {
                     @Override
-                    public void onResponse(Call<PatientProfile> call,
-                                           Response<PatientProfile> response) {
+                    public void onResponse(Call<User> call,
+                                           Response<User> response) {
+                        if (callback == null) return;
+
                         if (!response.isSuccessful()) {
-                            String errorBody = extractErrorBody(response);
-                            callback.onError(null, response.code(), errorBody);
+                            callback.onError(
+                                    null,
+                                    response.code(),
+                                    safeErrorBody(response)
+                            );
                             return;
                         }
-
-                        PatientProfile dto = response.body();
-                        callback.onSuccess(user, null, dto);
+                        callback.onSuccess(response.body());
                     }
 
                     @Override
-                    public void onFailure(Call<PatientProfile> call, Throwable t) {
-                        callback.onError(t, null, null);
+                    public void onFailure(Call<User> call, Throwable t) {
+                        if (callback != null) {
+                            callback.onError(t, null, null);
+                        }
                     }
                 });
     }
 
-    private String buildAuthHeader(AuthTokens tokens) {
-        String type = tokens.getTokenType() != null ? tokens.getTokenType() : "Bearer";
-        return type + " " + tokens.getAccessToken();
-    }
+    // ------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------
 
-    private String extractErrorBody(Response<?> response) {
+    @Nullable
+    private String safeErrorBody(Response<?> response) {
         try {
-            if (response.errorBody() != null) {
-                return response.errorBody().string();
-            }
-        } catch (IOException ignored) {
+            if (response.errorBody() == null) return null;
+            return response.errorBody().string();
+        } catch (Exception e) {
+            return null;
         }
-        return null;
     }
 }

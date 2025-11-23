@@ -2,8 +2,10 @@ package tn.esprit;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -17,6 +19,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 
+import com.bumptech.glide.Glide;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 
@@ -40,7 +43,11 @@ public class MainActivity extends AppCompatActivity {
     private TextView textUserName;
     private TextView textUserRole;
 
+    // Header avatar
+    private ImageView imageAvatar;
+
     // Drawer header views
+    private ImageView drawerAvatar;
     private TextView drawerUserName;
     private TextView drawerUserEmail;
     private TextView drawerUserRole;
@@ -65,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
         textGreeting = findViewById(R.id.text_greeting);
         textUserName = findViewById(R.id.text_user_name);
         textUserRole = findViewById(R.id.text_user_role);
+        imageAvatar = findViewById(R.id.image_avatar);
 
         authLocalDataSource = new AuthLocalDataSource(getApplicationContext());
         profileRepository = new ProfileRepository(getApplicationContext());
@@ -79,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
         if (navigationView != null) {
             View headerView = navigationView.getHeaderView(0);
             if (headerView != null) {
+                drawerAvatar = headerView.findViewById(R.id.drawer_avatar);
                 drawerUserName = headerView.findViewById(R.id.drawer_user_name);
                 drawerUserEmail = headerView.findViewById(R.id.drawer_user_email);
                 drawerUserRole = headerView.findViewById(R.id.drawer_user_role);
@@ -113,27 +122,17 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        // Initial defaults
+        // Greeting can be set immediately (not user-specific)
         if (textGreeting != null) {
             int greetingResId = HomeUiHelper.resolveGreetingResId();
             textGreeting.setText(getString(greetingResId));
         }
-        if (textUserName != null) {
-            textUserName.setText(getString(R.string.home_drawer_user_name_placeholder));
-        }
-        if (textUserRole != null) {
-            textUserRole.setText(getString(R.string.profile_role_unknown));
-        }
 
-        if (drawerUserName != null) {
-            drawerUserName.setText(getString(R.string.home_drawer_user_name_placeholder));
-        }
-        if (drawerUserEmail != null) {
-            drawerUserEmail.setText(getString(R.string.home_drawer_email_placeholder));
-        }
-        if (drawerUserRole != null) {
-            drawerUserRole.setText(getString(R.string.home_drawer_user_role_placeholder));
-        }
+        // Clear any placeholders (no fake names)
+        clearUserHeaderFields();
+
+        // Set up bottom nav listener ONCE
+        setupBottomNavNavigation();
 
         // Load profile and adapt header + bottom nav to role
         loadUserAndApplyRole();
@@ -160,45 +159,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Refreshes the user info in the header + drawer
-     * WITHOUT touching bottom navigation selection or navigating anywhere.
-     *
-     * Called from Profile / edit fragments after the user updates their info.
+     * Public API used by profile/edit fragments after a successful update.
+     * Must NEVER force navigation (no auto-jumps to Home).
      */
     public void refreshUserProfileUi() {
-        if (profileRepository == null) {
-            return;
-        }
-
-        profileRepository.loadProfile(new ProfileRepository.ProfileCallback() {
-            @Override
-            public void onSuccess(User user,
-                                  DoctorProfile doctorProfile,
-                                  PatientProfile patientProfile) {
-                if (isFinishing() || isDestroyed()) {
-                    return;
-                }
-
-                String role = user != null ? user.getRole() : null;
-
-                // Update header + drawer only
-                applyHeaderForUser(user, role);
-                // IMPORTANT: do NOT call applyBottomNavForRole() here,
-                // otherwise it may re-select "Home" and navigate away
-                // from the Profile screen.
-            }
-
-            @Override
-            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
-                if (isFinishing() || isDestroyed()) {
-                    return;
-                }
-                // Optional: you can show a toast or log, but do not navigate.
-                // Toast.makeText(MainActivity.this, R.string.profile_error_loading, Toast.LENGTH_SHORT).show();
-            }
-        });
+        loadUserAndApplyRole();
     }
-
 
     private void loadUserAndApplyRole() {
         if (profileRepository == null) return;
@@ -222,14 +188,15 @@ public class MainActivity extends AppCompatActivity {
                 if (isFinishing() || isDestroyed()) {
                     return;
                 }
-                // Fallback to generic bottom nav
+                // Fallback: clear header + generic bottom nav. No leaking previous user.
+                applyHeaderForUser(null, null);
                 applyBottomNavForRole(null);
             }
         });
     }
 
     private void applyHeaderForUser(@Nullable User user, @Nullable String role) {
-        // Greeting by time
+        // Greeting by time (safe)
         if (textGreeting != null) {
             int greetingResId = HomeUiHelper.resolveGreetingResId();
             textGreeting.setText(getString(greetingResId));
@@ -238,6 +205,7 @@ public class MainActivity extends AppCompatActivity {
         // Name + email
         String displayName = null;
         String email = null;
+        String imageUrl = null;
 
         if (user != null) {
             String first = user.getFirstname() != null ? user.getFirstname() : "";
@@ -246,47 +214,91 @@ public class MainActivity extends AppCompatActivity {
 
             if (!combined.isEmpty()) {
                 displayName = combined;
-            } else if (user.getEmail() != null) {
+            } else if (user.getEmail() != null && !user.getEmail().isEmpty()) {
                 displayName = user.getEmail();
             }
 
             if (user.getEmail() != null) {
                 email = user.getEmail();
             }
+
+            // New: profile image URL from backend
+            imageUrl = user.getProfileImage();
         }
 
-        if (displayName == null || displayName.isEmpty()) {
-            displayName = getString(R.string.home_drawer_user_name_placeholder);
-        }
-        if (email == null || email.isEmpty()) {
-            email = getString(R.string.home_drawer_email_placeholder);
-        }
+        // NO placeholders: if we don't know, show blank.
+        if (displayName == null) displayName = "";
+        if (email == null) email = "";
 
-        if (textUserName != null) {
-            textUserName.setText(displayName);
-        }
-        if (drawerUserName != null) {
-            drawerUserName.setText(displayName);
-        }
-        if (drawerUserEmail != null) {
-            drawerUserEmail.setText(email);
-        }
+        if (textUserName != null) textUserName.setText(displayName);
+        if (drawerUserName != null) drawerUserName.setText(displayName);
+        if (drawerUserEmail != null) drawerUserEmail.setText(email);
 
         // Role label (header + drawer)
         int roleLabelResId = HomeUiHelper.resolveRoleLabelResId(role);
         String roleLabel = getString(roleLabelResId);
 
-        if (textUserRole != null) {
-            textUserRole.setText(roleLabel);
+        if (textUserRole != null) textUserRole.setText(roleLabel);
+        if (drawerUserRole != null) drawerUserRole.setText(roleLabel);
+
+        // Avatar in header + drawer, using Glide
+        if (imageAvatar != null) {
+            if (!TextUtils.isEmpty(imageUrl)) {
+                Glide.with(this)
+                        .load(imageUrl)
+                        .placeholder(R.drawable.logo)
+                        .error(R.drawable.logo)
+                        .circleCrop()
+                        .into(imageAvatar);
+            } else {
+                imageAvatar.setImageResource(R.drawable.logo);
+            }
         }
-        if (drawerUserRole != null) {
-            drawerUserRole.setText(roleLabel);
+
+        if (drawerAvatar != null) {
+            if (!TextUtils.isEmpty(imageUrl)) {
+                Glide.with(this)
+                        .load(imageUrl)
+                        .placeholder(R.drawable.logo)
+                        .error(R.drawable.logo)
+                        .circleCrop()
+                        .into(drawerAvatar);
+            } else {
+                drawerAvatar.setImageResource(R.drawable.logo);
+            }
         }
     }
 
+    private void clearUserHeaderFields() {
+        if (textUserName != null) textUserName.setText("");
+        if (textUserRole != null) textUserRole.setText("");
+        if (drawerUserName != null) drawerUserName.setText("");
+        if (drawerUserEmail != null) drawerUserEmail.setText("");
+        if (drawerUserRole != null) drawerUserRole.setText("");
+
+        // Reset avatars to logo
+        if (imageAvatar != null) {
+            imageAvatar.setImageResource(R.drawable.logo);
+        }
+        if (drawerAvatar != null) {
+            drawerAvatar.setImageResource(R.drawable.logo);
+        }
+    }
+
+    /**
+     * Only changes which menu is shown (doctor / patient / generic) and
+     * syncs the checked item with the CURRENT destination.
+     *
+     * Critically: it does NOT forcibly navigate to Home.
+     */
     private void applyBottomNavForRole(@Nullable String role) {
         if (bottomNavigationView == null) {
             return;
+        }
+
+        int currentDestId = 0;
+        if (navController != null && navController.getCurrentDestination() != null) {
+            currentDestId = navController.getCurrentDestination().getId();
         }
 
         bottomNavigationView.getMenu().clear();
@@ -299,11 +311,12 @@ public class MainActivity extends AppCompatActivity {
             bottomNavigationView.inflateMenu(R.menu.menu_home_bottom);
         }
 
-        // Default selected tab
-        bottomNavigationView.setSelectedItemId(R.id.menu_home);
-
-        // Wire navigation to NavController
-        setupBottomNavNavigation();
+        // Keep bottom nav selection in sync with where we actually are.
+        if (currentDestId == R.id.homeFragment) {
+            bottomNavigationView.setSelectedItemId(R.id.menu_home);
+        } else {
+            // Leave nothing explicitly selected; avoids auto-jumping when in Profile.
+        }
     }
 
     private void setupBottomNavNavigation() {
@@ -315,14 +328,15 @@ public class MainActivity extends AppCompatActivity {
             int id = item.getItemId();
 
             if (id == R.id.menu_home) {
-                navController.navigate(R.id.homeFragment);
-                return true;
-            } else if (id == R.id.menu_profile) {
-                navController.navigate(R.id.profileFragment);
+                // Navigate to home ONLY if we're not already there.
+                if (navController.getCurrentDestination() == null
+                        || navController.getCurrentDestination().getId() != R.id.homeFragment) {
+                    navController.navigate(R.id.homeFragment);
+                }
                 return true;
             }
 
-            // Other items (settings, etc.) can be handled here later
+            // Other items (calendar, patients, office, etc.) will be wired later.
             return true;
         });
     }

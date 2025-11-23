@@ -99,14 +99,21 @@ public class UserBaseInfoFragment extends Fragment {
                     displayName = user.getEmail();
                 }
 
+                // IMPORTANT: no hard-coded fallback name.
                 if (TextUtils.isEmpty(displayName)) {
-                    displayName = getString(R.string.home_drawer_user_name_placeholder);
+                    displayName = "";
                 }
 
                 if (textFullname != null) textFullname.setText(displayName);
-                if (textEmail != null) textEmail.setText(user.getEmail() != null ? user.getEmail() : "");
-                if (textPhone != null) textPhone.setText(user.getPhone() != null ? user.getPhone() : "");
-                if (textRole != null) textRole.setText(user.getRole() != null ? user.getRole() : "");
+                if (textEmail != null) {
+                    textEmail.setText(user.getEmail() != null ? user.getEmail() : "");
+                }
+                if (textPhone != null) {
+                    textPhone.setText(user.getPhone() != null ? user.getPhone() : "");
+                }
+                if (textRole != null) {
+                    textRole.setText(user.getRole() != null ? user.getRole() : "");
+                }
             }
 
             @Override

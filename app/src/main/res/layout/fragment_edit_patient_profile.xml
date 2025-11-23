@@ -214,8 +214,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Base information" />
-                <!-- you can move this text to strings.xml later -->
+                    android:text="@string/profile_base_info_button" />
 
             </LinearLayout>
         </ScrollView>

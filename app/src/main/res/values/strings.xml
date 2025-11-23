@@ -40,9 +40,9 @@
     <!-- Home header / drawer -->
     <string name="home_header_title">Home</string>
     <string name="home_drawer_content_description">Open navigation menu</string>
-    <string name="home_drawer_user_name_placeholder">Dr. Jane Doe</string>
-    <string name="home_drawer_user_role_placeholder">Doctor</string>
-    <string name="home_drawer_email_placeholder">user@example.com</string>
+    <string name="home_drawer_user_name_placeholder"></string>
+    <string name="home_drawer_user_role_placeholder"></string>
+    <string name="home_drawer_email_placeholder"></string>
     <string name="home_drawer_profile">Profile</string>
     <string name="home_drawer_settings">Settings</string>
     <string name="home_drawer_logout">Log out</string>
@@ -263,31 +263,59 @@
     <string name="profile_edit_patient_not_implemented">
         Editing patient profile is not yet implemented.
     </string>
-    <!-- Profile: missing keys used in Java code -->
 
-    <!-- Generic load/save errors -->
+    <!-- ==== EXTRA STRINGS USED BY PROFILE FRAGMENTS & EDIT SCREENS ==== -->
+
+    <!-- Generic profile loading/saving states -->
     <string name="profile_error_loading">Could not load your profile. Please try again.</string>
+    <string name="profile_error_invalid_email">Please enter a valid email address.</string>
+    <string name="profile_saved">Profile saved successfully.</string>
     <string name="profile_error_saving">Could not save your profile. Please try again.</string>
 
+    <!-- Role / unknown role -->
+    <string name="profile_error_unknown_role">Your role is not supported in this version of the app.</string>
+
+    <!-- Doctor display helpers -->
+    <string name="profile_doctor_name_format">%1$s</string>
+    <string name="profile_flag_not_accepts_new">Not accepting new patients</string>
+    <string name="profile_flag_no_teleconsultation">No teleconsultation</string>
+
+    <!-- Patient display helpers -->
+    <string name="profile_patient_blood_type_format">Blood type %1$s</string>
+
     <!-- Validation errors -->
-    <string name="profile_error_invalid_email">Please enter a valid email address.</string>
     <string name="profile_error_invalid_fee">Enter a valid consultation fee.</string>
     <string name="profile_error_invalid_height">Enter a valid height (in cm).</string>
     <string name="profile_error_invalid_weight">Enter a valid weight (in kg).</string>
 
-    <!-- Save success -->
-    <string name="profile_saved">Profile saved.</string>
+    <!-- Patient lifestyle flags -->
+    <string name="profile_patient_alcohol_yes">Alcohol use</string>
+    <string name="profile_patient_alcohol_no">No alcohol use</string>
+    <string name="profile_flag_no_alcohol">No alcohol use</string>
 
-    <!-- Role / state errors -->
-    <string name="profile_error_unknown_role">Unknown user role. Please sign in again.</string>
+    <!-- Signup screen -->
+    <string name="signup_title">Create account</string>
+    <string name="signup_subtitle">Join as a doctor or patient to manage appointments and records.</string>
+    <string name="signup_firstname_hint">First name</string>
+    <string name="signup_lastname_hint">Last name</string>
+    <string name="signup_email_hint">Email</string>
+    <string name="signup_phone_hint_optional">Phone (optional)</string>
+    <string name="signup_password_hint">Password</string>
+    <string name="signup_confirm_password_hint">Confirm password</string>
+    <string name="signup_role_label">I am a</string>
+    <string name="signup_role_doctor">Doctor</string>
+    <string name="signup_role_patient">Patient</string>
+    <string name="signup_button_text">Create account</string>
+    <string name="signup_back_to_login">Already have an account? Sign in</string>
 
-    <!-- Doctor-specific formatting & flags -->
-    <string name="profile_doctor_name_format">Dr. %1$s</string>
-    <string name="profile_flag_not_accepts_new">Not accepting new patients</string>
-    <string name="profile_flag_no_teleconsultation">Teleconsultation not available</string>
+    <!-- Base info / user account -->
+    <string name="user_base_info_button_edit">Edit base information</string>
+    <string name="profile_base_info_button">Base information</string>
 
-    <!-- Patient-specific formatting -->
-    <string name="profile_patient_blood_type_format">Blood type %1$s</string>
-
+    <!-- Base info edit hints -->
+    <string name="user_base_edit_firstname_hint">First name</string>
+    <string name="user_base_edit_lastname_hint">Last name</string>
+    <string name="user_base_edit_email_hint">Email</string>
+    <string name="user_base_edit_phone_hint">Phone</string>
 
 </resources>

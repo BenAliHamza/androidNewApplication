@@ -102,6 +102,19 @@ public class ProfileEditFragment extends Fragment {
                             .navigate(R.id.action_profileEditFragment_to_userBaseInfoFragment));
         }
 
+        // Name and phone are base user fields, edited from the "Base info" screen.
+        // Here they are read-only for display only, to avoid fake editable fields.
+        if (inputName != null) {
+            inputName.setEnabled(false);
+            inputName.setFocusable(false);
+            inputName.setFocusableInTouchMode(false);
+        }
+        if (inputPhone != null) {
+            inputPhone.setEnabled(false);
+            inputPhone.setFocusable(false);
+            inputPhone.setFocusableInTouchMode(false);
+        }
+
         loadProfileForEdit();
     }
 
@@ -124,7 +137,7 @@ public class ProfileEditFragment extends Fragment {
                 currentUser = user;
                 currentDoctorProfile = doctorProfile;
 
-                // Prefill base user info (read-only semantics; actual editing in base info screen).
+                // Prefill base user info (read-only here; real editing is in base info screen).
                 if (inputName != null && user != null) {
                     String first = user.getFirstname() != null ? user.getFirstname() : "";
                     String last = user.getLastname() != null ? user.getLastname() : "";

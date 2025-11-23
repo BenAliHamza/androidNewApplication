@@ -6,14 +6,15 @@ import retrofit2.http.Header;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
 import retrofit2.http.Part;
-
 import tn.esprit.domain.user.User;
 
 /**
- * API for user profile image:
+ * Retrofit service for user profile image operations.
  *
+ * Matches backend:
  *   POST /users/me/profile-image
- *   multipart/form-data with field "image"
+ *   multipart/form-data, field name = "image"
+ *   returns UserDto → mapped to tn.esprit.domain.user.User
  */
 public interface UserImageApiService {
 

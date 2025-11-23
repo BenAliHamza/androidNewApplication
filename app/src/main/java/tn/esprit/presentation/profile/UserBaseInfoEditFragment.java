@@ -75,6 +75,12 @@ public class UserBaseInfoEditFragment extends Fragment {
             buttonSave.setOnClickListener(v -> saveBaseInfo());
         }
 
+        // Start empty so we never show data from a previous session by accident.
+        if (inputFirstname != null) inputFirstname.setText("");
+        if (inputLastname != null) inputLastname.setText("");
+        if (inputEmail != null) inputEmail.setText("");
+        if (inputPhone != null) inputPhone.setText("");
+
         loadUser();
     }
 

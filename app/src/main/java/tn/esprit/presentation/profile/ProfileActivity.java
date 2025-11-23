@@ -19,7 +19,8 @@ public class ProfileActivity extends AppCompatActivity {
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("Profile");
+            // Use string resource instead of hard-coded text
+            getSupportActionBar().setTitle(R.string.profile_title);
         }
 
         toolbar.setNavigationOnClickListener(v -> onBackPressed());

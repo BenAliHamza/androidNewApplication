@@ -1,24 +1,36 @@
 package tn.esprit.presentation.profile;
 
 import android.app.Activity;
+import android.content.ContentResolver;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+import android.widget.ImageView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
+import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 
 import tn.esprit.MainActivity;
 import tn.esprit.R;
@@ -63,6 +75,9 @@ public class ProfileFragment extends Fragment {
     private DoctorProfile currentDoctorProfile;
     private PatientProfile currentPatientProfile;
 
+    // Image picker launcher
+    private ActivityResultLauncher<String> imagePickerLauncher;
+
     public ProfileFragment() {
         // Required empty constructor
     }
@@ -71,6 +86,15 @@ public class ProfileFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         profileRepository = new ProfileRepository(requireContext());
+
+        imagePickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        uploadProfileImage(uri);
+                    }
+                }
+        );
     }
 
     @Nullable
@@ -114,7 +138,13 @@ public class ProfileFragment extends Fragment {
             buttonEditProfile.setOnClickListener(v -> onEditProfileClicked());
         }
 
-        // (Avatar change will be wired in a later batch where we handle full image flow.)
+        if (buttonChangeAvatar != null) {
+            buttonChangeAvatar.setOnClickListener(v -> {
+                if (imagePickerLauncher != null) {
+                    imagePickerLauncher.launch("image/*");
+                }
+            });
+        }
 
         loadProfile();
     }
@@ -149,7 +179,6 @@ public class ProfileFragment extends Fragment {
                 } else if (role != null && "PATIENT".equalsIgnoreCase(role)) {
                     bindPatientSection(patientProfile);
                 } else {
-                    // Unknown role: hide both specific sections.
                     if (sectionDoctor != null) sectionDoctor.setVisibility(View.GONE);
                     if (sectionPatient != null) sectionPatient.setVisibility(View.GONE);
                 }
@@ -171,6 +200,7 @@ public class ProfileFragment extends Fragment {
     private void bindUser(@Nullable User user) {
         String displayName = null;
         String role = null;
+        String imageUrl = null;
 
         if (user != null) {
             String first = user.getFirstname() != null ? user.getFirstname() : "";
@@ -183,9 +213,18 @@ public class ProfileFragment extends Fragment {
             }
 
             role = user.getRole();
+
+            try {
+                String candidate = user.getProfileImage();
+                if (!TextUtils.isEmpty(candidate)) {
+                    imageUrl = candidate;
+                }
+            } catch (Exception ignored) {
+            }
         }
 
         if (TextUtils.isEmpty(displayName)) {
+            // Placeholder string is now empty in strings.xml, so this is safe.
             displayName = getString(R.string.home_drawer_user_name_placeholder);
         }
 
@@ -198,6 +237,20 @@ public class ProfileFragment extends Fragment {
         String roleLabel = getString(roleLabelResId);
         if (textHeaderRole != null) {
             textHeaderRole.setText(roleLabel);
+        }
+
+        // Avatar
+        if (imageProfileAvatar != null) {
+            if (!TextUtils.isEmpty(imageUrl)) {
+                Glide.with(this)
+                        .load(imageUrl)
+                        .placeholder(R.drawable.logo)
+                        .error(R.drawable.logo)
+                        .circleCrop()
+                        .into(imageProfileAvatar);
+            } else {
+                imageProfileAvatar.setImageResource(R.drawable.logo);
+            }
         }
     }
 
@@ -220,19 +273,14 @@ public class ProfileFragment extends Fragment {
         }
 
         if (doctorProfile == null) {
-            // No extra data; leave defaults / placeholders.
             return;
         }
 
-        // Specialty – depending on your DoctorProfile, adjust getter (e.g. getSpecialtyName()).
         if (textDoctorSpecialty != null) {
             try {
-                // If DoctorProfile has a "getSpecialtyName()" you can use it here.
-                // For now, fallback to empty if not available.
-                String specialty = null;
-                // TODO: wire actual specialty field from DoctorProfile if present.
-                if (!TextUtils.isEmpty(specialty)) {
-                    textDoctorSpecialty.setText(specialty);
+                DoctorProfile.Specialty specialty = doctorProfile.getSpecialty();
+                if (specialty != null && !TextUtils.isEmpty(specialty.getName())) {
+                    textDoctorSpecialty.setText(specialty.getName());
                 } else {
                     textDoctorSpecialty.setText("");
                 }
@@ -329,7 +377,9 @@ public class ProfileFragment extends Fragment {
             try {
                 String blood = patientProfile.getBloodType();
                 if (!TextUtils.isEmpty(blood)) {
-                    textPatientBloodType.setText(getString(R.string.profile_patient_blood_type_format, blood));
+                    textPatientBloodType.setText(
+                            getString(R.string.profile_patient_blood_type_format, blood)
+                    );
                 } else {
                     textPatientBloodType.setText("");
                 }
@@ -358,14 +408,24 @@ public class ProfileFragment extends Fragment {
                 Boolean smoker = patientProfile.getSmoker();
                 Boolean alcohol = patientProfile.getAlcoholUse();
                 StringBuilder flags = new StringBuilder();
+
                 if (smoker != null) {
-                    flags.append(smoker ? "Smoker" : "Non-smoker");
+                    flags.append(smoker
+                            ? getString(R.string.profile_patient_smoker_yes)
+                            : getString(R.string.profile_patient_smoker_no));
                 }
                 if (alcohol != null) {
                     if (flags.length() > 0) flags.append(" • ");
-                    flags.append(alcohol ? "Alcohol use" : "No alcohol use");
+                    flags.append(alcohol
+                            ? getString(R.string.profile_patient_alcohol_yes)
+                            : getString(R.string.profile_patient_alcohol_no));
                 }
-                textPatientFlags.setText(flags.toString());
+
+                if (flags.length() == 0) {
+                    textPatientFlags.setText(getString(R.string.profile_flags_none));
+                } else {
+                    textPatientFlags.setText(flags.toString());
+                }
             } catch (Exception ignored) {
                 textPatientFlags.setText("");
             }
@@ -402,11 +462,105 @@ public class ProfileFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Ensure header in MainActivity stays in sync if user has changed info elsewhere.
         Activity activity = getActivity();
         if (activity instanceof MainActivity) {
-            // MainActivity will reload from backend.
             ((MainActivity) activity).refreshUserProfileUi();
         }
+    }
+
+    // ------------------------------------------------------------
+    // Image upload helpers
+    // ------------------------------------------------------------
+
+    private void uploadProfileImage(@NonNull Uri uri) {
+        if (progressBar != null) {
+            progressBar.setVisibility(View.VISIBLE);
+        }
+
+        MultipartBody.Part imagePart = createImagePartFromUri(uri);
+        if (imagePart == null) {
+            if (progressBar != null) {
+                progressBar.setVisibility(View.GONE);
+            }
+            Toast.makeText(requireContext(),
+                    R.string.profile_error_saving,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        profileRepository.uploadProfileImage(imagePart,
+                new ProfileRepository.ProfileImageUpdateCallback() {
+                    @Override
+                    public void onSuccess(User updatedUser) {
+                        if (!isAdded()) return;
+                        if (progressBar != null) {
+                            progressBar.setVisibility(View.GONE);
+                        }
+
+                        // Reload profile for fresh data (including avatar URL)
+                        loadProfile();
+
+                        Activity activity = getActivity();
+                        if (activity instanceof MainActivity) {
+                            ((MainActivity) activity).refreshUserProfileUi();
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable,
+                                        Integer httpCode,
+                                        String errorBody) {
+                        if (!isAdded()) return;
+                        if (progressBar != null) {
+                            progressBar.setVisibility(View.GONE);
+                        }
+                        Toast.makeText(requireContext(),
+                                R.string.profile_error_saving,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    @Nullable
+    private MultipartBody.Part createImagePartFromUri(@NonNull Uri uri) {
+        try {
+            ContentResolver resolver = requireContext().getContentResolver();
+            String mimeType = resolver.getType(uri);
+            if (mimeType == null) {
+                mimeType = "image/*";
+            }
+
+            InputStream inputStream = resolver.openInputStream(uri);
+            if (inputStream == null) {
+                return null;
+            }
+
+            byte[] bytes = readAllBytes(inputStream);
+            RequestBody requestBody = RequestBody.create(
+                    MediaType.parse(mimeType),
+                    bytes
+            );
+
+            // Backend expects field name "image"
+            return MultipartBody.Part.createFormData(
+                    "image",
+                    "profile.jpg",
+                    requestBody
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private byte[] readAllBytes(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] data = new byte[4096];
+        int nRead;
+        while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+        buffer.flush();
+        return buffer.toByteArray();
     }
 }

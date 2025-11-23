@@ -76,6 +76,12 @@ public class UserBaseInfoEditFragment extends Fragment {
             buttonSave.setOnClickListener(v -> saveBaseInfo());
         }
 
+        // Start empty so we never show data from a previous session by accident.
+        if (inputFirstname != null) inputFirstname.setText("");
+        if (inputLastname != null) inputLastname.setText("");
+        if (inputEmail != null) inputEmail.setText("");
+        if (inputPhone != null) inputPhone.setText("");
+
         loadUser();
     }
 
@@ -296,14 +302,21 @@ public class UserBaseInfoFragment extends Fragment {
                     displayName = user.getEmail();
                 }
 
+                // IMPORTANT: no hard-coded fallback name.
                 if (TextUtils.isEmpty(displayName)) {
-                    displayName = getString(R.string.home_drawer_user_name_placeholder);
+                    displayName = "";
                 }
 
                 if (textFullname != null) textFullname.setText(displayName);
-                if (textEmail != null) textEmail.setText(user.getEmail() != null ? user.getEmail() : "");
-                if (textPhone != null) textPhone.setText(user.getPhone() != null ? user.getPhone() : "");
-                if (textRole != null) textRole.setText(user.getRole() != null ? user.getRole() : "");
+                if (textEmail != null) {
+                    textEmail.setText(user.getEmail() != null ? user.getEmail() : "");
+                }
+                if (textPhone != null) {
+                    textPhone.setText(user.getPhone() != null ? user.getPhone() : "");
+                }
+                if (textRole != null) {
+                    textRole.setText(user.getRole() != null ? user.getRole() : "");
+                }
             }
 
             @Override
@@ -545,15 +558,12 @@ public class ProfileFragment extends Fragment {
             return;
         }
 
-        // Specialty – depending on your DoctorProfile, adjust getter (e.g. getSpecialtyName()).
+        // Specialty – now using backend DoctorProfile.specialty.name
         if (textDoctorSpecialty != null) {
             try {
-                // If DoctorProfile has a "getSpecialtyName()" you can use it here.
-                // For now, fallback to empty if not available.
-                String specialty = null;
-                // TODO: wire actual specialty field from DoctorProfile if present.
-                if (!TextUtils.isEmpty(specialty)) {
-                    textDoctorSpecialty.setText(specialty);
+                DoctorProfile.Specialty specialty = doctorProfile.getSpecialty();
+                if (specialty != null && !TextUtils.isEmpty(specialty.getName())) {
+                    textDoctorSpecialty.setText(specialty.getName());
                 } else {
                     textDoctorSpecialty.setText("");
                 }
@@ -650,7 +660,9 @@ public class ProfileFragment extends Fragment {
             try {
                 String blood = patientProfile.getBloodType();
                 if (!TextUtils.isEmpty(blood)) {
-                    textPatientBloodType.setText(getString(R.string.profile_patient_blood_type_format, blood));
+                    textPatientBloodType.setText(
+                            getString(R.string.profile_patient_blood_type_format, blood)
+                    );
                 } else {
                     textPatientBloodType.setText("");
                 }
@@ -674,19 +686,30 @@ public class ProfileFragment extends Fragment {
             }
         }
 
+        // Patient lifestyle flags – now using string resources instead of hardcoded English
         if (textPatientFlags != null) {
             try {
                 Boolean smoker = patientProfile.getSmoker();
                 Boolean alcohol = patientProfile.getAlcoholUse();
                 StringBuilder flags = new StringBuilder();
+
                 if (smoker != null) {
-                    flags.append(smoker ? "Smoker" : "Non-smoker");
+                    flags.append(smoker
+                            ? getString(R.string.profile_patient_smoker_yes)
+                            : getString(R.string.profile_patient_smoker_no));
                 }
                 if (alcohol != null) {
                     if (flags.length() > 0) flags.append(" • ");
-                    flags.append(alcohol ? "Alcohol use" : "No alcohol use");
+                    flags.append(alcohol
+                            ? getString(R.string.profile_patient_alcohol_yes)
+                            : getString(R.string.profile_patient_alcohol_no));
                 }
-                textPatientFlags.setText(flags.toString());
+
+                if (flags.length() == 0) {
+                    textPatientFlags.setText(getString(R.string.profile_flags_none));
+                } else {
+                    textPatientFlags.setText(flags.toString());
+                }
             } catch (Exception ignored) {
                 textPatientFlags.setText("");
             }
@@ -838,6 +861,19 @@ public class ProfileEditFragment extends Fragment {
                             .navigate(R.id.action_profileEditFragment_to_userBaseInfoFragment));
         }
 
+        // Name and phone are base user fields, edited from the "Base info" screen.
+        // Here they are read-only for display only, to avoid fake editable fields.
+        if (inputName != null) {
+            inputName.setEnabled(false);
+            inputName.setFocusable(false);
+            inputName.setFocusableInTouchMode(false);
+        }
+        if (inputPhone != null) {
+            inputPhone.setEnabled(false);
+            inputPhone.setFocusable(false);
+            inputPhone.setFocusableInTouchMode(false);
+        }
+
         loadProfileForEdit();
     }
 
@@ -860,7 +896,7 @@ public class ProfileEditFragment extends Fragment {
                 currentUser = user;
                 currentDoctorProfile = doctorProfile;
 
-                // Prefill base user info (read-only semantics; actual editing in base info screen).
+                // Prefill base user info (read-only here; real editing is in base info screen).
                 if (inputName != null && user != null) {
                     String first = user.getFirstname() != null ? user.getFirstname() : "";
                     String last = user.getLastname() != null ? user.getLastname() : "";

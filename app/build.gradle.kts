@@ -39,7 +39,7 @@ dependencies {
     implementation(libs.activity)
     implementation(libs.constraintlayout)
 
-    // Retrofit / OkHttp (previously added)
+    // Retrofit / OkHttp
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -50,6 +50,10 @@ dependencies {
     implementation("androidx.navigation:navigation-ui:2.7.7")
     implementation(libs.navigation.fragment)
     implementation(libs.navigation.ui)
+
+    // Glide (image loading / b**u**mptech)
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

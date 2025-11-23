@@ -58,7 +58,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Full name -->
+            <!-- Full name (READ-ONLY: base user info) -->
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -69,10 +69,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/profile_edit_name_hint"
-                    android:inputType="textPersonName" />
+                    android:inputType="textPersonName"
+                    android:enabled="false"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:clickable="false" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Phone -->
+            <!-- Phone (READ-ONLY: base user info) -->
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -83,7 +87,11 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/profile_edit_phone_hint"
-                    android:inputType="phone" />
+                    android:inputType="phone"
+                    android:enabled="false"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:clickable="false" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Clinic / address -->
@@ -219,14 +227,13 @@
                     android:text="@string/profile_edit_cancel" />
             </LinearLayout>
 
-            <!-- NEW: Base information button (for common /me info) -->
+            <!-- Base information button (for /me info: firstname, lastname, email, phone) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_base_info"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Base information" />
-            <!-- you can replace text with a string resource later -->
+                android:text="@string/profile_base_info_button" />
 
         </LinearLayout>
     </ScrollView>

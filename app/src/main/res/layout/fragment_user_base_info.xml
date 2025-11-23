@@ -16,35 +16,35 @@
             android:layout_height="wrap_content"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:text="Full name" />
+            android:text="@string/home_drawer_user_name_placeholder" />
 
         <TextView
             android:id="@+id/text_base_email"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="email@example.com" />
+            android:text="@string/home_drawer_email_placeholder" />
 
         <TextView
             android:id="@+id/text_base_phone"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="+216 ..." />
+            android:text="@string/profile_phone_placeholder" />
 
         <TextView
             android:id="@+id/text_base_role"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="DOCTOR/PATIENT" />
+            android:text="@string/profile_role_unknown" />
 
         <Button
             android:id="@+id/button_edit_base_info"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="Edit base information" />
+            android:text="@string/user_base_info_button_edit" />
 
     </LinearLayout>
 </ScrollView>
