@@ -320,4 +320,47 @@
     <string name="user_base_edit_email_hint">Email</string>
     <string name="user_base_edit_phone_hint">Phone</string>
 
+    <!-- ===== NEW: Patient home search UI ===== -->
+    <string name="home_patient_title">Find a doctor</string>
+    <string name="home_patient_subtitle">Search by name or specialty.</string>
+    <string name="home_patient_search_hint">Search doctors by name or specialty</string>
+    <string name="home_patient_search_empty_idle">Start typing to search for a doctor.</string>
+    <string name="home_patient_search_empty_results">No doctors match your search.</string>
+    <string name="home_patient_doctor_title_format">%1$s · %2$s</string>
+    <string name="home_patient_doctor_click_toast">Doctor %1$s selected.</string>
+    <!-- Patient home / doctor search -->
+    <string name="home_patient_search_empty_subtitle">You can search by name, specialty or city.</string>
+    <string name="home_patient_search_no_results">No doctors match your search.</string>
+    <string name="home_patient_search_error_generic">Could not load doctors. Please try again.</string>
+    <!-- Home gate (role-based routing) -->
+    <string name="home_gate_loading_message">Preparing your home\u2026</string>
+
+    <!-- Doctor public profile (doctor landing) -->
+    <string name="doctor_public_error_generic">
+        Could not load doctor details. Please try again.
+    </string>
+
+    <string name="doctor_public_about_title">About</string>
+
+    <string name="doctor_public_clinic_title">Clinic &amp; location</string>
+
+    <string name="doctor_public_acts_title">Services &amp; acts</string>
+
+    <string name="doctor_public_acts_empty">
+        This doctor has not listed any acts yet.
+    </string>
+    <!-- Doctor public profile: errors & placeholders -->
+    <string name="doctor_public_error_missing_id">
+        Missing doctor id. Please try again from the search screen.
+    </string>
+
+    <string name="doctor_public_bio_placeholder">
+        This doctor has not added a bio yet.
+    </string>
+    <string name="doctor_public_title">Doctor</string>
+
+    <string name="doctor_public_clinic_address_placeholder">
+        Clinic address not provided.
+    </string>
+
 </resources>

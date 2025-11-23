@@ -33,16 +33,10 @@ public final class HomeUiHelper {
      * Returns the correct role label resource id for a given backend role string.
      */
     public static int resolveRoleLabelResId(String role) {
-        if (role == null) {
-            return R.string.profile_role_unknown;
-        }
-
-        if ("DOCTOR".equalsIgnoreCase(role)) {
+        if (HomeRole.isDoctor(role)) {
             return R.string.profile_role_doctor;
-        } else if ("PATIENT".equalsIgnoreCase(role)) {
+        } else if (HomeRole.isPatient(role)) {
             return R.string.profile_role_patient;
-        } else if ("ADMIN".equalsIgnoreCase(role)) {
-            return R.string.profile_role_admin;
         } else {
             return R.string.profile_role_unknown;
         }

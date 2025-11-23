@@ -6,8 +6,12 @@ import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.Header;
+import retrofit2.http.Path;
 import retrofit2.http.PUT;
+import retrofit2.http.Query;
 import tn.esprit.domain.doctor.DoctorProfile;
+import tn.esprit.domain.doctor.DoctorPublicProfile;
+import tn.esprit.domain.doctor.DoctorSearchResult;
 
 public interface DoctorApiService {
 
@@ -40,11 +44,40 @@ public interface DoctorApiService {
             @Body DoctorPracticeSetupRequestDto request
     );
 
-    // ----------- DTOs used as request bodies -----------
+    // ----------- NEW: public/search endpoints -----------
 
     /**
-     * Mirrors backend DoctorProfileUpdateRequest.
+     * Public search endpoint for doctors.
+     *
+     * GET /api/doctors/search
+     *
+     * All query parameters are optional. Passing null for a parameter
+     * simply omits it from the request.
      */
+    @GET("/api/doctors/search")
+    Call<List<DoctorSearchResult>> searchDoctors(
+            @Header("Authorization") String authHeader,
+            @Query("q") String query,
+            @Query("specialtyId") Long specialtyId,
+            @Query("city") String city,
+            @Query("country") String country,
+            @Query("teleconsultationEnabled") Boolean teleconsultationEnabled,
+            @Query("acceptingNewPatients") Boolean acceptingNewPatients
+    );
+
+    /**
+     * Public doctor profile endpoint.
+     *
+     * GET /api/doctors/{doctorId}/public
+     */
+    @GET("/api/doctors/{doctorId}/public")
+    Call<DoctorPublicProfile> getDoctorPublicProfile(
+            @Header("Authorization") String authHeader,
+            @Path("doctorId") Long doctorId
+    );
+
+    // ----------- DTOs used as request bodies -----------
+
     /**
      * Mirrors backend DoctorProfileUpdateRequest.
      */
@@ -158,6 +191,6 @@ public interface DoctorApiService {
      */
     class DoctorPracticeSetupRequestDto {
         public Long specialtyId;
-        public List<Long> actIds;
+        public java.util.List<Long> actIds;
     }
 }

@@ -56,6 +56,10 @@ public class MainActivity extends AppCompatActivity {
     private ProfileRepository profileRepository;
     private NavController navController;
 
+    // Keep last known role so bottom nav "Home" knows where to go
+    @Nullable
+    private String lastKnownRole;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -134,7 +138,7 @@ public class MainActivity extends AppCompatActivity {
         // Set up bottom nav listener ONCE
         setupBottomNavNavigation();
 
-        // Load profile and adapt header + bottom nav to role
+        // Load profile and adapt header + bottom nav + home destination
         loadUserAndApplyRole();
     }
 
@@ -160,7 +164,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Public API used by profile/edit fragments after a successful update.
-     * Must NEVER force navigation (no auto-jumps to Home).
+     * Must NEVER force navigation away from the current screen.
      */
     public void refreshUserProfileUi() {
         loadUserAndApplyRole();
@@ -181,6 +185,7 @@ public class MainActivity extends AppCompatActivity {
                 String role = user != null ? user.getRole() : null;
                 applyHeaderForUser(user, role);
                 applyBottomNavForRole(role);
+                navigateToHomeForRole(role);
             }
 
             @Override
@@ -191,6 +196,7 @@ public class MainActivity extends AppCompatActivity {
                 // Fallback: clear header + generic bottom nav. No leaking previous user.
                 applyHeaderForUser(null, null);
                 applyBottomNavForRole(null);
+                navigateToHomeForRole(null);
             }
         });
     }
@@ -296,6 +302,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        lastKnownRole = role;
+
         int currentDestId = 0;
         if (navController != null && navController.getCurrentDestination() != null) {
             currentDestId = navController.getCurrentDestination().getId();
@@ -311,11 +319,17 @@ public class MainActivity extends AppCompatActivity {
             bottomNavigationView.inflateMenu(R.menu.menu_home_bottom);
         }
 
-        // Keep bottom nav selection in sync with where we actually are.
-        if (currentDestId == R.id.homeFragment) {
-            bottomNavigationView.setSelectedItemId(R.id.menu_home);
+        // Home destination depends on role
+        int homeDestId;
+        if (role != null && "PATIENT".equalsIgnoreCase(role)) {
+            homeDestId = R.id.patientHomeFragment;
         } else {
-            // Leave nothing explicitly selected; avoids auto-jumping when in Profile.
+            homeDestId = R.id.homeFragment;
+        }
+
+        // Keep bottom nav selection in sync with where we actually are.
+        if (currentDestId == homeDestId) {
+            bottomNavigationView.setSelectedItemId(R.id.menu_home);
         }
     }
 
@@ -328,17 +342,55 @@ public class MainActivity extends AppCompatActivity {
             int id = item.getItemId();
 
             if (id == R.id.menu_home) {
-                // Navigate to home ONLY if we're not already there.
-                if (navController.getCurrentDestination() == null
-                        || navController.getCurrentDestination().getId() != R.id.homeFragment) {
-                    navController.navigate(R.id.homeFragment);
+                // Decide correct home based on last known role
+                int targetDestId;
+                if (lastKnownRole != null && "PATIENT".equalsIgnoreCase(lastKnownRole)) {
+                    targetDestId = R.id.patientHomeFragment;
+                } else {
+                    targetDestId = R.id.homeFragment;
                 }
+
+                if (navController.getCurrentDestination() != null
+                        && navController.getCurrentDestination().getId() == targetDestId) {
+                    // Already on the right home, do nothing.
+                    return true;
+                }
+
+                navController.navigate(targetDestId);
                 return true;
             }
 
             // Other items (calendar, patients, office, etc.) will be wired later.
             return true;
         });
+    }
+
+    /**
+     * Called after we know (or failed to know) the role, to route away from the gate fragment.
+     * It only performs navigation when we're sitting on the gate.
+     */
+    private void navigateToHomeForRole(@Nullable String role) {
+        if (navController == null) return;
+
+        int currentDestId = 0;
+        if (navController.getCurrentDestination() != null) {
+            currentDestId = navController.getCurrentDestination().getId();
+        }
+
+        // Only redirect when we're still at the gate (or graph just created).
+        if (currentDestId != R.id.homeGateFragment && currentDestId != 0) {
+            return;
+        }
+
+        int targetDestId;
+        if (role != null && "PATIENT".equalsIgnoreCase(role)) {
+            targetDestId = R.id.patientHomeFragment;
+        } else {
+            // Default: doctor/unknown uses generic HomeFragment
+            targetDestId = R.id.homeFragment;
+        }
+
+        navController.navigate(targetDestId);
     }
 
     private void performLogout() {

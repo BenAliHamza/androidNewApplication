@@ -2,13 +2,43 @@
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/nav_main"
-    app:startDestination="@id/homeFragment">
+    app:startDestination="@id/homeGateFragment">
 
+    <!-- Gate fragment: decides where to go once role is known -->
+    <fragment
+        android:id="@+id/homeGateFragment"
+        android:name="tn.esprit.presentation.home.HomeGateFragment"
+        android:label="@string/home_header_title" />
+
+    <!-- Doctor home (generic highlight/stats) -->
     <fragment
         android:id="@+id/homeFragment"
         android:name="tn.esprit.presentation.home.HomeFragment"
         android:label="@string/home_title" />
 
+    <!-- Patient home: search-based experience -->
+    <fragment
+        android:id="@+id/patientHomeFragment"
+        android:name="tn.esprit.presentation.home.PatientHomeFragment"
+        android:label="@string/home_title">
+
+        <action
+            android:id="@+id/action_patientHomeFragment_to_doctorPublicProfileFragment"
+            app:destination="@id/doctorPublicProfileFragment" />
+    </fragment>
+
+    <!-- Doctor public profile / landing screen -->
+    <fragment
+        android:id="@+id/doctorPublicProfileFragment"
+        android:name="tn.esprit.presentation.home.DoctorPublicProfileFragment"
+        android:label="@string/doctor_public_title">
+
+        <argument
+            android:name="doctorId"
+            app:argType="long" />
+    </fragment>
+
+    <!-- Profile root -->
     <fragment
         android:id="@+id/profileFragment"
         android:name="tn.esprit.presentation.profile.ProfileFragment"
