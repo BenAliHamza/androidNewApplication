@@ -51,5 +51,6 @@ public class HomeFragment extends Fragment {
                     .setStartDelay(80L)
                     .start();
         }
+
     }
 }
