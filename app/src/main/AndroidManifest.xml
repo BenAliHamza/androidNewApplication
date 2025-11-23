@@ -62,7 +62,10 @@
             android:name=".MainActivity"
             android:exported="false" />
 
-        <activity android:name="tn.esprit.presentation.appointment.DoctorAvailabilityActivity"/>
+        <activity
+            android:name=".presentation.appointment.DoctorAvailabilityActivity"
+            android:exported="false" />
+
 
 
     </application>

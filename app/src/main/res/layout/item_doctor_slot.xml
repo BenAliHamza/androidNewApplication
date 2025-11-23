@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:layout_marginBottom="8dp"
+    android:background="@drawable/bg_slot_card">
+
+    <TextView
+        android:id="@+id/textSlotTime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="10:00 - 10:30"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/textSlotStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="AVAILABLE" />
+</LinearLayout>

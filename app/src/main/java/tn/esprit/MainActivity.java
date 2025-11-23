@@ -317,6 +317,9 @@ public class MainActivity extends AppCompatActivity {
             if (id == R.id.menu_home) {
                 navController.navigate(R.id.homeFragment);
                 return true;
+            } else if (id == R.id.menu_calendar) {
+                navController.navigate(R.id.doctorCalendarFragment);
+                return true;
             } else if (id == R.id.menu_profile) {
                 navController.navigate(R.id.profileFragment);
                 return true;
@@ -326,6 +329,7 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
     }
+
 
     private void performLogout() {
         if (authLocalDataSource != null) {

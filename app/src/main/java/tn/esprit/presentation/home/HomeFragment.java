@@ -19,12 +19,22 @@ public class HomeFragment extends Fragment {
     private TextView textHighlightTitle;
     private TextView textHighlightSubtitle;
 
+    // "Chips" – actually TextViews styled as chips
+    private TextView chipQuickBook;
+    private TextView chipQuickMessages;
+    private TextView chipQuickReports;
+
+    public HomeFragment() {
+        // Required empty public constructor
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_home, container, false);
+        return inflater.inflate(R.layout.fragment_home,
+                container, false);
     }
 
     @Override
@@ -32,15 +42,45 @@ public class HomeFragment extends Fragment {
                               @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        // Highlight card views
         cardHighlight = view.findViewById(R.id.card_highlight);
         textHighlightTitle = view.findViewById(R.id.text_highlight_title);
         textHighlightSubtitle = view.findViewById(R.id.text_highlight_subtitle);
 
-        // Generic highlight text (we can make this role-specific later if needed)
-        textHighlightTitle.setText(getString(R.string.home_highlight_title));
-        textHighlightSubtitle.setText(getString(R.string.home_highlight_subtitle));
+        // Quick action "chips" (TextViews)
+        chipQuickBook = view.findViewById(R.id.chip_quick_book);
+        chipQuickMessages = view.findViewById(R.id.chip_quick_messages);
+        chipQuickReports = view.findViewById(R.id.chip_quick_reports);
 
-        // Simple entrance animation
+        // Generic highlight text
+        if (textHighlightTitle != null) {
+            textHighlightTitle.setText(getString(R.string.home_highlight_title));
+        }
+        if (textHighlightSubtitle != null) {
+            textHighlightSubtitle.setText(getString(R.string.home_highlight_subtitle));
+        }
+
+        // "Book visit" chip: no action for now
+        if (chipQuickBook != null) {
+            chipQuickBook.setOnClickListener(v -> {
+                // intentionally empty
+            });
+        }
+
+        // Reserved for future features
+        if (chipQuickMessages != null) {
+            chipQuickMessages.setOnClickListener(v -> {
+                // TODO: messages screen later
+            });
+        }
+
+        if (chipQuickReports != null) {
+            chipQuickReports.setOnClickListener(v -> {
+                // TODO: reports screen later
+            });
+        }
+
+        // Simple entrance animation on highlight card
         if (cardHighlight != null) {
             cardHighlight.setAlpha(0f);
             cardHighlight.setTranslationY(24f);
@@ -51,6 +91,5 @@ public class HomeFragment extends Fragment {
                     .setStartDelay(80L)
                     .start();
         }
-
     }
 }

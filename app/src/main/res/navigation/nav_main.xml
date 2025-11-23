@@ -65,5 +65,9 @@
         android:id="@+id/userBaseInfoEditFragment"
         android:name="tn.esprit.presentation.profile.UserBaseInfoEditFragment"
         android:label="Edit base info" />
+    <fragment
+        android:id="@+id/doctorCalendarFragment"
+        android:name="tn.esprit.presentation.appointment.DoctorCalendarFragment"
+        android:label="@string/home_bottom_calendar" />
 
 </navigation>
