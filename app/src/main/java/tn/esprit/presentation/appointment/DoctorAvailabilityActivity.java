@@ -1,3 +1,4 @@
+// app/src/main/java/tn/esprit/presentation/appointment/DoctorAvailabilityActivity.java
 package tn.esprit.presentation.appointment;
 
 import android.os.Bundle;
@@ -9,7 +10,6 @@ import androidx.lifecycle.ViewModelProvider;
 
 import tn.esprit.R;
 import tn.esprit.data.remote.appointment.AvailabilitySessionRequest;
-import tn.esprit.presentation.appointment.AppointmentViewModel;
 
 public class DoctorAvailabilityActivity extends AppCompatActivity {
 
@@ -40,34 +40,46 @@ public class DoctorAvailabilityActivity extends AppCompatActivity {
     }
 
     private void setupRecurrenceSpinner() {
-        String[] types = {"NONE", "WEEKLY"};
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_dropdown_item, types);
+        String[] types = {"ONE_TIME", "WEEKLY"};
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_dropdown_item,
+                types
+        );
         spinnerRecurrence.setAdapter(adapter);
     }
 
     private void setupObservers() {
-        vm.createdAvailability.observe(this, response -> {
+        vm.getCreatedAvailability().observe(this, response -> {
             if (response != null) {
-                Toast.makeText(this,
+                Toast.makeText(
+                        this,
                         "Created. Slots = " + response.getGeneratedSlotsCount(),
-                        Toast.LENGTH_LONG).show();
+                        Toast.LENGTH_LONG
+                ).show();
             }
         });
     }
 
     private void submit() {
-        String token = getSharedPreferences("auth", MODE_PRIVATE)
+        String rawToken = getSharedPreferences("auth", MODE_PRIVATE)
                 .getString("accessToken", "");
+        if (rawToken == null || rawToken.isEmpty()) {
+            Toast.makeText(this, "Missing token", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String bearer = "Bearer " + rawToken;
 
         AvailabilitySessionRequest req = new AvailabilitySessionRequest();
-        req.startDate = inputStartDate.getText().toString();
-        req.endDate = inputEndDate.getText().toString().isEmpty() ? null : inputEndDate.getText().toString();
-        req.startTime = inputStartTime.getText().toString();
-        req.endTime = inputEndTime.getText().toString();
-        req.slotDurationMinutes = Integer.parseInt(inputDuration.getText().toString());
-        req.recurrenceType = spinnerRecurrence.getSelectedItem().toString();
+        req.setStartDate(inputStartDate.getText().toString());
+        String endDateStr = inputEndDate.getText().toString();
+        req.setEndDate(endDateStr.isEmpty() ? null : endDateStr);
+        req.setStartTime(inputStartTime.getText().toString());
+        req.setEndTime(inputEndTime.getText().toString());
+        req.setSlotDurationMinutes(Integer.parseInt(inputDuration.getText().toString()));
+        req.setRecurrenceType(spinnerRecurrence.getSelectedItem().toString());
+        req.setDaysOfWeek(null);
 
-        vm.createAvailability(token, req);
+        vm.createAvailability(bearer, req);
     }
 }

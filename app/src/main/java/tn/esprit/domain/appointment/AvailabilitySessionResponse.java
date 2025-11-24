@@ -5,9 +5,6 @@ public class AvailabilitySessionResponse {
     private Long id;
     private int generatedSlotsCount;
 
-    public AvailabilitySessionResponse() {
-    }
-
     public Long getId() {
         return id;
     }

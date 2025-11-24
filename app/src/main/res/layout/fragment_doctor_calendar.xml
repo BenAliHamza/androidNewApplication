@@ -6,7 +6,6 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <!-- Tabs -->
     <LinearLayout
         android:id="@+id/layoutTabs"
         android:layout_width="match_parent"
@@ -30,7 +29,6 @@
             android:text="Agenda view" />
     </LinearLayout>
 
-    <!-- AVAILABILITY SETUP -->
     <ScrollView
         android:id="@+id/layoutAvailabilitySetup"
         android:layout_width="match_parent"
@@ -57,6 +55,7 @@
                 android:text="Select days:" />
 
             <LinearLayout
+                android:id="@+id/layoutDays"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
@@ -112,6 +111,7 @@
                     android:layout_weight="1"
                     android:text="Su" />
             </LinearLayout>
+
             <CheckBox
                 android:id="@+id/cbWeekly"
                 android:layout_width="wrap_content"
@@ -181,7 +181,6 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- AGENDA VIEW -->
     <LinearLayout
         android:id="@+id/layoutAgenda"
         android:layout_width="match_parent"

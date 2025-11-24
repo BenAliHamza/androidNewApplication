@@ -36,21 +36,17 @@ public class DoctorCalendarFragment extends Fragment {
     private DoctorSlotAdapter adapter;
     private TextView textSelectedDate;
     private CalendarView calendarView;
-
-    // current selected date: "YYYY-MM-DD"
     private String currentDateStr;
     private List<Slot> allSlots = new ArrayList<>();
-
-    // availability UI
     private LinearLayout layoutAgenda;
     private View layoutAvailability;
     private NumberPicker npStartHour, npStartMinute, npEndHour, npEndMinute, npDuration;
     private CheckBox cbMon, cbTue, cbWed, cbThu, cbFri, cbSat, cbSun;
-
+    private CheckBox cbWeekly;
     private AuthLocalDataSource authLocalDataSource;
-    private CheckBox cbWeekly; // NEW
 
-    public DoctorCalendarFragment() { }
+    public DoctorCalendarFragment() {
+    }
 
     @Nullable
     @Override
@@ -73,7 +69,6 @@ public class DoctorCalendarFragment extends Fragment {
         layoutAvailability = view.findViewById(R.id.layoutAvailabilitySetup);
         layoutAgenda = view.findViewById(R.id.layoutAgenda);
 
-        // availability controls
         npStartHour = view.findViewById(R.id.npStartHour);
         npStartMinute = view.findViewById(R.id.npStartMinute);
         npEndHour = view.findViewById(R.id.npEndHour);
@@ -89,6 +84,7 @@ public class DoctorCalendarFragment extends Fragment {
         cbSat = view.findViewById(R.id.cbSat);
         cbSun = view.findViewById(R.id.cbSun);
         cbWeekly = view.findViewById(R.id.cbWeekly);
+
         setupNumberPickers();
 
         calendarView = view.findViewById(R.id.calendarView);
@@ -102,7 +98,6 @@ public class DoctorCalendarFragment extends Fragment {
         viewModel = new ViewModelProvider(requireActivity())
                 .get(AppointmentViewModel.class);
 
-        // availability created
         viewModel.createdAvailability.observe(getViewLifecycleOwner(), response -> {
             if (response != null) {
                 Toast.makeText(requireContext(),
@@ -126,7 +121,6 @@ public class DoctorCalendarFragment extends Fragment {
             }
         });
 
-        // tabs
         btnAvailabilitySetup.setOnClickListener(v -> {
             layoutAvailability.setVisibility(View.VISIBLE);
             layoutAgenda.setVisibility(View.GONE);
@@ -139,21 +133,18 @@ public class DoctorCalendarFragment extends Fragment {
 
         btnSaveAvailability.setOnClickListener(v -> saveAvailability());
 
-        // init selected date = today
         Calendar cal = Calendar.getInstance();
         currentDateStr = formatDate(cal.get(Calendar.YEAR),
                 cal.get(Calendar.MONTH),
                 cal.get(Calendar.DAY_OF_MONTH));
         updateSelectedDateLabel();
 
-        // user taps a day -> update filter
         calendarView.setOnDateChangeListener((cv, year, month, dayOfMonth) -> {
             currentDateStr = formatDate(year, month, dayOfMonth);
             updateSelectedDateLabel();
             filterSlotsForCurrentDate();
         });
 
-        // receive slots from backend
         viewModel.doctorSlots.observe(getViewLifecycleOwner(), slots -> {
             if (slots != null) {
                 allSlots = slots;
@@ -169,15 +160,12 @@ public class DoctorCalendarFragment extends Fragment {
         npStartHour.setMaxValue(23);
         npEndHour.setMinValue(0);
         npEndHour.setMaxValue(23);
-
         npStartMinute.setMinValue(0);
         npStartMinute.setMaxValue(59);
         npEndMinute.setMinValue(0);
         npEndMinute.setMaxValue(59);
-
         npStartHour.setValue(9);
         npEndHour.setValue(17);
-
         npDuration.setMinValue(5);
         npDuration.setMaxValue(120);
         npDuration.setValue(30);
@@ -194,17 +182,16 @@ public class DoctorCalendarFragment extends Fragment {
         }
     }
 
-    // ONLY show slots for the selected date
     private void filterSlotsForCurrentDate() {
         if (allSlots == null || currentDateStr == null) {
-            adapter.setSlots(new ArrayList<Slot>());
+            adapter.setSlots(new ArrayList<>());
             return;
         }
 
         List<Slot> filtered = new ArrayList<>();
         for (Slot s : allSlots) {
             if (s.startDateTime != null && s.startDateTime.length() >= 10) {
-                String dateOnly = s.startDateTime.substring(0, 10); // "YYYY-MM-DD"
+                String dateOnly = s.startDateTime.substring(0, 10);
                 if (dateOnly.equals(currentDateStr)) {
                     filtered.add(s);
                 }
@@ -212,11 +199,6 @@ public class DoctorCalendarFragment extends Fragment {
         }
 
         adapter.setSlots(filtered);
-
-        // debug toast: you can remove it later
-        Toast.makeText(requireContext(),
-                "Slots for " + currentDateStr + ": " + filtered.size(),
-                Toast.LENGTH_SHORT).show();
     }
 
     private String getBearerToken() {
@@ -253,6 +235,18 @@ public class DoctorCalendarFragment extends Fragment {
         viewModel.loadDoctorSlots(token, fromStr, toStr, null);
     }
 
+    private List<String> collectSelectedDays() {
+        List<String> days = new ArrayList<>();
+        if (cbMon != null && cbMon.isChecked()) days.add("MONDAY");
+        if (cbTue != null && cbTue.isChecked()) days.add("TUESDAY");
+        if (cbWed != null && cbWed.isChecked()) days.add("WEDNESDAY");
+        if (cbThu != null && cbThu.isChecked()) days.add("THURSDAY");
+        if (cbFri != null && cbFri.isChecked()) days.add("FRIDAY");
+        if (cbSat != null && cbSat.isChecked()) days.add("SATURDAY");
+        if (cbSun != null && cbSun.isChecked()) days.add("SUNDAY");
+        return days;
+    }
+
     private void saveAvailability() {
         String token = getBearerToken();
         if (token == null) {
@@ -269,17 +263,16 @@ public class DoctorCalendarFragment extends Fragment {
         int duration = npDuration.getValue();
 
         String startTime = String.format(Locale.US, "%02d:%02d", sh, sm);
-        String endTime   = String.format(Locale.US, "%02d:%02d", eh, em);
+        String endTime = String.format(Locale.US, "%02d:%02d", eh, em);
 
         AvailabilitySessionRequest req = new AvailabilitySessionRequest();
-        req.startTime = startTime;
-        req.endTime = endTime;
-        req.slotDurationMinutes = duration;
+        req.setStartTime(startTime);
+        req.setEndTime(endTime);
+        req.setSlotDurationMinutes(duration);
 
         boolean weekly = cbWeekly != null && cbWeekly.isChecked();
 
         if (weekly) {
-            // weekly mode: today → today+30, use selected weekdays
             Calendar cal = Calendar.getInstance();
             String startDate = formatDate(cal.get(Calendar.YEAR),
                     cal.get(Calendar.MONTH),
@@ -289,33 +282,24 @@ public class DoctorCalendarFragment extends Fragment {
                     cal.get(Calendar.MONTH),
                     cal.get(Calendar.DAY_OF_MONTH));
 
-            req.startDate = startDate;
-            req.endDate = endDate;
-            req.recurrenceType = "WEEKLY";
-
-            List<String> days = new ArrayList<>();
-            if (cbMon.isChecked()) days.add("MONDAY");
-            if (cbTue.isChecked()) days.add("TUESDAY");
-            if (cbWed.isChecked()) days.add("WEDNESDAY");
-            if (cbThu.isChecked()) days.add("THURSDAY");
-            if (cbFri.isChecked()) days.add("FRIDAY");
-            if (cbSat.isChecked()) days.add("SATURDAY");
-            if (cbSun.isChecked()) days.add("SUNDAY");
-            req.daysOfWeek = days;
+            req.setStartDate(startDate);
+            req.setEndDate(endDate);
+            req.setRecurrenceType("WEEKLY");
+            req.setDaysOfWeek(collectSelectedDays());
 
         } else {
-            // one-time: only today
             Calendar cal = Calendar.getInstance();
             String today = formatDate(cal.get(Calendar.YEAR),
                     cal.get(Calendar.MONTH),
                     cal.get(Calendar.DAY_OF_MONTH));
 
-            req.startDate = today;
-            req.endDate = today;
-            req.recurrenceType = "ONE_TIME";
-            req.daysOfWeek = null;
+            req.setStartDate(today);
+            req.setEndDate(today);
+            req.setRecurrenceType("ONE_TIME");
+            req.setDaysOfWeek(null);
         }
 
         viewModel.createAvailability(token, req);
     }
+
 }
