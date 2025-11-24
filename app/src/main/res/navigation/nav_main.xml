@@ -25,6 +25,11 @@
         <action
             android:id="@+id/action_patientHomeFragment_to_doctorPublicProfileFragment"
             app:destination="@id/doctorPublicProfileFragment" />
+
+        <!-- New: navigate to patient's indicators screen -->
+        <action
+            android:id="@+id/action_patientHomeFragment_to_patientIndicatorsFragment"
+            app:destination="@id/patientIndicatorsFragment" />
     </fragment>
 
     <!-- Doctor public profile / landing screen -->
@@ -37,6 +42,12 @@
             android:name="doctorId"
             app:argType="long" />
     </fragment>
+
+    <!-- Patient indicators screen (self) -->
+    <fragment
+        android:id="@+id/patientIndicatorsFragment"
+        android:name="tn.esprit.presentation.home.PatientIndicatorsFragment"
+        android:label="@string/patient_indicators_title" />
 
     <!-- Profile root -->
     <fragment

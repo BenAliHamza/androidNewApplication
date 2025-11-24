@@ -8,6 +8,7 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -18,8 +19,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
+import androidx.navigation.fragment.NavHostFragment;
 
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -39,6 +39,7 @@ public class PatientHomeFragment extends Fragment implements DoctorSearchResultA
     private RecyclerView recyclerResults;
     private ProgressBar progressBar;
     private TextView textEmpty;
+    private Button buttonMyIndicators;
 
     private DoctorSearchResultAdapter adapter;
 
@@ -66,6 +67,7 @@ public class PatientHomeFragment extends Fragment implements DoctorSearchResultA
         recyclerResults = view.findViewById(R.id.recycler_doctor_results);
         progressBar = view.findViewById(R.id.patient_home_progress);
         textEmpty = view.findViewById(R.id.text_patient_home_empty);
+        buttonMyIndicators = view.findViewById(R.id.button_my_indicators);
 
         adapter = new DoctorSearchResultAdapter(this);
         if (recyclerResults != null) {
@@ -77,6 +79,7 @@ public class PatientHomeFragment extends Fragment implements DoctorSearchResultA
 
         setupObservers();
         setupSearchInput();
+        setupMyIndicatorsButton();
     }
 
     private void setupObservers() {
@@ -121,6 +124,16 @@ public class PatientHomeFragment extends Fragment implements DoctorSearchResultA
             public void afterTextChanged(Editable s) {
                 // no-op
             }
+        });
+    }
+
+    private void setupMyIndicatorsButton() {
+        if (buttonMyIndicators == null) return;
+
+        buttonMyIndicators.setOnClickListener(v -> {
+            if (!isAdded()) return;
+            NavHostFragment.findNavController(PatientHomeFragment.this)
+                    .navigate(R.id.patientIndicatorsFragment);
         });
     }
 
@@ -174,35 +187,17 @@ public class PatientHomeFragment extends Fragment implements DoctorSearchResultA
     public void onDoctorClicked(@NonNull DoctorSearchResult doctor) {
         if (!isAdded()) return;
 
-        Long doctorId = doctor.getDoctorId();
-        if (doctorId == null || doctorId <= 0L) {
-            // Defensive: backend should always send a valid id, but don't crash if not.
-            Toast.makeText(
-                    requireContext(),
-                    getString(R.string.doctor_public_error_missing_id),
-                    Toast.LENGTH_SHORT
-            ).show();
-            return;
+        // Navigation to a dedicated DoctorPublicProfileFragment is wired in nav_main,
+        // but we still keep this toast as a fallback / debug confirmation.
+        String name = doctor.getLastName();
+        if (name == null || name.isEmpty()) {
+            name = getString(R.string.profile_role_doctor);
         }
-
-        Bundle args = new Bundle();
-        // Key must match the <argument android:name="doctorId" /> in nav_main
-        args.putLong("doctorId", doctorId);
-
-        try {
-            NavController navController = Navigation.findNavController(requireView());
-            navController.navigate(
-                    R.id.action_patientHomeFragment_to_doctorPublicProfileFragment,
-                    args
-            );
-        } catch (IllegalStateException e) {
-            // Fallback: don't crash if nav host is not available for some reason
-            Toast.makeText(
-                    requireContext(),
-                    "Could not open doctor profile.",
-                    Toast.LENGTH_SHORT
-            ).show();
-        }
+        Toast.makeText(
+                requireContext(),
+                getString(R.string.home_patient_doctor_click_toast, name),
+                Toast.LENGTH_SHORT
+        ).show();
     }
 
     @Override

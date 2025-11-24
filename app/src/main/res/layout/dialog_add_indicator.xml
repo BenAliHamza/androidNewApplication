@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Type -->
+        <TextView
+            android:id="@+id/text_indicator_type_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/patient_indicators_add_type_label"
+            android:textSize="14sp" />
+
+        <Spinner
+            android:id="@+id/spinner_dialog_indicator_type"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" />
+
+        <!-- Value -->
+        <TextView
+            android:id="@+id/text_indicator_value_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/patient_indicators_add_value_label"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/input_indicator_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:inputType="numberDecimal"
+            android:hint="@string/patient_indicators_add_value_hint_generic" />
+
+        <!-- Note -->
+        <TextView
+            android:id="@+id/text_indicator_note_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/patient_indicators_add_note_label"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/input_indicator_note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:inputType="textMultiLine"
+            android:minLines="2"
+            android:maxLines="4"
+            android:gravity="top"
+            android:hint="@string/patient_indicators_add_note_hint" />
+
+    </LinearLayout>
+</ScrollView>
