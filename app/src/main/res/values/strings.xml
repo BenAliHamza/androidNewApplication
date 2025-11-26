@@ -637,9 +637,76 @@
     <string name="patient_medications_update_reminder_disabled">
     Reminder disabled.
 </string>
+    <string name="doctor_office_edit_coming_soon">Editing your weekly schedule is coming next.</string>
 
     <string name="dialog_add_prescription_times_per_day_hint">Times per day</string>
+    <string name="doctor_office_schedule_title">My weekly schedule</string>
+    <string name="doctor_office_schedule_subtitle">These hours define when patients can book appointments with you.</string>
+    <string name="doctor_office_empty_action">Set my schedule</string>
+    <string name="doctor_office_days_title">Weekly overview</string>
+    <string name="doctor_office_day_monday">Monday</string>
+    <string name="doctor_office_day_tuesday">Tuesday</string>
+    <string name="doctor_office_day_wednesday">Wednesday</string>
+    <string name="doctor_office_day_thursday">Thursday</string>
+    <string name="doctor_office_day_friday">Friday</string>
+    <string name="doctor_office_day_saturday">Saturday</string>
+    <string name="doctor_office_day_sunday">Sunday</string>
+    <!-- Doctor office / schedule -->
+    <string name="doctor_office_title">Your office hours</string>
+    <string name="doctor_office_subtitle">Control when patients can book appointments with you.</string>
+    <string name="doctor_office_edit_cta">Edit weekly schedule</string>
+    <string name="doctor_office_empty_title">No office hours yet</string>
+    <string name="doctor_office_empty_body">Patients will not be able to book visits until you define at least one working slot.</string>
+    <string name="doctor_office_days_section_title">Weekly overview</string>
+    <string name="doctor_office_day_off">Day off</string>
+    <string name="doctor_office_day_mon">Monday</string>
+    <string name="doctor_office_day_tue">Tuesday</string>
+    <string name="doctor_office_day_wed">Wednesday</string>
+    <string name="doctor_office_day_thu">Thursday</string>
+    <string name="doctor_office_day_fri">Friday</string>
+    <string name="doctor_office_day_sat">Saturday</string>
+    <string name="doctor_office_day_sun">Sunday</string>
+    <string name="doctor_office_schedule_load_error">Unable to load your schedule. Please try again.</string>
+    <string name="doctor_office_doctor_only">Only doctors can access the office schedule.</string>
+    <string name="doctor_office_schedule_section_title">Weekly schedule</string>
+    <string name="doctor_office_schedule_section_subtitle">These are the times when patients can book appointments.</string>
+    <string name="doctor_office_edit_schedule">Edit weekly schedule</string>
 
+    <string name="doctor_office_edit_title">Edit weekly schedule</string>
+    <string name="doctor_office_edit_info">Adjust your weekly working hours. Patients will only see available times inside these slots.</string>
+    <string name="doctor_office_save">Save</string>
+    <string name="doctor_office_cancel">Cancel</string>
+    <!-- Doctor schedule edit: small UX hint -->
+    <string name="doctor_office_edit_toggle_hint">
+        Tap a day to quickly turn it on or off. Saving will update your availability.
+    </string>
+    <!-- Doctor office / schedule shifts -->
+    <string-array name="doctor_office_shift_options">
+        <item>Day off</item>
+        <item>Morning (08:00–13:00)</item>
+        <item>Afternoon (14:00–18:00)</item>
+        <item>Full day (08:00–18:00)</item>
+    </string-array>
+
+
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="doctor_office_schedule_empty">You currently have no active working hours.</string>
+
+    <string name="doctor_office_label_monday">Monday</string>
+    <string name="doctor_office_label_tuesday">Tuesday</string>
+    <string name="doctor_office_label_wednesday">Wednesday</string>
+    <string name="doctor_office_label_thursday">Thursday</string>
+    <string name="doctor_office_label_friday">Friday</string>
+    <string name="doctor_office_label_saturday">Saturday</string>
+    <string name="doctor_office_label_sunday">Sunday</string>
+    <string name="doctor_schedule_edit_title">Edit weekly schedule</string>
+    <string name="doctor_schedule_edit_subtitle">Choose your working hours for each day.</string>
+
+    <string name="doctor_schedule_shift_off">Off</string>
+    <string name="doctor_schedule_shift_morning">Morning (08:00 - 13:00)</string>
+    <string name="doctor_schedule_shift_afternoon">Afternoon (14:00 - 19:00)</string>
+    <string name="doctor_schedule_shift_full_day">All day (08:00 - 19:00)</string>
 
 
 </resources>

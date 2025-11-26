@@ -379,6 +379,19 @@ public class MainActivity extends AppCompatActivity {
                 navController.navigate(targetDestId);
                 return true;
 
+            } else if (id == R.id.menu_office) {
+                // Doctor bottom tab: navigate to office / schedule
+                int targetDestId = R.id.doctorOfficeFragment;
+
+                if (navController.getCurrentDestination() != null
+                        && navController.getCurrentDestination().getId() == targetDestId) {
+                    // Already on Office; no-op.
+                    return true;
+                }
+
+                navController.navigate(targetDestId);
+                return true;
+
             } else if (id == R.id.menu_medications) {
                 // Patient bottom tab: My medications
                 if (lastKnownRole != null && "PATIENT".equalsIgnoreCase(lastKnownRole)) {

@@ -135,4 +135,21 @@
         android:name="tn.esprit.presentation.profile.UserBaseInfoEditFragment"
         android:label="Edit base info" />
 
+    <!-- Doctor office: schedule summary & entrypoint to edit -->
+    <fragment
+        android:id="@+id/doctorOfficeFragment"
+        android:name="tn.esprit.presentation.home.DoctorOfficeFragment"
+        android:label="@string/doctor_office_title">
+
+        <action
+            android:id="@+id/action_doctorOfficeFragment_to_doctorScheduleEditFragment"
+            app:destination="@id/doctorScheduleEditFragment" />
+    </fragment>
+
+    <!-- Doctor schedule edit screen -->
+    <fragment
+        android:id="@+id/doctorScheduleEditFragment"
+        android:name="tn.esprit.presentation.home.DoctorScheduleEditFragment"
+        android:label="@string/doctor_office_edit_title" />
+
 </navigation>
