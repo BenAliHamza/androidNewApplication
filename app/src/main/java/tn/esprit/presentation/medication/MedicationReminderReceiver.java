@@ -1,70 +1,86 @@
 package tn.esprit.presentation.medication;
 
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
+import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 
 import tn.esprit.R;
 
 /**
- * Receives alarm broadcasts for medication reminders and shows a notification.
+ * Receives alarm events and shows the actual notification.
  */
 public class MedicationReminderReceiver extends BroadcastReceiver {
 
-    private static final String CHANNEL_ID = "medication_reminders_channel";
+    private static final String TAG = "MedRemReceiver";
+
+    public static final String EXTRA_LINE_ID = "extra_med_line_id";
+    public static final String EXTRA_MEDICATION_NAME = "extra_med_name";
+
+    // Action used by MedicationReminderScheduler (for safety checking)
+    public static final String ACTION_SHOW_REMINDER =
+            "tn.esprit.presentation.medication.ACTION_SHOW_REMINDER";
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (context == null || intent == null) return;
 
-        long lineId = intent.getLongExtra("lineId", -1L);
-        String medicationName = intent.getStringExtra("medicationName");
-        String dosage = intent.getStringExtra("dosage");
+        android.util.Log.d(
+                "MedRemReceiver",
+                "onReceive: action=" + intent.getAction()
+                        + ", lineId=" + intent.getLongExtra(EXTRA_LINE_ID, -1L)
+                        + ", medName=" + intent.getStringExtra(EXTRA_MEDICATION_NAME)
+        );
 
+        // Defensive check: if action is set, make sure it's ours
+        String action = intent.getAction();
+        if (action != null && !ACTION_SHOW_REMINDER.equals(action)) {
+            android.util.Log.d("MedRemReceiver", "Ignoring broadcast with unexpected action: " + action);
+            return;
+        }
+
+        long lineId = intent.getLongExtra(EXTRA_LINE_ID, -1L);
+        String medicationName = intent.getStringExtra(EXTRA_MEDICATION_NAME);
         if (medicationName == null || medicationName.trim().isEmpty()) {
-            medicationName = "Medication reminder";
+            medicationName = context.getString(R.string.patient_medication_name_placeholder);
         }
 
-        String contentText;
-        if (dosage != null && !dosage.trim().isEmpty()) {
-            contentText = "Time to take: " + dosage;
-        } else {
-            contentText = "Don't forget to take your medication.";
+        // Make sure we have channel + permission
+        MedicationNotificationHelper.ensureNotificationChannel(context);
+        if (!MedicationNotificationHelper.hasPostNotificationPermission(context)) {
+            android.util.Log.w("MedRemReceiver", "Notification permission missing, not showing reminder");
+            return;
         }
 
-        NotificationManager manager =
-                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (manager == null) return;
+        android.util.Log.d("MedRemReceiver", "Showing notification for lineId=" + lineId);
 
-        // Create channel on Android O+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = "Medication reminders";
-            String description = "Reminders to take your medications";
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            NotificationChannel channel =
-                    new NotificationChannel(CHANNEL_ID, name, importance);
-            channel.setDescription(description);
-            manager.createNotificationChannel(channel);
-        }
-
+        // Build notification
         NotificationCompat.Builder builder =
-                new NotificationCompat.Builder(context, CHANNEL_ID)
+                new NotificationCompat.Builder(context, MedicationNotificationHelper.CHANNEL_ID_MEDICATION)
                         .setSmallIcon(R.drawable.logo)
-                        .setContentTitle(medicationName)
-                        .setContentText(contentText)
-                        .setAutoCancel(true)
-                        .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+                        .setContentTitle(
+                                context.getString(
+                                        R.string.medication_reminder_title,
+                                        medicationName
+                                )
+                        )
+                        .setContentText(
+                                context.getString(R.string.medication_reminder_body)
+                        )
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                        .setAutoCancel(true);
 
-        // Use lineId as notification ID if possible, otherwise fallback to 0
-        int notificationId = (lineId > 0 && lineId <= Integer.MAX_VALUE)
-                ? (int) lineId
-                : 0;
+        NotificationManagerCompat manager = NotificationManagerCompat.from(context);
 
-        manager.notify(notificationId, builder.build());
+        try {
+            int notificationId = (int) (lineId > 0 ? lineId : System.currentTimeMillis());
+            manager.notify(notificationId, builder.build());
+        } catch (SecurityException ignored) {
+            android.util.Log.e("MedRemReceiver", "SecurityException while showing notification", ignored);
+        }
     }
+
 }

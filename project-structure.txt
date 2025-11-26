@@ -39,6 +39,8 @@
 ./app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp
 ./app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp
 ./app/src/main/res/layout
+./app/src/main/res/layout/item_patient_medication_section_header.xml
+./app/src/main/res/layout/item_dialog_prescription_line.xml
 ./app/src/main/res/layout/item_patient_indicator.xml
 ./app/src/main/res/layout/item_patient_medication_line.xml
 ./app/src/main/res/layout/layout_home_doctor.xml
@@ -57,6 +59,7 @@
 ./app/src/main/res/layout/item_patient_medication_line_doctor.xml
 ./app/src/main/res/layout/fragment_patient_public_profile.xml
 ./app/src/main/res/layout/activity_doctor_profile_onboarding.xml
+./app/src/main/res/layout/item_medication_autocomplete.xml
 ./app/src/main/res/layout/fragment_doctor_patients.xml
 ./app/src/main/res/layout/fragment_profile_edit.xml
 ./app/src/main/res/layout/layout_home_drawer_header.xml
@@ -195,8 +198,13 @@
 ./app/src/main/java/tn/esprit/presentation/profile/EditPatientProfileFragment.java
 ./app/src/main/java/tn/esprit/presentation/profile/ProfileViewModel.java
 ./app/src/main/java/tn/esprit/presentation/medication
+./app/src/main/java/tn/esprit/presentation/medication/MedicationAutoCompleteAdapter.java
 ./app/src/main/java/tn/esprit/presentation/medication/PatientMedicationAdapter.java
 ./app/src/main/java/tn/esprit/presentation/medication/PatientMedicationsFragment.java
+./app/src/main/java/tn/esprit/presentation/medication/MedicationReminderReceiver.java
+./app/src/main/java/tn/esprit/presentation/medication/MedicationBootReceiver.java
+./app/src/main/java/tn/esprit/presentation/medication/MedicationNotificationHelper.java
+./app/src/main/java/tn/esprit/presentation/medication/MedicationReminderScheduler.java
 ./app/src/main/java/tn/esprit/presentation/onboarding
 ./app/src/main/java/tn/esprit/presentation/onboarding/DoctorPracticeSetupActivity.java
 ./app/src/main/java/tn/esprit/presentation/onboarding/PatientOnboardingActivity.java

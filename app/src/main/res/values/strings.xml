@@ -591,7 +591,6 @@
     <string name="patient_medications_update_reminder_success">Reminder updated</string>
     <string name="patient_medications_update_reminder_error">Could not update reminder</string>
    <string name="patient_medications_load_error">Unable to load your medications. Please try again.</string>
-    <string name="dialog_add_prescription_medication_hint">Type to search medication</string>
     <string name="patient_medications_not_available">
     Medications are not available for this account.
 </string>
@@ -603,6 +602,45 @@
     <string name="home_bottom_history_coming_soon">
     History will be available soon.
 </string>
+    <string name="dialog_add_prescription_medication_hint">Type to search medication</string>
+    <string name="dialog_add_prescription_add_line">Add another medication</string>
+    <string name="dialog_add_prescription_line_incomplete">Please fill medication, dosage and times per day for each line, or leave it completely empty.</string>
+    <string name="dialog_add_prescription_no_lines">Please add at least one medication to this prescription.</string>
+    <string name="dialog_add_prescription_max_lines">You can add up to 5 medications per prescription.</string>
+    <string name="patient_medication_past_marker"> (past)</string>
+    <string name="patient_medications_section_active">Active medications</string>
+    <string name="patient_medications_section_past">Past medications</string>
+    <!-- Medication notification channel -->
+    <string name="medication_notification_channel_name">Medication reminders</string>
+    <string name="medication_notification_channel_description">
+    Reminders to take your medications on time.
+</string>
+    <string name="medication_reminder_title">Time to take %1$s</string>
+    <string name="medication_reminder_body">Please take your medication as prescribed.</string>
+
+    <!-- Notification content -->
+    <string name="medication_notification_title">Medication reminder</string>
+    <string name="medication_notification_body">Time to take %1$s</string>
+    <string name="medication_notification_body_with_dosage">
+    Time to take %1$s (%2$s)
+</string>
+    <string name="medication_notification_body_generic">
+    it is time to take your medication.
+</string>
+    <string name="patient_medication_reminder_time_format">Reminder at %1$s</string>
+
+
+    <!-- Reminder time selection UX -->
+    <string name="patient_medications_update_reminder_cancelled">
+    Reminder not enabled (no time selected).
+</string>
+    <string name="patient_medications_update_reminder_disabled">
+    Reminder disabled.
+</string>
+
+    <string name="dialog_add_prescription_times_per_day_hint">Times per day</string>
+
+
 
 </resources>
 

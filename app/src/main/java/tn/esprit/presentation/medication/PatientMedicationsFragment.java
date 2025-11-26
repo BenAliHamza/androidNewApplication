@@ -1,5 +1,6 @@
 package tn.esprit.presentation.medication;
 
+import android.app.TimePickerDialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.Calendar;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -75,9 +77,9 @@ public class PatientMedicationsFragment extends Fragment
     private void loadMyMedications() {
         showLoading(true);
 
-        // Patient endpoint: GET /api/prescriptions/me?activeOnly=true
+        // Patient endpoint: GET /api/prescriptions/me?activeOnly=<null for ALL>
         prescriptionRepository.getMyPrescriptions(
-                true,
+                null,   // <-- IMPORTANT: null = both active and past prescriptions
                 new PrescriptionRepository.PrescriptionsCallback() {
                     @Override
                     public void onSuccess(List<Prescription> prescriptions) {
@@ -146,7 +148,7 @@ public class PatientMedicationsFragment extends Fragment
         if (!isAdded()) return;
 
         Long lineId = line.getId();
-        if (lineId == null) {
+        if (lineId == null || lineId <= 0L) {
             Toast.makeText(
                     requireContext(),
                     getString(R.string.patient_medications_update_reminder_error),
@@ -157,6 +159,64 @@ public class PatientMedicationsFragment extends Fragment
             return;
         }
 
+        if (enabled) {
+            // If we already have a stored time, use it directly
+            int[] existingTime = MedicationReminderScheduler.getReminderTime(
+                    requireContext(),
+                    lineId
+            );
+
+            if (existingTime != null) {
+                updateReminderOnServerAndSchedule(line, true, existingTime[0], existingTime[1]);
+            } else {
+                // Ask user for time first
+                showTimePickerForLine(line);
+            }
+        } else {
+            // Turning OFF: cancel local alarm + clear stored time + update server
+            String medName = safeMedicationName(line);
+            MedicationReminderScheduler.cancelReminder(
+                    requireContext(),
+                    lineId,
+                    medName
+            );
+            updateReminderOnServerAndSchedule(line, false, -1, -1);
+        }
+    }
+
+    private void showTimePickerForLine(@NonNull PrescriptionLine line) {
+        if (!isAdded()) return;
+
+        Calendar now = Calendar.getInstance();
+        int defaultHour = now.get(Calendar.HOUR_OF_DAY);
+        int defaultMinute = now.get(Calendar.MINUTE);
+
+        TimePickerDialog dialog = new TimePickerDialog(
+                requireContext(),
+                (view, hourOfDay, minute) -> {
+                    // User picked a time -> update backend + schedule alarm
+                    updateReminderOnServerAndSchedule(line, true, hourOfDay, minute);
+                },
+                defaultHour,
+                defaultMinute,
+                android.text.format.DateFormat.is24HourFormat(requireContext())
+        );
+
+        dialog.setOnCancelListener(d -> {
+            // User cancelled selecting a time -> revert UI by reloading list
+            loadMyMedications();
+        });
+
+        dialog.show();
+    }
+
+    private void updateReminderOnServerAndSchedule(@NonNull PrescriptionLine line,
+                                                   boolean enabled,
+                                                   int hourOfDay,
+                                                   int minute) {
+        Long lineId = line.getId();
+        if (lineId == null) return;
+
         prescriptionRepository.updateMyLineReminder(
                 lineId,
                 enabled,
@@ -165,16 +225,14 @@ public class PatientMedicationsFragment extends Fragment
                     public void onSuccess(@NonNull PrescriptionLine updatedLine) {
                         if (!isAdded()) return;
 
-                        // Schedule/cancel local alarms based on new state
                         if (enabled) {
-                            MedicationReminderScheduler.scheduleReminder(
-                                    requireContext().getApplicationContext(),
-                                    updatedLine
-                            );
-                        } else {
-                            MedicationReminderScheduler.cancelReminder(
-                                    requireContext().getApplicationContext(),
-                                    updatedLine
+                            String medName = safeMedicationName(updatedLine);
+                            MedicationReminderScheduler.scheduleDailyReminder(
+                                    requireContext(),
+                                    updatedLine.getId(),
+                                    medName,
+                                    hourOfDay,
+                                    minute
                             );
                         }
 
@@ -184,7 +242,7 @@ public class PatientMedicationsFragment extends Fragment
                                 Toast.LENGTH_SHORT
                         ).show();
 
-                        // Simple approach: reload list to reflect new state
+                        // Simple approach: reload list to reflect new state & reset switches
                         loadMyMedications();
                     }
 
@@ -200,10 +258,18 @@ public class PatientMedicationsFragment extends Fragment
                                 Toast.LENGTH_LONG
                         ).show();
 
-                        // Reload to revert UI
+                        // Reload to revert UI (switch state)
                         loadMyMedications();
                     }
                 }
         );
+    }
+
+    private String safeMedicationName(@NonNull PrescriptionLine line) {
+        String name = line.getMedicationName();
+        if (name == null || name.trim().isEmpty()) {
+            return getString(R.string.patient_medication_name_placeholder);
+        }
+        return name.trim();
     }
 }

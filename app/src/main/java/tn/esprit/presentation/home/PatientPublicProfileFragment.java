@@ -6,12 +6,13 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.Spinner; // kept in case of accidental XML reference, not used
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -26,10 +27,13 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import tn.esprit.R;
 import tn.esprit.data.auth.AuthLocalDataSource;
@@ -481,18 +485,21 @@ public class PatientPublicProfileFragment extends Fragment {
         LayoutInflater inflater = LayoutInflater.from(requireContext());
         View dialogView = inflater.inflate(R.layout.dialog_add_prescription, null, false);
 
-        AutoCompleteTextView inputMedication = dialogView.findViewById(R.id.input_medication);
         EditText inputStartDate = dialogView.findViewById(R.id.input_prescription_start_date);
         EditText inputEndDate = dialogView.findViewById(R.id.input_prescription_end_date);
         EditText inputNote = dialogView.findViewById(R.id.input_prescription_note);
-        EditText inputDosage = dialogView.findViewById(R.id.input_medication_dosage);
-        EditText inputTimesPerDay = dialogView.findViewById(R.id.input_medication_times_per_day);
-        EditText inputInstructions = dialogView.findViewById(R.id.input_medication_instructions);
         ProgressBar dialogProgress = dialogView.findViewById(R.id.dialog_prescription_progress);
+        LinearLayout linesContainer = dialogView.findViewById(R.id.layout_medication_lines_container);
+        Button buttonAddLine = dialogView.findViewById(R.id.button_add_medication_line);
 
-        List<Medication> meds = medicationCatalog != null
-                ? medicationCatalog
-                : Collections.emptyList();
+        // Prefill start date with today
+        inputStartDate.setText(getTodayIsoDate());
+        setupDatePicker(inputStartDate);
+        setupDatePicker(inputEndDate);
+
+        // Prepare medication names adapter for auto-complete
+        final List<Medication> meds =
+                medicationCatalog != null ? medicationCatalog : Collections.emptyList();
 
         List<String> medNames = new ArrayList<>();
         for (Medication med : meds) {
@@ -500,18 +507,32 @@ public class PatientPublicProfileFragment extends Fragment {
             medNames.add(med.getDisplayName());
         }
 
-        // Searchable dropdown adapter
-        android.widget.ArrayAdapter<String> medAdapter = new android.widget.ArrayAdapter<>(
+        ArrayAdapter<String> medsAdapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_dropdown_item_1line,
                 medNames
         );
-        inputMedication.setAdapter(medAdapter);
-        inputMedication.setThreshold(1); // start suggesting from first character
 
-        // Attach date pickers to date fields
-        attachDatePicker(inputStartDate);
-        attachDatePicker(inputEndDate);
+        // Keep references to all line views
+        List<MedicationLineViews> lineViews = new ArrayList<>();
+
+        // Add first line by default
+        addMedicationLineView(inflater, linesContainer, medsAdapter, lineViews);
+
+        // Add more lines on button click (limit e.g. 5)
+        if (buttonAddLine != null) {
+            buttonAddLine.setOnClickListener(v -> {
+                if (lineViews.size() >= 5) {
+                    Toast.makeText(
+                            requireContext(),
+                            getString(R.string.dialog_add_prescription_max_lines),
+                            Toast.LENGTH_LONG
+                    ).show();
+                    return;
+                }
+                addMedicationLineView(inflater, linesContainer, medsAdapter, lineViews);
+            });
+        }
 
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.dialog_add_prescription_title)
@@ -525,60 +546,7 @@ public class PatientPublicProfileFragment extends Fragment {
             if (buttonSave == null) return;
 
             buttonSave.setOnClickListener(v -> {
-                // Validation
-                if (meds.isEmpty()) {
-                    Toast.makeText(
-                            requireContext(),
-                            getString(R.string.patient_medication_add_error_catalog),
-                            Toast.LENGTH_LONG
-                    ).show();
-                    return;
-                }
-
-                String selectedName = trimToEmpty(
-                        inputMedication.getText() != null
-                                ? inputMedication.getText().toString()
-                                : ""
-                );
-
-                if (selectedName.isEmpty()) {
-                    Toast.makeText(
-                            requireContext(),
-                            getString(R.string.dialog_add_prescription_validation_medication),
-                            Toast.LENGTH_LONG
-                    ).show();
-                    return;
-                }
-
-                // Find the medication by name (case-insensitive)
-                int position = -1;
-                for (int i = 0; i < medNames.size(); i++) {
-                    String name = medNames.get(i);
-                    if (name != null && name.equalsIgnoreCase(selectedName)) {
-                        position = i;
-                        break;
-                    }
-                }
-
-                if (position < 0 || position >= meds.size()) {
-                    Toast.makeText(
-                            requireContext(),
-                            getString(R.string.dialog_add_prescription_validation_medication),
-                            Toast.LENGTH_LONG
-                    ).show();
-                    return;
-                }
-
-                Medication selectedMedication = meds.get(position);
-                if (selectedMedication == null || selectedMedication.getId() == null) {
-                    Toast.makeText(
-                            requireContext(),
-                            getString(R.string.dialog_add_prescription_validation_medication),
-                            Toast.LENGTH_LONG
-                    ).show();
-                    return;
-                }
-
+                // Dates and note
                 String startDate = trimToEmpty(inputStartDate.getText() != null
                         ? inputStartDate.getText().toString()
                         : "");
@@ -587,15 +555,6 @@ public class PatientPublicProfileFragment extends Fragment {
                         : "");
                 String note = trimToEmpty(inputNote.getText() != null
                         ? inputNote.getText().toString()
-                        : "");
-                String dosage = trimToEmpty(inputDosage.getText() != null
-                        ? inputDosage.getText().toString()
-                        : "");
-                String timesStr = trimToEmpty(inputTimesPerDay.getText() != null
-                        ? inputTimesPerDay.getText().toString()
-                        : "");
-                String instructions = trimToEmpty(inputInstructions.getText() != null
-                        ? inputInstructions.getText().toString()
                         : "");
 
                 if (startDate.isEmpty()) {
@@ -607,49 +566,100 @@ public class PatientPublicProfileFragment extends Fragment {
                     return;
                 }
 
-                if (dosage.isEmpty()) {
-                    Toast.makeText(
-                            requireContext(),
-                            getString(R.string.dialog_add_prescription_validation_dosage),
-                            Toast.LENGTH_LONG
-                    ).show();
-                    return;
+                // Build medication lines
+                List<PrescriptionLineCreateRequest> lines = new ArrayList<>();
+
+                for (MedicationLineViews lv : lineViews) {
+                    String medNameInput = trimToEmpty(
+                            lv.inputMedicationName.getText() != null
+                                    ? lv.inputMedicationName.getText().toString()
+                                    : ""
+                    );
+                    String dosage = trimToEmpty(
+                            lv.inputDosage.getText() != null
+                                    ? lv.inputDosage.getText().toString()
+                                    : ""
+                    );
+                    String timesStr = trimToEmpty(
+                            lv.inputTimesPerDay.getText() != null
+                                    ? lv.inputTimesPerDay.getText().toString()
+                                    : ""
+                    );
+                    String instructions = trimToEmpty(
+                            lv.inputInstructions.getText() != null
+                                    ? lv.inputInstructions.getText().toString()
+                                    : ""
+                    );
+
+                    boolean allEmpty = medNameInput.isEmpty()
+                            && dosage.isEmpty()
+                            && timesStr.isEmpty()
+                            && instructions.isEmpty();
+
+                    // Completely empty row -> ignore
+                    if (allEmpty) {
+                        continue;
+                    }
+
+                    // Partial row -> error
+                    if (medNameInput.isEmpty()
+                            || dosage.isEmpty()
+                            || timesStr.isEmpty()) {
+                        Toast.makeText(
+                                requireContext(),
+                                getString(R.string.dialog_add_prescription_line_incomplete),
+                                Toast.LENGTH_LONG
+                        ).show();
+                        return;
+                    }
+
+                    // Find medication by name
+                    Long medicationId = findMedicationIdByDisplayName(meds, medNameInput);
+                    if (medicationId == null) {
+                        Toast.makeText(
+                                requireContext(),
+                                getString(R.string.dialog_add_prescription_validation_medication),
+                                Toast.LENGTH_LONG
+                        ).show();
+                        return;
+                    }
+
+                    Integer timesPerDay;
+                    try {
+                        timesPerDay = Integer.valueOf(timesStr);
+                        if (timesPerDay <= 0) {
+                            throw new NumberFormatException();
+                        }
+                    } catch (NumberFormatException e) {
+                        Toast.makeText(
+                                requireContext(),
+                                getString(R.string.dialog_add_prescription_validation_times),
+                                Toast.LENGTH_LONG
+                        ).show();
+                        return;
+                    }
+
+                    PrescriptionLineCreateRequest lineReq =
+                            new PrescriptionLineCreateRequest(
+                                    medicationId,
+                                    dosage,
+                                    timesPerDay,
+                                    instructions
+                            );
+                    lines.add(lineReq);
                 }
 
-                if (timesStr.isEmpty()) {
+                if (lines.isEmpty()) {
                     Toast.makeText(
                             requireContext(),
-                            getString(R.string.dialog_add_prescription_validation_times),
-                            Toast.LENGTH_LONG
-                    ).show();
-                    return;
-                }
-
-                Integer timesPerDay;
-                try {
-                    timesPerDay = Integer.valueOf(timesStr);
-                } catch (NumberFormatException e) {
-                    Toast.makeText(
-                            requireContext(),
-                            getString(R.string.dialog_add_prescription_validation_times),
+                            getString(R.string.dialog_add_prescription_no_lines),
                             Toast.LENGTH_LONG
                     ).show();
                     return;
                 }
 
                 // Build request
-                PrescriptionLineCreateRequest lineReq =
-                        new PrescriptionLineCreateRequest(
-                                selectedMedication.getId(),
-                                dosage,
-                                timesPerDay,
-                                instructions
-                        );
-                List<PrescriptionLineCreateRequest> lines = new ArrayList<>();
-                lines.add(lineReq);
-
-                PrescriptionCreateRequest createRequest =
-                        new PrescriptionCreateRequest();
+                PrescriptionCreateRequest createRequest = new PrescriptionCreateRequest();
                 createRequest.setStartDate(startDate);
                 if (!endDate.isEmpty()) {
                     createRequest.setEndDate(endDate);
@@ -700,44 +710,106 @@ public class PatientPublicProfileFragment extends Fragment {
         dialog.show();
     }
 
-    // Attach a date picker to an EditText (non-editable, clickable)
-    private void attachDatePicker(@NonNull EditText input) {
-        input.setFocusable(false);
-        input.setClickable(true);
-        input.setOnClickListener(v -> showDatePickerDialog(input));
-    }
+    private void addMedicationLineView(@NonNull LayoutInflater inflater,
+                                       @NonNull LinearLayout container,
+                                       @NonNull ArrayAdapter<String> medsAdapter,
+                                       @NonNull List<MedicationLineViews> lineViews) {
+        View lineView = inflater.inflate(R.layout.item_dialog_prescription_line, container, false);
 
-    private void showDatePickerDialog(@NonNull EditText target) {
-        if (!isAdded()) return;
+        AutoCompleteTextView inputMedicationName =
+                lineView.findViewById(R.id.input_medication_name);
+        EditText inputDosage = lineView.findViewById(R.id.input_medication_dosage);
+        EditText inputTimesPerDay = lineView.findViewById(R.id.input_medication_times_per_day);
+        EditText inputInstructions = lineView.findViewById(R.id.input_medication_instructions);
 
-        final Calendar calendar = Calendar.getInstance();
-        int year = calendar.get(Calendar.YEAR);
-        int month = calendar.get(Calendar.MONTH); // 0-based
-        int day = calendar.get(Calendar.DAY_OF_MONTH);
+        if (inputMedicationName != null) {
+            inputMedicationName.setAdapter(medsAdapter);
+            inputMedicationName.setThreshold(1);
+            // Show dropdown when clicked
+            inputMedicationName.setOnClickListener(v -> inputMedicationName.showDropDown());
+        }
 
-        DatePickerDialog picker = new DatePickerDialog(
-                requireContext(),
-                (view, y, m, d) -> {
-                    String formatted = formatDate(y, m, d);
-                    target.setText(formatted);
-                },
-                year,
-                month,
-                day
+        MedicationLineViews mlv = new MedicationLineViews(
+                lineView,
+                inputMedicationName,
+                inputDosage,
+                inputTimesPerDay,
+                inputInstructions
         );
-        picker.show();
+        lineViews.add(mlv);
+        container.addView(lineView);
     }
 
-    private String formatDate(int year, int monthZeroBased, int day) {
-        int monthOneBased = monthZeroBased + 1;
-        // yyyy-MM-dd
-        return String.format("%04d-%02d-%02d", year, monthOneBased, day);
+    @Nullable
+    private Long findMedicationIdByDisplayName(@NonNull List<Medication> meds,
+                                               @NonNull String displayName) {
+        for (Medication med : meds) {
+            if (med == null) continue;
+            String name = med.getDisplayName();
+            if (name.equals(displayName)) {
+                return med.getId();
+            }
+        }
+        return null;
     }
 
     private String trimToEmpty(@Nullable String value) {
         if (value == null) return "";
         String trimmed = value.trim();
         return trimmed.isEmpty() ? "" : trimmed;
+    }
+
+    private void setupDatePicker(@NonNull EditText editText) {
+        editText.setFocusable(false);
+        editText.setClickable(true);
+        editText.setOnClickListener(v -> showDatePickerForField(editText));
+    }
+
+    private void showDatePickerForField(@NonNull EditText editText) {
+        Calendar calendar = Calendar.getInstance();
+
+        String existing = trimToEmpty(
+                editText.getText() != null
+                        ? editText.getText().toString()
+                        : ""
+        );
+        if (!existing.isEmpty()) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                Date parsed = sdf.parse(existing);
+                if (parsed != null) {
+                    calendar.setTime(parsed);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        int year = calendar.get(Calendar.YEAR);
+        int month = calendar.get(Calendar.MONTH);
+        int day = calendar.get(Calendar.DAY_OF_MONTH);
+
+        DatePickerDialog dialog = new DatePickerDialog(
+                requireContext(),
+                (view, y, m, d) -> {
+                    String formatted = String.format(
+                            Locale.getDefault(),
+                            "%04d-%02d-%02d",
+                            y,
+                            m + 1,
+                            d
+                    );
+                    editText.setText(formatted);
+                },
+                year,
+                month,
+                day
+        );
+        dialog.show();
+    }
+
+    private String getTodayIsoDate() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        return sdf.format(new Date());
     }
 
     // ---------------------------------------------------------------------
@@ -764,5 +836,29 @@ public class PatientPublicProfileFragment extends Fragment {
             return null;
         }
         return "Bearer " + tokens.getAccessToken();
+    }
+
+    // ---------------------------------------------------------------------
+    // Helper holder for medication line views
+    // ---------------------------------------------------------------------
+
+    private static class MedicationLineViews {
+        final View root;
+        final AutoCompleteTextView inputMedicationName;
+        final EditText inputDosage;
+        final EditText inputTimesPerDay;
+        final EditText inputInstructions;
+
+        MedicationLineViews(View root,
+                            AutoCompleteTextView inputMedicationName,
+                            EditText inputDosage,
+                            EditText inputTimesPerDay,
+                            EditText inputInstructions) {
+            this.root = root;
+            this.inputMedicationName = inputMedicationName;
+            this.inputDosage = inputDosage;
+            this.inputTimesPerDay = inputTimesPerDay;
+            this.inputInstructions = inputInstructions;
+        }
     }
 }

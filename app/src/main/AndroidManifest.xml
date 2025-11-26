@@ -5,9 +5,16 @@
     <!-- Needed to call http://10.0.2.2:8080 from the Android app -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Optional but recommended on Android 13+ if you want notifications to show reliably -->
-    <!-- You can add this later if you handle runtime permission as well -->
-    <!-- <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> -->
+    <!-- Receive BOOT_COMPLETED so we can reschedule medication alarms after reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- ★ Needed for setExactAndAllowWhileIdle on Android 12+ -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- Runtime notifications permission (Android 13+) -->
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS"
+        tools:targetApi="33" />
 
     <application
         android:allowBackup="true"
@@ -31,45 +38,48 @@
             </intent-filter>
         </activity>
 
-        <!-- Login screen -->
         <activity
             android:name=".presentation.auth.LoginActivity"
             android:exported="false" />
 
-        <!-- Signup screen -->
         <activity
             android:name=".presentation.auth.SignupActivity"
             android:exported="false" />
 
-        <!-- Patient onboarding (first login for PATIENT role) -->
         <activity
             android:name=".presentation.onboarding.PatientOnboardingActivity"
             android:exported="false" />
 
-        <!-- Doctor practice setup (first step for DOCTOR role) -->
         <activity
             android:name=".presentation.onboarding.DoctorPracticeSetupActivity"
             android:exported="false" />
 
-        <!-- Doctor profile onboarding (optional second step for DOCTOR role) -->
         <activity
             android:name=".presentation.onboarding.DoctorProfileOnboardingActivity"
             android:exported="false" />
 
-        <!-- Profile screen (hosts ProfileFragment) -->
         <activity
             android:name=".presentation.profile.ProfileActivity"
             android:exported="false" />
 
-        <!-- MainActivity (home/dashboard with drawer + bottom nav) -->
         <activity
             android:name=".MainActivity"
             android:exported="false" />
 
-        <!-- Medication reminder receiver -->
+        <!-- Medication reminder receiver for AlarmManager -->
         <receiver
             android:name=".presentation.medication.MedicationReminderReceiver"
             android:exported="false" />
+
+        <!-- Boot receiver: reschedule all medication reminders after reboot -->
+        <receiver
+            android:name=".presentation.medication.MedicationBootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

@@ -32,6 +32,7 @@ import tn.esprit.domain.patient.PatientProfile;
 import tn.esprit.domain.user.User;
 import tn.esprit.presentation.auth.AuthGateActivity;
 import tn.esprit.presentation.home.HomeUiHelper;
+import tn.esprit.presentation.medication.MedicationNotificationHelper;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -88,6 +89,10 @@ public class MainActivity extends AppCompatActivity {
         if (navHostFragment != null) {
             navController = navHostFragment.getNavController();
         }
+
+        // NEW: notifications – channel + permission
+        MedicationNotificationHelper.ensureNotificationChannel(this);
+        MedicationNotificationHelper.requestNotificationPermissionIfNeeded(this);
 
         // Drawer header
         if (navigationView != null) {

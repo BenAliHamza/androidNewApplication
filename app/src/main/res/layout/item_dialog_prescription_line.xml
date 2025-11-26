@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layout_dialog_prescription_line_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingVertical="4dp">
+
+    <!-- Medication name (auto-complete from catalog) -->
+    <AutoCompleteTextView
+        android:id="@+id/input_medication_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/dialog_add_prescription_medication_hint"
+        android:inputType="textCapWords"
+        android:imeOptions="actionNext" />
+
+    <!-- Dosage (e.g. 500mg, 1 tablet, etc.) -->
+    <EditText
+        android:id="@+id/input_medication_dosage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:hint="@string/dialog_add_prescription_dosage_hint"
+        android:inputType="textCapSentences"
+        android:imeOptions="actionNext" />
+
+    <!-- Times per day (integer) -->
+    <EditText
+        android:id="@+id/input_medication_times_per_day"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:hint="@string/dialog_add_prescription_times_per_day_hint"
+        android:inputType="number"
+        android:imeOptions="actionNext" />
+
+    <!-- Optional free instructions / notes -->
+    <EditText
+        android:id="@+id/input_medication_instructions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:hint="@string/dialog_add_prescription_instructions_hint"
+        android:inputType="textCapSentences|textMultiLine"
+        android:minLines="1"
+        android:maxLines="4" />
+
+</LinearLayout>
