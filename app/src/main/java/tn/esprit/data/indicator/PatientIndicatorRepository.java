@@ -154,6 +154,70 @@ public class PatientIndicatorRepository {
     }
 
     // ------------------------------------------------------------------------
+    // List indicators for a patient (doctor view)
+    // ------------------------------------------------------------------------
+
+    /**
+     * Retrieve indicators for a given patient as a doctor.
+     *
+     * @param authorizationHeader e.g. "Bearer <token>"
+     * @param patientUserId       patient user id (required)
+     * @param indicatorTypeId     optional filter
+     * @param fromIso             optional ISO-8601 from date-time
+     * @param toIso               optional ISO-8601 to date-time
+     */
+    public void getIndicatorsForPatientAsDoctor(@Nullable String authorizationHeader,
+                                                @NonNull Long patientUserId,
+                                                @Nullable Long indicatorTypeId,
+                                                @Nullable String fromIso,
+                                                @Nullable String toIso,
+                                                @NonNull IndicatorsCallback callback) {
+
+        Call<ListResponseDto<PatientIndicator>> call =
+                apiService.getIndicatorsForPatientAsDoctor(
+                        authorizationHeader,
+                        patientUserId,
+                        indicatorTypeId,
+                        fromIso,
+                        toIso
+                );
+
+        call.enqueue(new Callback<ListResponseDto<PatientIndicator>>() {
+            @Override
+            public void onResponse(
+                    @NonNull Call<ListResponseDto<PatientIndicator>> call,
+                    @NonNull Response<ListResponseDto<PatientIndicator>> response
+            ) {
+                if (response.isSuccessful()) {
+                    ListResponseDto<PatientIndicator> body = response.body();
+                    List<PatientIndicator> items = (body != null && body.getItems() != null)
+                            ? body.getItems()
+                            : Collections.emptyList();
+                    callback.onSuccess(items);
+                } else {
+                    String errorText = null;
+                    ResponseBody errorBody = response.errorBody();
+                    if (errorBody != null) {
+                        try {
+                            errorText = errorBody.string();
+                        } catch (IOException ignored) {
+                        }
+                    }
+                    callback.onError(null, response.code(), errorText);
+                }
+            }
+
+            @Override
+            public void onFailure(
+                    @NonNull Call<ListResponseDto<PatientIndicator>> call,
+                    @NonNull Throwable t
+            ) {
+                callback.onError(t, null, null);
+            }
+        });
+    }
+
+    // ------------------------------------------------------------------------
     // Add new indicator for current patient
     // ------------------------------------------------------------------------
 

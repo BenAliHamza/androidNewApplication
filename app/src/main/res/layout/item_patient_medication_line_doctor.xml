@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/card_patient_indicator"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_patient_medication_line"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginVertical="4dp"
+    android:layout_marginBottom="8dp"
     android:foreground="?attr/selectableItemBackground"
     app:cardUseCompatPadding="true"
-    app:cardCornerRadius="12dp"
+    app:cardCornerRadius="14dp"
     app:cardElevation="1dp">
 
     <LinearLayout
@@ -17,38 +18,49 @@
         android:paddingHorizontal="14dp"
         android:paddingVertical="10dp">
 
-        <!-- Name + value (primary line) -->
+        <!-- Medication name -->
         <TextView
-            android:id="@+id/text_indicator_name_value"
+            android:id="@+id/text_med_line_medication_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textStyle="bold"
             android:textSize="16sp"
+            android:textStyle="bold"
             android:maxLines="1"
             android:ellipsize="end"
             android:textColor="@color/color_on_background"
-            android:text="Indicator • 120 mmHg" />
+            tools:text="Paracetamol 500 mg" />
 
-        <!-- Measured at (secondary meta line) -->
+        <!-- Dosage + times per day -->
         <TextView
-            android:id="@+id/text_indicator_measured_at"
+            android:id="@+id/text_med_line_dosage_times"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:textSize="12sp"
+            android:textSize="13sp"
             android:textColor="@color/color_on_background_secondary"
-            android:text="2025-02-03T10:15:30" />
+            tools:text="1 tablet · 2 times/day" />
 
-        <!-- Optional note -->
+        <!-- Instructions (optional) -->
         <TextView
-            android:id="@+id/text_indicator_note"
+            android:id="@+id/text_med_line_instructions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:textSize="13sp"
             android:textColor="@color/color_on_background"
-            android:text="Note"
-            android:visibility="gone" />
+            android:maxLines="3"
+            android:ellipsize="end"
+            tools:text="After meals. Avoid alcohol." />
+
+        <!-- Date range -->
+        <TextView
+            android:id="@+id/text_med_line_dates"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textSize="12sp"
+            android:textColor="@color/color_on_background_secondary"
+            tools:text="From 2025-03-01 to 2025-03-10" />
 
     </LinearLayout>
 

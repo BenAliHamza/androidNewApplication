@@ -22,6 +22,7 @@ import tn.esprit.domain.indicator.PatientIndicator;
  *  - GET /indicators/me
  *  - POST /indicators/me
  *  - DELETE /indicators/me/{id}
+ *  - GET /indicators/patient/{patientUserId}
  */
 public interface IndicatorApiService {
 
@@ -72,6 +73,21 @@ public interface IndicatorApiService {
     Call<Void> deleteMyIndicator(
             @Header("Authorization") String authorization,
             @Path("id") Long indicatorId
+    );
+
+    /**
+     * GET /indicators/patient/{patientUserId}
+     *
+     * Doctor lists indicators of a given patient (by patient User.id).
+     * Requires current user to be DOCTOR and linked to that patient.
+     */
+    @GET("indicators/patient/{patientUserId}")
+    Call<ListResponseDto<PatientIndicator>> getIndicatorsForPatientAsDoctor(
+            @Header("Authorization") String authorization,
+            @Path("patientUserId") Long patientUserId,
+            @Query("indicatorTypeId") Long indicatorTypeId,
+            @Query("from") String fromIso,
+            @Query("to") String toIso
     );
 
     /**

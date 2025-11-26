@@ -1,579 +1,993 @@
-===== FILE: ./app/src/main/java/tn/esprit/presentation/home/PatientHomeViewModel.java =====
-package tn.esprit.presentation.home;
-
-import android.app.Application;
-
-import androidx.annotation.NonNull;
-import androidx.lifecycle.AndroidViewModel;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import tn.esprit.data.doctor.DoctorDirectoryRepository;
-import tn.esprit.domain.doctor.DoctorSearchFilters;
-import tn.esprit.domain.doctor.DoctorSearchResult;
-
-public class PatientHomeViewModel extends AndroidViewModel {
-
-    private static final int MAX_RESULTS = 5;
-
-    private final DoctorDirectoryRepository doctorDirectoryRepository;
-
-    private final MutableLiveData<String> query = new MutableLiveData<>("");
-    private final MutableLiveData<List<DoctorSearchResult>> results = new MutableLiveData<>(new ArrayList<>());
-    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
-    private final MutableLiveData<String> errorMessage = new MutableLiveData<>(null);
-    private final MutableLiveData<Boolean> hasSearched = new MutableLiveData<>(false);
-
-    public PatientHomeViewModel(@NonNull Application application) {
-        super(application);
-        doctorDirectoryRepository = new DoctorDirectoryRepository(application.getApplicationContext());
-    }
-
-    public LiveData<String> getQuery() {
-        return query;
-    }
-
-    public LiveData<List<DoctorSearchResult>> getResults() {
-        return results;
-    }
-
-    public LiveData<Boolean> getLoading() {
-        return loading;
-    }
-
-    public LiveData<String> getErrorMessage() {
-        return errorMessage;
-    }
-
-    /**
-     * Indicates whether user has actually triggered a search at least once.
-     * Used to distinguish "idle" vs "no results" states in UI.
-     */
-    public LiveData<Boolean> getHasSearched() {
-        return hasSearched;
-    }
-
-    /**
-     * Called when the search text changes and user stops typing (debounced in Fragment).
-     */
-    public void searchDoctors(String rawQuery) {
-        String trimmed = rawQuery != null ? rawQuery.trim() : "";
-        query.setValue(trimmed);
-
-        // If query is too short, reset to idle state.
-        if (trimmed.length() < 2) {
-            loading.setValue(false);
-            errorMessage.setValue(null);
-            results.setValue(new ArrayList<>());
-            hasSearched.setValue(false);
-            return;
-        }
-
-        loading.setValue(true);
-        errorMessage.setValue(null);
-
-        DoctorSearchFilters filters = DoctorSearchFilters.fromQuery(trimmed);
-
-        doctorDirectoryRepository.searchDoctors(filters, new DoctorDirectoryRepository.SearchCallback() {
-            @Override
-            public void onSuccess(List<DoctorSearchResult> searchResults) {
-                loading.postValue(false);
-                hasSearched.postValue(true);
-
-                if (searchResults == null) {
-                    results.postValue(new ArrayList<>());
-                    return;
-                }
-
-                // Limit to MAX_RESULTS for this quick search UI
-                List<DoctorSearchResult> limited;
-                if (searchResults.size() > MAX_RESULTS) {
-                    limited = new ArrayList<>(searchResults.subList(0, MAX_RESULTS));
-                } else {
-                    limited = new ArrayList<>(searchResults);
-                }
-
-                results.postValue(limited);
-            }
-
-            @Override
-            public void onError(Throwable throwable, Integer httpCode, String errorBody) {
-                loading.postValue(false);
-                hasSearched.postValue(true);
-
-                String msg = null;
-                if (throwable != null) {
-                    msg = "Network error while searching for doctors.";
-                } else if (httpCode != null) {
-                    msg = "Search failed with code " + httpCode;
-                }
-
-                if (errorBody != null && !errorBody.isEmpty()) {
-                    if (msg == null) {
-                        msg = errorBody;
-                    } else {
-                        msg = msg + " " + errorBody;
-                    }
-                }
-
-                errorMessage.postValue(msg);
-            }
-        });
-    }
-
-    /**
-     * Explicitly clears the search field and results.
-     */
-    public void clearSearch() {
-        query.setValue("");
-        results.setValue(new ArrayList<>());
-        loading.setValue(false);
-        errorMessage.setValue(null);
-        hasSearched.setValue(false);
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/presentation/home/PatientHomeFragment.java =====
-package tn.esprit.presentation.home;
-
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-import android.widget.Toast;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
-import com.google.android.material.textfield.TextInputEditText;
-
-import java.util.List;
-
-import tn.esprit.R;
-import tn.esprit.domain.doctor.DoctorSearchResult;
-
-public class PatientHomeFragment extends Fragment implements DoctorSearchResultAdapter.OnDoctorClickListener {
-
-    private static final long SEARCH_DEBOUNCE_MS = 350L;
-
-    private PatientHomeViewModel viewModel;
-
-    private TextInputEditText inputSearch;
-    private RecyclerView recyclerResults;
-    private ProgressBar progressBar;
-    private TextView textEmpty;
-
-    private DoctorSearchResultAdapter adapter;
-
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private Runnable pendingSearchRunnable;
-
-    public PatientHomeFragment() {
-        // Required empty constructor
-    }
-
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_home_patient, container, false);
-    }
-
-    @Override
-    public void onViewCreated(@NonNull View view,
-                              @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
-        inputSearch = view.findViewById(R.id.input_search_doctors);
-        recyclerResults = view.findViewById(R.id.recycler_doctor_results);
-        progressBar = view.findViewById(R.id.patient_home_progress);
-        textEmpty = view.findViewById(R.id.text_patient_home_empty);
-
-        adapter = new DoctorSearchResultAdapter(this);
-        if (recyclerResults != null) {
-            recyclerResults.setLayoutManager(new LinearLayoutManager(requireContext()));
-            recyclerResults.setAdapter(adapter);
-        }
-
-        viewModel = new ViewModelProvider(this).get(PatientHomeViewModel.class);
-
-        setupObservers();
-        setupSearchInput();
-    }
-
-    private void setupObservers() {
-        viewModel.getResults().observe(getViewLifecycleOwner(), this::bindResults);
-        viewModel.getLoading().observe(getViewLifecycleOwner(), this::bindLoading);
-        viewModel.getErrorMessage().observe(getViewLifecycleOwner(), this::bindError);
-        viewModel.getHasSearched().observe(getViewLifecycleOwner(), hasSearched -> {
-            // Update empty state when hasSearched toggles
-            List<DoctorSearchResult> current = viewModel.getResults().getValue();
-            bindEmptyState(current, hasSearched != null && hasSearched);
-        });
-    }
-
-    private void setupSearchInput() {
-        if (inputSearch == null) return;
-
-        inputSearch.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s,
-                                          int start,
-                                          int count,
-                                          int after) {
-                // no-op
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s,
-                                      int start,
-                                      int before,
-                                      int count) {
-                // Debounce typing
-                if (pendingSearchRunnable != null) {
-                    handler.removeCallbacks(pendingSearchRunnable);
-                }
-
-                final String query = s != null ? s.toString() : "";
-                pendingSearchRunnable = () -> viewModel.searchDoctors(query);
-                handler.postDelayed(pendingSearchRunnable, SEARCH_DEBOUNCE_MS);
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                // no-op
-            }
-        });
-    }
-
-    private void bindResults(@Nullable List<DoctorSearchResult> list) {
-        if (list == null) {
-            adapter.submitList(null);
-            bindEmptyState(null, Boolean.TRUE.equals(viewModel.getHasSearched().getValue()));
-            return;
-        }
-        adapter.submitList(list);
-        bindEmptyState(list, Boolean.TRUE.equals(viewModel.getHasSearched().getValue()));
-    }
-
-    private void bindLoading(Boolean isLoading) {
-        if (progressBar != null) {
-            progressBar.setVisibility(Boolean.TRUE.equals(isLoading) ? View.VISIBLE : View.GONE);
-        }
-    }
-
-    private void bindError(@Nullable String error) {
-        if (error == null || error.trim().isEmpty()) {
-            return;
-        }
-        if (!isAdded()) return;
-        Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
-    }
-
-    private void bindEmptyState(@Nullable List<DoctorSearchResult> list,
-                                boolean hasSearched) {
-        if (textEmpty == null) return;
-
-        String currentQuery = viewModel.getQuery().getValue();
-        String trimmed = currentQuery != null ? currentQuery.trim() : "";
-
-        boolean hasResults = list != null && !list.isEmpty();
-
-        if (trimmed.length() < 2) {
-            // Idle state: encourage user to start typing
-            textEmpty.setText(R.string.home_patient_search_empty_idle);
-            textEmpty.setVisibility(View.VISIBLE);
-        } else if (!hasResults && hasSearched) {
-            // User searched and got no results
-            textEmpty.setText(R.string.home_patient_search_empty_results);
-            textEmpty.setVisibility(View.VISIBLE);
-        } else {
-            textEmpty.setVisibility(View.GONE);
-        }
-    }
-
-    @Override
-    public void onDoctorClicked(@NonNull DoctorSearchResult doctor) {
-        if (!isAdded()) return;
-
-        // Navigation to a dedicated DoctorPublicProfileFragment will be wired
-        // in a later batch to avoid referencing non-existing destinations.
-        // For now, we just confirm the click.
-        String name = doctor.getDisplayNameCompact();
-        if (name == null || name.isEmpty()) {
-            name = getString(R.string.profile_role_doctor);
-        }
-        Toast.makeText(
-                requireContext(),
-                getString(R.string.home_patient_doctor_click_toast, name),
-                Toast.LENGTH_SHORT
-        ).show();
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        if (pendingSearchRunnable != null) {
-            handler.removeCallbacks(pendingSearchRunnable);
-        }
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/presentation/home/HomeUiHelper.java =====
-package tn.esprit.presentation.home;
-
-import java.util.Calendar;
-
-import tn.esprit.R;
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/ApiClient.java =====
+package tn.esprit.data.remote;
+
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Call;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.http.Body;
+import retrofit2.http.POST;
 
 /**
- * Small UI helper for home header: greeting and role labels.
+ * Provides a configured Retrofit instance to talk to the Spring Boot backend.
+ * Uses 10.0.2.2 so the Android emulator can reach localhost:8080 on your machine.
+ *
+ * NOTE: This client is intentionally small and focused on auth for now.
+ * Later we can split it into separate files (AuthApi, UserApi, DoctorApi...)
+ * to avoid it becoming a god-class.
  */
-public final class HomeUiHelper {
+public class ApiClient {
 
-    private HomeUiHelper() {
-        // no instances
+    private static final String BASE_URL = "http://10.0.2.2:8080/";
+    private static Retrofit retrofit;
+
+    private ApiClient() {
+        // No instances
+    }
+    public static <T> T createService(Class<T> serviceClass) {
+        return getRetrofit().create(serviceClass);
+    }
+
+    private static Retrofit getRetrofit() {
+        if (retrofit == null) {
+            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+            // Always log BODY for now (you can change to NONE for production)
+            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+
+            OkHttpClient client = new OkHttpClient.Builder()
+                    .addInterceptor(logging)
+                    .build();
+
+            retrofit = new Retrofit.Builder()
+                    .baseUrl(BASE_URL)
+                    .client(client)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build();
+        }
+        return retrofit;
+    }
+
+    public static AuthApiService getAuthApiService() {
+        return getRetrofit().create(AuthApiService.class);
     }
 
     /**
-     * Returns the greeting string resource id based on current hour.
+     * Retrofit API for /auth endpoints.
      */
-    public static int resolveGreetingResId() {
-        Calendar calendar = Calendar.getInstance();
-        int hour = calendar.get(Calendar.HOUR_OF_DAY);
+    public interface AuthApiService {
 
-        if (hour < 12) {
-            return R.string.home_greeting_morning;
-        } else if (hour < 18) {
-            return R.string.home_greeting_afternoon;
-        } else {
-            return R.string.home_greeting_evening;
+        @POST("auth/login")
+        Call<TokenResponseDto> login(@Body LoginRequestDto request);
+
+        @POST("auth/signup")
+        Call<TokenResponseDto> signup(@Body SignupRequestDto request);
+
+        @POST("auth/refresh")
+        Call<TokenResponseDto> refresh(@Body RefreshTokenRequestDto request);
+    }
+
+    /**
+     * Matches backend dto.auth.LoginRequest (email, password).
+     */
+    public static class LoginRequestDto {
+        private String email;
+        private String password;
+
+        public LoginRequestDto(String email, String password) {
+            this.email = email;
+            this.password = password;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
         }
     }
 
     /**
-     * Returns the correct role label resource id for a given backend role string.
+     * Matches backend dto.auth.SignupRequest
+     * (firstname, lastname, email, phone, password, role).
      */
-    public static int resolveRoleLabelResId(String role) {
-        if (role == null) {
-            return R.string.profile_role_unknown;
+    public static class SignupRequestDto {
+        private String firstname;
+        private String lastname;
+        private String email;
+        private String phone;
+        private String password;
+        private String role; // "DOCTOR" or "PATIENT"
+
+        public SignupRequestDto(String firstname,
+                                String lastname,
+                                String email,
+                                String phone,
+                                String password,
+                                String role) {
+            this.firstname = firstname;
+            this.lastname = lastname;
+            this.email = email;
+            this.phone = phone;
+            this.password = password;
+            this.role = role;
         }
 
-        if ("DOCTOR".equalsIgnoreCase(role)) {
-            return R.string.profile_role_doctor;
-        } else if ("PATIENT".equalsIgnoreCase(role)) {
-            return R.string.profile_role_patient;
-        } else if ("ADMIN".equalsIgnoreCase(role)) {
-            return R.string.profile_role_admin;
-        } else {
-            return R.string.profile_role_unknown;
+        public String getFirstname() {
+            return firstname;
+        }
+
+        public void setFirstname(String firstname) {
+            this.firstname = firstname;
+        }
+
+        public String getLastname() {
+            return lastname;
+        }
+
+        public void setLastname(String lastname) {
+            this.lastname = lastname;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public void setPhone(String phone) {
+            this.phone = phone;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
+    }
+
+    /**
+     * Matches backend dto.auth.RefreshTokenRequest (refreshToken).
+     */
+    public static class RefreshTokenRequestDto {
+        private String refreshToken;
+
+        public RefreshTokenRequestDto(String refreshToken) {
+            this.refreshToken = refreshToken;
+        }
+
+        public String getRefreshToken() {
+            return refreshToken;
+        }
+
+        public void setRefreshToken(String refreshToken) {
+            this.refreshToken = refreshToken;
+        }
+    }
+
+    /**
+     * Matches backend dto.auth.TokenResponse
+     * (accessToken, refreshToken, tokenType, expiresIn).
+     */
+    public static class TokenResponseDto {
+        private String accessToken;
+        private String refreshToken;
+        private String tokenType;
+        private Long expiresIn;
+
+        public String getAccessToken() {
+            return accessToken;
+        }
+
+        public void setAccessToken(String accessToken) {
+            this.accessToken = accessToken;
+        }
+
+        public String getRefreshToken() {
+            return refreshToken;
+        }
+
+        public void setRefreshToken(String refreshToken) {
+            this.refreshToken = refreshToken;
+        }
+
+        public String getTokenType() {
+            return tokenType;
+        }
+
+        public void setTokenType(String tokenType) {
+            this.tokenType = tokenType;
+        }
+
+        public Long getExpiresIn() {
+            return expiresIn;
+        }
+
+        public void setExpiresIn(Long expiresIn) {
+            this.expiresIn = expiresIn;
         }
     }
 }
 
 
-===== FILE: ./app/src/main/java/tn/esprit/presentation/home/HomeFragment.java =====
-package tn.esprit.presentation.home;
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/indicator/IndicatorApiService.java =====
+package tn.esprit.data.remote.indicator;
 
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
+import java.math.BigDecimal;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.view.ViewCompat;
-import androidx.fragment.app.Fragment;
+import retrofit2.Call;
+import retrofit2.http.Body;
+import retrofit2.http.DELETE;
+import retrofit2.http.GET;
+import retrofit2.http.Header;
+import retrofit2.http.POST;
+import retrofit2.http.Path;
+import retrofit2.http.Query;
+import tn.esprit.data.remote.common.ListResponseDto;
+import tn.esprit.domain.indicator.IndicatorType;
+import tn.esprit.domain.indicator.PatientIndicator;
 
-import tn.esprit.R;
+/**
+ * Retrofit API for indicator-related endpoints.
+ *
+ * Matches backend:
+ *  - GET /indicator-types
+ *  - GET /indicators/me
+ *  - POST /indicators/me
+ *  - DELETE /indicators/me/{id}
+ *  - GET /indicators/patient/{patientUserId}
+ */
+public interface IndicatorApiService {
 
-public class HomeFragment extends Fragment {
+    /**
+     * GET /indicator-types
+     *
+     * Returns the static catalog of available indicator types.
+     * (If you later require auth for this, we can add Authorization header.)
+     */
+    @GET("indicator-types")
+    Call<ListResponseDto<IndicatorType>> getIndicatorTypes();
 
-    private View cardHighlight;
-    private TextView textHighlightTitle;
-    private TextView textHighlightSubtitle;
+    /**
+     * GET /indicators/me
+     *
+     * Lists indicators of the current patient.
+     *
+     * Query params (all optional):
+     *  - indicatorTypeId
+     *  - from (ISO-8601 date-time string)
+     *  - to   (ISO-8601 date-time string)
+     */
+    @GET("indicators/me")
+    Call<ListResponseDto<PatientIndicator>> getMyIndicators(
+            @Header("Authorization") String authorization,
+            @Query("indicatorTypeId") Long indicatorTypeId,
+            @Query("from") String fromIso,
+            @Query("to") String toIso
+    );
 
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_home, container, false);
-    }
+    /**
+     * POST /indicators/me
+     *
+     * Current patient adds a new indicator measurement.
+     */
+    @POST("indicators/me")
+    Call<PatientIndicator> addMyIndicator(
+            @Header("Authorization") String authorization,
+            @Body PatientIndicatorCreateRequestDto request
+    );
 
-    @Override
-    public void onViewCreated(@NonNull View view,
-                              @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+    /**
+     * DELETE /indicators/me/{id}
+     *
+     * Current patient deletes one of their indicators by id.
+     */
+    @DELETE("indicators/me/{id}")
+    Call<Void> deleteMyIndicator(
+            @Header("Authorization") String authorization,
+            @Path("id") Long indicatorId
+    );
 
-        cardHighlight = view.findViewById(R.id.card_highlight);
-        textHighlightTitle = view.findViewById(R.id.text_highlight_title);
-        textHighlightSubtitle = view.findViewById(R.id.text_highlight_subtitle);
+    /**
+     * GET /indicators/patient/{patientUserId}
+     *
+     * Doctor lists indicators of a given patient (by patient User.id).
+     * Requires current user to be DOCTOR and linked to that patient.
+     */
+    @GET("indicators/patient/{patientUserId}")
+    Call<ListResponseDto<PatientIndicator>> getIndicatorsForPatientAsDoctor(
+            @Header("Authorization") String authorization,
+            @Path("patientUserId") Long patientUserId,
+            @Query("indicatorTypeId") Long indicatorTypeId,
+            @Query("from") String fromIso,
+            @Query("to") String toIso
+    );
 
-        // Generic highlight text (we can make this role-specific later if needed)
-        textHighlightTitle.setText(getString(R.string.home_highlight_title));
-        textHighlightSubtitle.setText(getString(R.string.home_highlight_subtitle));
+    /**
+     * Request body for POST /indicators/me.
+     * Mirrors backend dto.indicator.PatientIndicatorCreateRequest.
+     */
+    class PatientIndicatorCreateRequestDto {
 
-        // Simple entrance animation
-        if (cardHighlight != null) {
-            cardHighlight.setAlpha(0f);
-            cardHighlight.setTranslationY(24f);
-            ViewCompat.animate(cardHighlight)
-                    .alpha(1f)
-                    .translationY(0f)
-                    .setDuration(400L)
-                    .setStartDelay(80L)
-                    .start();
+        private Long indicatorTypeId;   // required
+
+        private BigDecimal numericValue; // optional; at least one of numeric/text
+        private String textValue;
+
+        /**
+         * Optional ISO-8601 timestamp string.
+         * If null, backend will use now().
+         */
+        private String measuredAt;
+
+        private String note;
+
+        public PatientIndicatorCreateRequestDto() {
+        }
+
+        public Long getIndicatorTypeId() {
+            return indicatorTypeId;
+        }
+
+        public void setIndicatorTypeId(Long indicatorTypeId) {
+            this.indicatorTypeId = indicatorTypeId;
+        }
+
+        public BigDecimal getNumericValue() {
+            return numericValue;
+        }
+
+        public void setNumericValue(BigDecimal numericValue) {
+            this.numericValue = numericValue;
+        }
+
+        public String getTextValue() {
+            return textValue;
+        }
+
+        public void setTextValue(String textValue) {
+            this.textValue = textValue;
+        }
+
+        public String getMeasuredAt() {
+            return measuredAt;
+        }
+
+        public void setMeasuredAt(String measuredAt) {
+            this.measuredAt = measuredAt;
+        }
+
+        public String getNote() {
+            return note;
+        }
+
+        public void setNote(String note) {
+            this.note = note;
         }
     }
 }
 
 
-===== FILE: ./app/src/main/java/tn/esprit/presentation/home/DoctorSearchResultAdapter.java =====
-package tn.esprit.presentation.home;
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/doctor/SpecialtyApiService.java =====
+package tn.esprit.data.remote.specialty;
 
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
+import java.math.BigDecimal;
+import java.util.List;
 
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.DiffUtil;
-import androidx.recyclerview.widget.ListAdapter;
-import androidx.recyclerview.widget.RecyclerView;
+import retrofit2.Call;
+import retrofit2.http.Body;
+import retrofit2.http.GET;
+import retrofit2.http.Header;
+import retrofit2.http.Path;
 
-import tn.esprit.R;
+public interface SpecialtyApiService {
+
+    @GET("/api/specialties")
+    Call<List<SpecialtyDto>> getAllSpecialties(
+            @Header("Authorization") String authHeader
+    );
+
+    @GET("/api/specialties/{specialtyId}/acts")
+    Call<List<ActDto>> getActsBySpecialty(
+            @Header("Authorization") String authHeader,
+            @Path("specialtyId") Long specialtyId
+    );
+
+    // --- DTOs mirroring your backend ---
+
+    public static class SpecialtyDto {
+        public Long id;
+        public String code;
+        public String name;
+        public String description;
+        public Boolean active;
+    }
+
+    public static class ActDto {
+        public Long id;
+        public String code;
+        public String name;
+        public String description;
+        public BigDecimal basePrice;
+        public Integer defaultDurationMinutes;
+        public Boolean teleconsultationAvailable;
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/doctor/DoctorApiService.java =====
+package tn.esprit.data.remote.doctor;
+
+import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.http.Body;
+import retrofit2.http.DELETE;
+import retrofit2.http.GET;
+import retrofit2.http.Header;
+import retrofit2.http.POST;
+import retrofit2.http.PUT;
+import retrofit2.http.Path;
+import retrofit2.http.Query;
+import tn.esprit.data.remote.common.ListResponseDto;
+import tn.esprit.domain.doctor.DoctorProfile;
+import tn.esprit.domain.doctor.DoctorPublicProfile;
 import tn.esprit.domain.doctor.DoctorSearchResult;
+import tn.esprit.domain.patient.PatientProfile;
 
-public class DoctorSearchResultAdapter
-        extends ListAdapter<DoctorSearchResult, DoctorSearchResultAdapter.DoctorViewHolder> {
+public interface DoctorApiService {
 
-    public interface OnDoctorClickListener {
-        void onDoctorClicked(@NonNull DoctorSearchResult doctor);
-    }
+    /**
+     * GET /api/doctors/me
+     * Returns the current doctor's profile.
+     */
+    @GET("/api/doctors/me")
+    Call<DoctorProfile> getMyProfile(
+            @Header("Authorization") String authHeader
+    );
 
-    private final OnDoctorClickListener clickListener;
+    /**
+     * PUT /api/doctors/me
+     * Updates the current doctor's profile (bio, clinicAddress, etc.).
+     */
+    @PUT("/api/doctors/me")
+    Call<DoctorProfile> updateMyProfile(
+            @Header("Authorization") String authHeader,
+            @Body DoctorProfileUpdateRequestDto request
+    );
 
-    public DoctorSearchResultAdapter(@NonNull OnDoctorClickListener clickListener) {
-        super(DIFF_CALLBACK);
-        this.clickListener = clickListener;
-    }
+    /**
+     * POST /api/doctors/me/practice-setup
+     * Onboarding step: choose one specialty and the acts performed.
+     * (Matches backend @PostMapping("/me/practice-setup")).
+     */
+    @POST("/api/doctors/me/practice-setup")
+    Call<DoctorProfile> setupPracticeForCurrentDoctor(
+            @Header("Authorization") String authHeader,
+            @Body DoctorPracticeSetupRequestDto request
+    );
 
-    private static final DiffUtil.ItemCallback<DoctorSearchResult> DIFF_CALLBACK =
-            new DiffUtil.ItemCallback<DoctorSearchResult>() {
-                @Override
-                public boolean areItemsTheSame(@NonNull DoctorSearchResult oldItem,
-                                               @NonNull DoctorSearchResult newItem) {
-                    if (oldItem.getDoctorId() == null || newItem.getDoctorId() == null) {
-                        return oldItem == newItem;
-                    }
-                    return oldItem.getDoctorId().equals(newItem.getDoctorId());
-                }
+    // ----------- Doctor's patients endpoints -----------
 
-                @Override
-                public boolean areContentsTheSame(@NonNull DoctorSearchResult oldItem,
-                                                  @NonNull DoctorSearchResult newItem) {
-                    // For now, treat all fields as relevant; if doctorId same and
-                    // compact fields unchanged, we consider content the same.
-                    return safeEquals(oldItem.getFirstName(), newItem.getFirstName())
-                            && safeEquals(oldItem.getLastName(), newItem.getLastName())
-                            && safeEquals(oldItem.getSpecialtyName(), newItem.getSpecialtyName())
-                            && safeEquals(oldItem.getCity(), newItem.getCity())
-                            && safeEquals(oldItem.getCountry(), newItem.getCountry());
-                }
+    /**
+     * GET /api/doctors/me/patients
+     * Returns patients linked to the current doctor, wrapped in ListResponse.
+     */
+    @GET("/api/doctors/me/patients")
+    Call<ListResponseDto<PatientProfile>> getMyPatients(
+            @Header("Authorization") String authHeader
+    );
 
-                private boolean safeEquals(Object a, Object b) {
-                    if (a == b) return true;
-                    if (a == null || b == null) return false;
-                    return a.equals(b);
-                }
-            };
+    /**
+     * GET /api/doctors/me/patients/{patientUserId}
+     * Returns details of a single patient (by User.id) linked to the current doctor.
+     */
+    @GET("/api/doctors/me/patients/{patientUserId}")
+    Call<PatientProfile> getMyPatientByUserId(
+            @Header("Authorization") String authHeader,
+            @Path("patientUserId") Long patientUserId
+    );
 
-    @NonNull
-    @Override
-    public DoctorViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View itemView = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_doctor_search_result, parent, false);
-        return new DoctorViewHolder(itemView);
-    }
+    /**
+     * DELETE /api/doctors/me/patients/{patientUserId}
+     * Removes link between current doctor and a patient.
+     */
+    @DELETE("/api/doctors/me/patients/{patientUserId}")
+    Call<Void> removePatientFromMe(
+            @Header("Authorization") String authHeader,
+            @Path("patientUserId") Long patientUserId
+    );
 
-    @Override
-    public void onBindViewHolder(@NonNull DoctorViewHolder holder, int position) {
-        DoctorSearchResult item = getItem(position);
-        holder.bind(item);
-    }
+    // ----------- Public/search endpoints -----------
 
-    class DoctorViewHolder extends RecyclerView.ViewHolder {
+    /**
+     * Public search endpoint for doctors.
+     *
+     * GET /api/doctors/search
+     *
+     * Backend now wraps results in ListResponse<DoctorSearchResultDto>.
+     */
+    @GET("/api/doctors/search")
+    Call<ListResponseDto<DoctorSearchResult>> searchDoctors(
+            @Header("Authorization") String authHeader,
+            @Query("q") String query,
+            @Query("specialtyId") Long specialtyId,
+            @Query("city") String city,
+            @Query("country") String country,
+            @Query("teleconsultationEnabled") Boolean teleconsultationEnabled,
+            @Query("acceptingNewPatients") Boolean acceptingNewPatients
+    );
 
-        private final TextView textTitle;
-        private final TextView textSubtitle;
+    /**
+     * Public doctor profile endpoint.
+     *
+     * GET /api/doctors/{doctorId}/public
+     */
+    @GET("/api/doctors/{doctorId}/public")
+    Call<DoctorPublicProfile> getDoctorPublicProfile(
+            @Header("Authorization") String authHeader,
+            @Path("doctorId") Long doctorId
+    );
 
-        DoctorViewHolder(@NonNull View itemView) {
-            super(itemView);
-            textTitle = itemView.findViewById(R.id.text_doctor_title);
-            textSubtitle = itemView.findViewById(R.id.text_doctor_subtitle);
+    // ----------- DTOs used as request bodies -----------
 
-            itemView.setOnClickListener(v -> {
-                int pos = getBindingAdapterPosition();
-                if (pos == RecyclerView.NO_POSITION) return;
-                DoctorSearchResult item = getItem(pos);
-                if (item != null && clickListener != null) {
-                    clickListener.onDoctorClicked(item);
-                }
-            });
+    /**
+     * Mirrors backend DoctorProfileUpdateRequest.
+     */
+    class DoctorProfileUpdateRequestDto {
+
+        private String bio;
+        private Integer yearsOfExperience;
+        private String clinicAddress;
+        private String city;
+        private String country;
+        private String medicalRegistrationNumber;
+        private java.math.BigDecimal consultationFee;
+        private Boolean acceptsNewPatients;
+        private Boolean teleconsultationEnabled;
+        private Integer maxDailyAppointments;
+        private Integer averageConsultationDurationMinutes;
+
+        // --- getters & setters ---
+
+        public String getBio() {
+            return bio;
         }
 
-        void bind(@NonNull DoctorSearchResult doctor) {
-            String displayName = doctor.getDisplayNameCompact();
-            if (displayName == null) {
-                displayName = "";
-            }
+        public void setBio(String bio) {
+            this.bio = bio;
+        }
 
-            String specialty = doctor.getSpecialtyName();
-            if (specialty == null) {
-                specialty = "";
-            }
+        public Integer getYearsOfExperience() {
+            return yearsOfExperience;
+        }
 
-            // Title: "Lastname F. · Specialty"
-            if (!specialty.isEmpty()) {
-                String formatted = itemView.getContext().getString(
-                        R.string.home_patient_doctor_title_format,
-                        displayName,
-                        specialty
-                );
-                textTitle.setText(formatted);
-            } else {
-                textTitle.setText(displayName);
-            }
+        public void setYearsOfExperience(Integer yearsOfExperience) {
+            this.yearsOfExperience = yearsOfExperience;
+        }
 
-            // Subtitle: city, country
-            StringBuilder subtitle = new StringBuilder();
-            if (doctor.getCity() != null && !doctor.getCity().trim().isEmpty()) {
-                subtitle.append(doctor.getCity().trim());
-            }
-            if (doctor.getCountry() != null && !doctor.getCountry().trim().isEmpty()) {
-                if (subtitle.length() > 0) subtitle.append(", ");
-                subtitle.append(doctor.getCountry().trim());
-            }
+        public String getClinicAddress() {
+            return clinicAddress;
+        }
 
-            textSubtitle.setText(subtitle.toString());
+        public void setClinicAddress(String clinicAddress) {
+            this.clinicAddress = clinicAddress;
+        }
+
+        public String getCity() {
+            return city;
+        }
+
+        public void setCity(String city) {
+            this.city = city;
+        }
+
+        public String getCountry() {
+            return country;
+        }
+
+        public void setCountry(String country) {
+            this.country = country;
+        }
+
+        public String getMedicalRegistrationNumber() {
+            return medicalRegistrationNumber;
+        }
+
+        public void setMedicalRegistrationNumber(String medicalRegistrationNumber) {
+            this.medicalRegistrationNumber = medicalRegistrationNumber;
+        }
+
+        public java.math.BigDecimal getConsultationFee() {
+            return consultationFee;
+        }
+
+        public void setConsultationFee(java.math.BigDecimal consultationFee) {
+            this.consultationFee = consultationFee;
+        }
+
+        public Boolean getAcceptsNewPatients() {
+            return acceptsNewPatients;
+        }
+
+        public void setAcceptsNewPatients(Boolean acceptsNewPatients) {
+            this.acceptsNewPatients = acceptsNewPatients;
+        }
+
+        public Boolean getTeleconsultationEnabled() {
+            return teleconsultationEnabled;
+        }
+
+        public void setTeleconsultationEnabled(Boolean teleconsultationEnabled) {
+            this.teleconsultationEnabled = teleconsultationEnabled;
+        }
+
+        public Integer getMaxDailyAppointments() {
+            return maxDailyAppointments;
+        }
+
+        public void setMaxDailyAppointments(Integer maxDailyAppointments) {
+            this.maxDailyAppointments = maxDailyAppointments;
+        }
+
+        public Integer getAverageConsultationDurationMinutes() {
+            return averageConsultationDurationMinutes;
+        }
+
+        public void setAverageConsultationDurationMinutes(Integer averageConsultationDurationMinutes) {
+            this.averageConsultationDurationMinutes = averageConsultationDurationMinutes;
+        }
+    }
+
+    /**
+     * Mirrors backend DoctorPracticeSetupRequest.
+     */
+    class DoctorPracticeSetupRequestDto {
+        public Long specialtyId;
+        public java.util.List<Long> actIds;
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/user/UserApiService.java =====
+package tn.esprit.data.remote.user;
+
+import retrofit2.Call;
+import retrofit2.http.GET;
+import retrofit2.http.Header;
+import tn.esprit.domain.user.User;
+
+/**
+ * Retrofit API for general user operations.
+ *
+ * We directly return the domain User model to avoid extra mapping.
+ */
+public interface UserApiService {
+
+    /**
+     * GET /me
+     * Authorization: Bearer <access_token>
+     */
+    @GET("me")
+    Call<User> getCurrentUser(@Header("Authorization") String authorization);
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/user/UserImageApiService.java =====
+package tn.esprit.data.remote.user;
+
+import okhttp3.MultipartBody;
+import retrofit2.Call;
+import retrofit2.http.Header;
+import retrofit2.http.Multipart;
+import retrofit2.http.POST;
+import retrofit2.http.Part;
+import tn.esprit.domain.user.User;
+
+/**
+ * Retrofit service for user profile image operations.
+ *
+ * Matches backend:
+ *   POST /users/me/profile-image
+ *   multipart/form-data, field name = "image"
+ *   returns UserDto → mapped to tn.esprit.domain.user.User
+ */
+public interface UserImageApiService {
+
+    @Multipart
+    @POST("/users/me/profile-image")
+    Call<User> uploadMyProfileImage(
+            @Header("Authorization") String authHeader,
+            @Part MultipartBody.Part image
+    );
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/user/UserAccountApiService.java =====
+package tn.esprit.data.remote.user;
+
+import retrofit2.Call;
+import retrofit2.http.Body;
+import retrofit2.http.Header;
+import retrofit2.http.PUT;
+
+import tn.esprit.domain.user.User;
+
+/**
+ * API for base user information (firstname, lastname, email, phone).
+ *
+ * Uses:
+ *   PUT /me
+ */
+public interface UserAccountApiService {
+
+    class UserUpdateRequestDto {
+        private String firstname;
+        private String lastname;
+        private String email;
+        private String phone;
+
+        public String getFirstname() {
+            return firstname;
+        }
+
+        public void setFirstname(String firstname) {
+            this.firstname = firstname;
+        }
+
+        public String getLastname() {
+            return lastname;
+        }
+
+        public void setLastname(String lastname) {
+            this.lastname = lastname;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public void setPhone(String phone) {
+            this.phone = phone;
+        }
+    }
+
+    @PUT("/me")
+    Call<User> updateCurrentUser(
+            @Header("Authorization") String authHeader,
+            @Body UserUpdateRequestDto body
+    );
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/common/ListResponseDto.java =====
+package tn.esprit.data.remote.common;
+
+import java.util.List;
+
+/**
+ * Generic list wrapper matching backend dto.common.ListResponse<T>.
+ *
+ * JSON example:
+ * {
+ *   "items": [ ... ],
+ *   "total": 3
+ * }
+ */
+public class ListResponseDto<T> {
+
+    private List<T> items;
+    private long total;
+
+    public ListResponseDto() {
+    }
+
+    public List<T> getItems() {
+        return items;
+    }
+
+    public void setItems(List<T> items) {
+        this.items = items;
+    }
+
+    public long getTotal() {
+        return total;
+    }
+
+    public void setTotal(long total) {
+        this.total = total;
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/data/remote/patient/PatientApiService.java =====
+package tn.esprit.data.remote.patient;
+
+import retrofit2.Call;
+import retrofit2.http.Body;
+import retrofit2.http.GET;
+import retrofit2.http.Header;
+import retrofit2.http.PUT;
+import tn.esprit.domain.patient.PatientProfile;
+
+/**
+ * Retrofit API for patient-specific operations.
+ *
+ * We directly return the domain PatientProfile model.
+ */
+public interface PatientApiService {
+
+    /**
+     * GET /patients/me
+     * Authorization: Bearer <access_token>
+     */
+    @GET("patients/me")
+    Call<PatientProfile> getMyProfile(@Header("Authorization") String authorization);
+
+    /**
+     * PUT /patients/me
+     * Authorization: Bearer <access_token>
+     *
+     * Body matches backend dto.patient.PatientProfileUpdateRequest
+     * (with dates formatted as ISO-8601 strings: yyyy-MM-dd).
+     */
+    @PUT("patients/me")
+    Call<PatientProfile> updateMyProfile(
+            @Header("Authorization") String authorization,
+            @Body PatientProfileUpdateRequestDto request
+    );
+
+    /**
+     * DTO mirroring backend PatientProfileUpdateRequest.
+     * Used directly as Retrofit request body (no extra mapping).
+     */
+    class PatientProfileUpdateRequestDto {
+
+        private String dateOfBirth; // ISO date string yyyy-MM-dd
+        private String gender;
+        private String bloodType;
+        private Integer heightCm;
+        private Integer weightKg;
+        private String address;
+        private String city;
+        private String country;
+        private String maritalStatus;
+        private Boolean smoker;
+        private Boolean alcoholUse;
+        private String notes;
+
+        public PatientProfileUpdateRequestDto() {
+        }
+
+        // Getters & setters
+
+        public String getDateOfBirth() {
+            return dateOfBirth;
+        }
+
+        public void setDateOfBirth(String dateOfBirth) {
+            this.dateOfBirth = dateOfBirth;
+        }
+
+        public String getGender() {
+            return gender;
+        }
+
+        public void setGender(String gender) {
+            this.gender = gender;
+        }
+
+        public String getBloodType() {
+            return bloodType;
+        }
+
+        public void setBloodType(String bloodType) {
+            this.bloodType = bloodType;
+        }
+
+        public Integer getHeightCm() {
+            return heightCm;
+        }
+
+        public void setHeightCm(Integer heightCm) {
+            this.heightCm = heightCm;
+        }
+
+        public Integer getWeightKg() {
+            return weightKg;
+        }
+
+        public void setWeightKg(Integer weightKg) {
+            this.weightKg = weightKg;
+        }
+
+        public String getAddress() {
+            return address;
+        }
+
+        public void setAddress(String address) {
+            this.address = address;
+        }
+
+        public String getCity() {
+            return city;
+        }
+
+        public void setCity(String city) {
+            this.city = city;
+        }
+
+        public String getCountry() {
+            return country;
+        }
+
+        public void setCountry(String country) {
+            this.country = country;
+        }
+
+        public String getMaritalStatus() {
+            return maritalStatus;
+        }
+
+        public void setMaritalStatus(String maritalStatus) {
+            this.maritalStatus = maritalStatus;
+        }
+
+        public Boolean getSmoker() {
+            return smoker;
+        }
+
+        public void setSmoker(Boolean smoker) {
+            this.smoker = smoker;
+        }
+
+        public Boolean getAlcoholUse() {
+            return alcoholUse;
+        }
+
+        public void setAlcoholUse(Boolean alcoholUse) {
+            this.alcoholUse = alcoholUse;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
         }
     }
 }

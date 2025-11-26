@@ -4,14 +4,18 @@ import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.Header;
-import retrofit2.http.Path;
+import retrofit2.http.POST;
 import retrofit2.http.PUT;
+import retrofit2.http.Path;
 import retrofit2.http.Query;
+import tn.esprit.data.remote.common.ListResponseDto;
 import tn.esprit.domain.doctor.DoctorProfile;
 import tn.esprit.domain.doctor.DoctorPublicProfile;
 import tn.esprit.domain.doctor.DoctorSearchResult;
+import tn.esprit.domain.patient.PatientProfile;
 
 public interface DoctorApiService {
 
@@ -35,27 +39,58 @@ public interface DoctorApiService {
     );
 
     /**
-     * PUT /api/doctors/me/practice-setup
+     * POST /api/doctors/me/practice-setup
      * Onboarding step: choose one specialty and the acts performed.
+     * (Matches backend @PostMapping("/me/practice-setup")).
      */
-    @PUT("/api/doctors/me/practice-setup")
+    @POST("/api/doctors/me/practice-setup")
     Call<DoctorProfile> setupPracticeForCurrentDoctor(
             @Header("Authorization") String authHeader,
             @Body DoctorPracticeSetupRequestDto request
     );
 
-    // ----------- NEW: public/search endpoints -----------
+    // ----------- Doctor's patients endpoints -----------
+
+    /**
+     * GET /api/doctors/me/patients
+     * Returns patients linked to the current doctor, wrapped in ListResponse.
+     */
+    @GET("/api/doctors/me/patients")
+    Call<ListResponseDto<PatientProfile>> getMyPatients(
+            @Header("Authorization") String authHeader
+    );
+
+    /**
+     * GET /api/doctors/me/patients/{patientUserId}
+     * Returns details of a single patient (by User.id) linked to the current doctor.
+     */
+    @GET("/api/doctors/me/patients/{patientUserId}")
+    Call<PatientProfile> getMyPatientByUserId(
+            @Header("Authorization") String authHeader,
+            @Path("patientUserId") Long patientUserId
+    );
+
+    /**
+     * DELETE /api/doctors/me/patients/{patientUserId}
+     * Removes link between current doctor and a patient.
+     */
+    @DELETE("/api/doctors/me/patients/{patientUserId}")
+    Call<Void> removePatientFromMe(
+            @Header("Authorization") String authHeader,
+            @Path("patientUserId") Long patientUserId
+    );
+
+    // ----------- Public/search endpoints -----------
 
     /**
      * Public search endpoint for doctors.
      *
      * GET /api/doctors/search
      *
-     * All query parameters are optional. Passing null for a parameter
-     * simply omits it from the request.
+     * Backend now wraps results in ListResponse<DoctorSearchResultDto>.
      */
     @GET("/api/doctors/search")
-    Call<List<DoctorSearchResult>> searchDoctors(
+    Call<ListResponseDto<DoctorSearchResult>> searchDoctors(
             @Header("Authorization") String authHeader,
             @Query("q") String query,
             @Query("specialtyId") Long specialtyId,

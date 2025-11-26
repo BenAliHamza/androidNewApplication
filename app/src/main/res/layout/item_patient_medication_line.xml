@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card_patient_medication_line"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardUseCompatPadding="true"
+    app:cardElevation="1dp"
+    app:cardCornerRadius="14dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="10dp">
+
+        <!-- Top row: medication name + reminder switch -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Medication name -->
+            <TextView
+                android:id="@+id/text_med_line_medication_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/color_on_background"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="Paracetamol" />
+
+            <!-- Reminder toggle -->
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_med_line_reminder"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="8dp"
+                android:paddingLeft="8dp"
+                android:text=""
+                android:checked="false" />
+        </LinearLayout>
+
+        <!-- Dosage + times per day -->
+        <TextView
+            android:id="@+id/text_med_line_dosage_times"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="13sp"
+            android:textColor="@color/color_on_background_secondary"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="500 mg · 3×/day" />
+
+        <!-- Instructions -->
+        <TextView
+            android:id="@+id/text_med_line_instructions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="13sp"
+            android:textColor="@color/color_on_background_secondary"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:text="After meals" />
+
+        <!-- Dates -->
+        <TextView
+            android:id="@+id/text_med_line_dates"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="12sp"
+            android:textColor="@color/color_on_background_secondary"
+            android:text="2025-03-01 → 2025-03-10" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

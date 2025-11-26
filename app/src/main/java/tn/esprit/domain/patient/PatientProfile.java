@@ -139,4 +139,47 @@ public class PatientProfile {
     public String getNotes() {
         return notes;
     }
+
+    // ---------------------------------------------------------------------
+    // UI helpers
+    // ---------------------------------------------------------------------
+
+    /**
+     * Returns a human-friendly full name, or null if no name is available.
+     */
+    public String getFullName() {
+        String first = firstname != null ? firstname.trim() : "";
+        String last = lastname != null ? lastname.trim() : "";
+
+        if (!first.isEmpty() && !last.isEmpty()) {
+            return first + " " + last;
+        }
+        if (!last.isEmpty()) {
+            return last;
+        }
+        if (!first.isEmpty()) {
+            return first;
+        }
+        return null;
+    }
+
+    /**
+     * Returns "City, Country", "City" or "Country" depending on available fields.
+     * Returns null if both are empty.
+     */
+    public String getCityCountryLabel() {
+        String cityPart = city != null ? city.trim() : "";
+        String countryPart = country != null ? country.trim() : "";
+
+        if (cityPart.isEmpty() && countryPart.isEmpty()) {
+            return null;
+        }
+        if (cityPart.isEmpty()) {
+            return countryPart;
+        }
+        if (countryPart.isEmpty()) {
+            return cityPart;
+        }
+        return cityPart + ", " + countryPart;
+    }
 }

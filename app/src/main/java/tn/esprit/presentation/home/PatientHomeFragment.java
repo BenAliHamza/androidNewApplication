@@ -17,9 +17,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.fragment.NavHostFragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.navigation.fragment.NavHostFragment;
 
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -187,17 +187,29 @@ public class PatientHomeFragment extends Fragment implements DoctorSearchResultA
     public void onDoctorClicked(@NonNull DoctorSearchResult doctor) {
         if (!isAdded()) return;
 
-        // Navigation to a dedicated DoctorPublicProfileFragment is wired in nav_main,
-        // but we still keep this toast as a fallback / debug confirmation.
-        String name = doctor.getLastName();
-        if (name == null || name.isEmpty()) {
-            name = getString(R.string.profile_role_doctor);
+        // Make sure we have a valid doctorId
+        Long doctorId = doctor.getDoctorId();
+        if (doctorId == null || doctorId <= 0L) {
+            // Fallback: keep the toast so user gets some feedback
+            String name = doctor.getLastName();
+            if (name == null || name.isEmpty()) {
+                name = getString(R.string.profile_role_doctor);
+            }
+            Toast.makeText(
+                    requireContext(),
+                    getString(R.string.home_patient_doctor_click_toast, name),
+                    Toast.LENGTH_SHORT
+            ).show();
+            return;
         }
-        Toast.makeText(
-                requireContext(),
-                getString(R.string.home_patient_doctor_click_toast, name),
-                Toast.LENGTH_SHORT
-        ).show();
+
+        // Build arguments bundle
+        Bundle args = new Bundle();
+        args.putLong("doctorId", doctorId);
+
+        // Navigate to the public profile screen
+        NavHostFragment.findNavController(PatientHomeFragment.this)
+                .navigate(R.id.action_patientHomeFragment_to_doctorPublicProfileFragment, args);
     }
 
     @Override

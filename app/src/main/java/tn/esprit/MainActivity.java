@@ -7,6 +7,7 @@ import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.Nullable;
@@ -23,6 +24,7 @@ import com.bumptech.glide.Glide;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 
+import tn.esprit.R;
 import tn.esprit.data.auth.AuthLocalDataSource;
 import tn.esprit.data.profile.ProfileRepository;
 import tn.esprit.domain.doctor.DoctorProfile;
@@ -358,9 +360,49 @@ public class MainActivity extends AppCompatActivity {
 
                 navController.navigate(targetDestId);
                 return true;
+
+            } else if (id == R.id.menu_patients) {
+                // Doctor bottom tab: navigate to doctor patients list
+                int targetDestId = R.id.doctorPatientsFragment;
+
+                if (navController.getCurrentDestination() != null
+                        && navController.getCurrentDestination().getId() == targetDestId) {
+                    // Already on My patients; no-op.
+                    return true;
+                }
+
+                navController.navigate(targetDestId);
+                return true;
+
+            } else if (id == R.id.menu_medications) {
+                // Patient bottom tab: My medications
+                if (lastKnownRole != null && "PATIENT".equalsIgnoreCase(lastKnownRole)) {
+                    int targetDestId = R.id.patientMedicationsFragment;
+
+                    if (navController.getCurrentDestination() != null
+                            && navController.getCurrentDestination().getId() == targetDestId) {
+                        return true;
+                    }
+
+                    navController.navigate(targetDestId);
+                } else {
+                    // If somehow visible for non-patient, just ignore
+                    Toast.makeText(this, R.string.patient_medications_not_available, Toast.LENGTH_SHORT).show();
+                }
+                return true;
+
+            } else if (id == R.id.menu_appointments) {
+                // Placeholder: not wired yet
+                Toast.makeText(this, R.string.home_bottom_appointments_coming_soon, Toast.LENGTH_SHORT).show();
+                return true;
+
+            } else if (id == R.id.menu_history) {
+                // Placeholder: not wired yet
+                Toast.makeText(this, R.string.home_bottom_history_coming_soon, Toast.LENGTH_SHORT).show();
+                return true;
             }
 
-            // Other items (calendar, patients, office, etc.) will be wired later.
+            // Default true so the item still shows as selected even if no-op
             return true;
         });
     }

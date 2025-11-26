@@ -193,8 +193,8 @@
     <string name="doctor_onboarding_select_specialty_label">Select your specialty</string>
     <string name="doctor_onboarding_select_acts_label">Select the acts you perform</string>
     <string name="doctor_onboarding_practice_button_continue">Continue</string>
-    <string name="doctor_onboarding_practice_loading_specialties">Loading specialties\u2026</string>
-    <string name="doctor_onboarding_practice_loading_acts">Loading acts\u2026</string>
+    <string name="doctor_onboarding_practice_loading_specialties">Loading specialties...</string>
+    <string name="doctor_onboarding_practice_loading_acts">Loading acts...</string>
     <string name="doctor_onboarding_practice_error_load">Could not load data. Please try again.</string>
     <string name="doctor_onboarding_practice_error_no_selection">Please select a specialty and at least one act.</string>
     <string name="doctor_onboarding_practice_success">Practice setup saved.</string>
@@ -333,7 +333,7 @@
     <string name="home_patient_search_no_results">No doctors match your search.</string>
     <string name="home_patient_search_error_generic">Could not load doctors. Please try again.</string>
     <!-- Home gate (role-based routing) -->
-    <string name="home_gate_loading_message">Preparing your home\u2026</string>
+    <string name="home_gate_loading_message">Preparing your home...</string>
 
     <!-- Doctor public profile (doctor landing) -->
     <string name="doctor_public_error_generic">
@@ -418,17 +418,17 @@
     <string name="patient_indicators_add_value_invalid">Invalid number.</string>
     <string name="patient_indicators_types_not_loaded">Indicator types are not loaded yet. Please try again.</string>
     <string name="patient_indicators_add_success">Indicator saved.</string>
-    <!-- Patient indicators - add dialog labels / hints -->
+    <!-- Patient indicators - add dialog labels / hints -->    <!-- Patient indicators - add dialog labels / hints -->
     <string name="patient_indicators_add_type_label">Indicator type</string>
     <string name="patient_indicators_add_value_label">Value</string>
     <string name="patient_indicators_add_value_hint_generic">Enter value</string>
     <string name="patient_indicators_add_value_hint_with_unit">Enter value (%1$s)</string>
     <string name="patient_indicators_add_note_label">Note (optional)</string>
-    <string name="patient_indicators_add_note_hint">Optional comment, e.g. fasting, after exercise…</string>
-
-    <string name="patient_indicators_last_updated">
-        Last updated: %1$s
+    <string name="patient_indicators_add_note_hint">
+        Optional comment, e.g. fasting, after exercise...
     </string>
+
+    <string name="patient_indicators_last_updated">Last updated: %1$s</string>
     <string name="patient_indicators_error_generic">
         Could not load your indicators. Please try again.
     </string>
@@ -438,9 +438,172 @@
     <string name="patient_indicators_title">My indicators</string>
     <string name="patient_indicators_filter_label">Indicator</string>
     <string name="patient_indicators_filter_all">All</string>
-    <string name="patient_indicators_empty">No indicators yet. When you record measurements, they will appear here.</string>
+    <string name="patient_indicators_empty">
+        No indicators yet. When you record measurements, they will appear here.
+    </string>
     <string name="patient_indicators_add_button">Add indicator</string>
-    <string name="patient_indicators_add_not_implemented">Adding indicators is not implemented yet.</string>
+    <string name="patient_indicators_add_not_implemented">
+        Adding indicators is not implemented yet.
+    </string>
+    <!-- Doctor: patients list -->
+    <string name="doctor_patients_title">My patients</string>
+    <string name="doctor_patients_subtitle">Patients who are currently linked to your practice.</string>
+    <string name="doctor_patients_empty">You do not have any linked patients yet.</string>
+    <string name="doctor_patients_error_generic">Could not load patients. Please try again.</string>
+    <string name="doctor_patients_cta_view_all">View all patients</string>
+    <string name="patient_public_title">Patient</string>
+    <string name="patient_public_error_missing_id">Missing patient id. Please try again.</string>
+    <string name="patient_public_error_generic">Could not load patient details. Please try again.</string>
+    <string name="patient_public_info_placeholder">Patient information will appear here.</string>
+    <string name="patient_public_indicators_empty">No indicators available for this patient.</string>
+    <!-- Patient public profile (doctor view) -->
+    <string name="patient_public_info_title">Patient information</string>
+    <string name="patient_public_indicators_title">Indicators</string>
+    <string name="patient_public_medications_error_generic">
+    Could not load medications. Please try again.
+</string>
 
+
+    <!-- Medication line formatting -->
+    <string name="patient_medication_name_placeholder">Medication</string>
+    <string name="patient_medication_times_per_day_format">%1$d times/day</string>
+    <string name="patient_medication_dates_range_format">From %1$s to %2$s</string>
+    <string name="patient_medication_dates_from_format">From %1$s</string>
+    <string name="patient_medication_dates_until_format">Until %1$s</string>
+    <plurals name="patient_prescription_medications_count">
+        <item quantity="one">medication</item>
+        <item quantity="other">medications</item>
+    </plurals>
+    <string name="patient_prescription_status_until">until %1$s</string>
+    <string name="patient_public_medications_hint">
+        Long-press a prescription to remove it.
+    </string>
+
+    <!-- Delete confirmation dialog -->
+    <string name="patient_prescription_delete_title">Remove prescription</string>
+    <string name="patient_prescription_delete_message">
+        Do you want to remove this prescription for this patient?
+    </string>
+    <string name="medications_delete_action">Delete</string>
+    <string name="medications_cancel_action">Cancel</string>
+
+    <!-- Delete result toasts -->
+    <string name="patient_prescription_delete_success">Prescription removed.</string>
+    <string name="patient_prescription_delete_error">
+        Unable to remove prescription. Please try again.
+    </string>
+    <!-- Patient public profile – medications section -->
+    <string name="patient_public_add_prescription_button">Add prescription</string>
+
+    <!-- Doctor: add prescription dialog -->
+    <string name="medications_add_title">New prescription</string>
+    <string name="medications_add_medication_label">Medication</string>
+    <string name="medications_add_dosage_label">Dosage</string>
+    <string name="medications_add_dosage_hint">e.g. 1 tablet</string>
+    <string name="medications_add_times_per_day_label">Times per day</string>
+    <string name="medications_add_times_per_day_hint">e.g. 3</string>
+    <string name="medications_add_instructions_label">Instructions</string>
+    <string name="medications_add_instructions_hint">e.g. After meals, with water</string>
+    <string name="medications_add_note_label">Doctor note (optional)</string>
+    <string name="medications_add_note_hint">Additional context for this treatment</string>
+
+    <!-- Doctor: add prescription errors / messages -->
+    <string name="medications_save_action">Save</string>
+    <string name="medications_add_unknown_name">Unnamed medication</string>
+    <string name="medications_add_error_no_medications">No medications available. Please contact admin.</string>
+    <string name="medications_add_error_load_medications">Unable to load medications. Please try again.</string>
+    <string name="medications_add_error_required_fields">Please fill dosage and times per day with valid values.</string>
+    <string name="medications_add_success">Prescription created.</string>
+    <string name="medications_add_error_generic">Could not create prescription. Please try again.</string>
+
+    <!-- Patient public profile – medications section -->
+    <string name="patient_public_medications_add_action">Add medication</string>
+
+    <!-- Doctor deleting a prescription on patient profile -->
+
+    <!-- Doctor creating a prescription -->
+    <string name="dialog_prescription_add_title">Add medication</string>
+    <string name="dialog_prescription_medication_label">Medication</string>
+    <string name="dialog_prescription_dosage_hint">Dosage (e.g. 1 tablet)</string>
+    <string name="dialog_prescription_times_per_day_hint">Times per day (e.g. 2)</string>
+    <string name="dialog_prescription_instructions_hint">Instructions (e.g. after meals)</string>
+    <string name="dialog_prescription_note_hint">Optional note for the patient</string>
+    <string name="medications_loading_catalog">Loading medications catalog…</string>
+    <string name="medications_catalog_empty">No medications are available in the catalog.</string>
+    <string name="medications_catalog_error">Unable to load medications. Please try again.</string>
+    <string name="patient_prescription_create_success">Medication added for this patient.</string>
+    <string name="patient_prescription_create_error">Unable to add medication. Please try again.</string>
+    <!-- Doctor medications section on patient public profile -->
+    <string name="patient_public_medications_title">Medications</string>
+    <string name="patient_public_medications_empty">No active medications for this patient.</string>
+    <string name="patient_public_medications_add_label">Add medication</string>
+
+    <!-- Doctor create prescription dialog -->
+    <string name="dialog_add_prescription_title">New prescription</string>
+    <string name="dialog_add_prescription_dates_label">Dates</string>
+    <string name="dialog_add_prescription_start_date_hint">Start date (yyyy-MM-dd)</string>
+    <string name="dialog_add_prescription_end_date_hint">End date (optional)</string>
+
+    <string name="dialog_add_prescription_note_label">Note</string>
+    <string name="dialog_add_prescription_note_hint">Optional note for this prescription</string>
+
+    <string name="dialog_add_prescription_medication_section_label">Medication</string>
+    <string name="dialog_add_prescription_medication_label">Medication</string>
+    <string name="dialog_add_prescription_dosage_label">Dosage</string>
+    <string name="dialog_add_prescription_dosage_hint">e.g. 500 mg, 1 tablet</string>
+    <string name="dialog_add_prescription_times_label">Times per day</string>
+    <string name="dialog_add_prescription_times_hint">e.g. 2</string>
+    <string name="dialog_add_prescription_instructions_label">Instructions</string>
+    <string name="dialog_add_prescription_instructions_hint">e.g. After meals</string>
+    <string name="dialog_add_prescription_save">Save</string>
+
+    <!-- Doctor create prescription validations + errors -->
+    <string name="patient_medication_add_error_catalog">Unable to load medications. Please try again later.</string>
+    <string name="dialog_add_prescription_validation_medication">Please select a medication.</string>
+    <string name="dialog_add_prescription_validation_dosage">Please enter a dosage.</string>
+    <string name="dialog_add_prescription_validation_times">Please enter how many times per day.</string>
+    <string name="dialog_add_prescription_validation_start_date">Please enter a start date.</string>
+    <string name="dialog_add_prescription_create_success">Prescription created.</string>
+    <string name="dialog_add_prescription_create_error">Could not create prescription. Please try again.</string>
+    <!-- Patient medications screen -->
+    <string name="patient_medications_title">My medications</string>
+    <string name="patient_medications_subtitle">Medications currently prescribed for you.</string>
+    <string name="patient_medications_empty">No active medications at the moment.</string>
+    <string name="patient_medications_error">Could not load your medications. Please try again.</string>
+
+    <!-- Patient medication item -->
+    <string name="patient_medications_doctor_label">Prescribed by %1$s</string>
+    <string name="patient_medications_reminder_label">Reminder</string>
+    <string name="patient_medications_reminder_updated">Reminder updated</string>
+    <string name="patient_medications_reminder_error">Could not update reminder. Please try again.</string>
+    <string name="patient_medications_dates_range_format">%1$s \u2192 %2$s</string>
+    <string name="patient_medications_dosage_times_format">%1$s \u00b7 %2$s</string>
+
+    <plurals name="patient_medications_times_per_day">
+        <item quantity="one">%d time per day</item>
+        <item quantity="other">%d times per day</item>
+    </plurals>
+    <!-- Patient medications screen -->
+    <string name="patient_medications_error_generic">Unable to load your medications. Please try again later.</string>
+
+    <!-- Reminder toggle -->
+    <string name="patient_medication_reminder_label">Reminder</string>
+    <string name="patient_medications_update_reminder_success">Reminder updated</string>
+    <string name="patient_medications_update_reminder_error">Could not update reminder</string>
+   <string name="patient_medications_load_error">Unable to load your medications. Please try again.</string>
+    <string name="dialog_add_prescription_medication_hint">Type to search medication</string>
+    <string name="patient_medications_not_available">
+    Medications are not available for this account.
+</string>
+
+    <string name="home_bottom_appointments_coming_soon">
+    Appointments will be available soon.
+</string>
+
+    <string name="home_bottom_history_coming_soon">
+    History will be available soon.
+</string>
 
 </resources>
+
+

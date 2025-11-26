@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dialog_add_prescription_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Date range -->
+        <TextView
+            android:id="@+id/text_prescription_dates_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/dialog_add_prescription_dates_label"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <EditText
+                android:id="@+id/input_prescription_start_date"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:focusable="false"
+                android:clickable="true"
+                android:inputType="none"
+                android:hint="@string/dialog_add_prescription_start_date_hint" />
+
+            <View
+                android:layout_width="8dp"
+                android:layout_height="0dp" />
+
+            <EditText
+                android:id="@+id/input_prescription_end_date"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:focusable="false"
+                android:clickable="true"
+                android:inputType="none"
+                android:hint="@string/dialog_add_prescription_end_date_hint" />
+        </LinearLayout>
+
+        <!-- Note -->
+        <TextView
+            android:id="@+id/text_prescription_note_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/dialog_add_prescription_note_label"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/input_prescription_note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:inputType="textMultiLine"
+            android:minLines="2"
+            android:maxLines="4"
+            android:gravity="top"
+            android:hint="@string/dialog_add_prescription_note_hint" />
+
+        <!-- Medication line (single line for now) -->
+        <TextView
+            android:id="@+id/text_medication_section_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/dialog_add_prescription_medication_section_label"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <!-- Medication selector -->
+        <TextView
+            android:id="@+id/text_medication_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/dialog_add_prescription_medication_label"
+            android:textSize="14sp" />
+
+        <!-- Searchable autocomplete instead of Spinner -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/input_layout_medication"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp">
+
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                android:id="@+id/input_medication"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/dialog_add_prescription_medication_label"
+                android:inputType="textCapWords" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Dosage -->
+        <TextView
+            android:id="@+id/text_medication_dosage_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/dialog_add_prescription_dosage_label"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/input_medication_dosage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:inputType="text"
+            android:hint="@string/dialog_add_prescription_dosage_hint" />
+
+        <!-- Times per day -->
+        <TextView
+            android:id="@+id/text_medication_times_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/dialog_add_prescription_times_label"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/input_medication_times_per_day"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:inputType="number"
+            android:hint="@string/dialog_add_prescription_times_hint" />
+
+        <!-- Instructions -->
+        <TextView
+            android:id="@+id/text_medication_instructions_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/dialog_add_prescription_instructions_label"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/input_medication_instructions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:inputType="textMultiLine"
+            android:minLines="2"
+            android:maxLines="4"
+            android:gravity="top"
+            android:hint="@string/dialog_add_prescription_instructions_hint" />
+
+        <!-- Inline progress while saving -->
+        <ProgressBar
+            android:id="@+id/dialog_prescription_progress"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="12dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+</ScrollView>

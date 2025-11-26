@@ -5,6 +5,10 @@
     <!-- Needed to call http://10.0.2.2:8080 from the Android app -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Optional but recommended on Android 13+ if you want notifications to show reliably -->
+    <!-- You can add this later if you handle runtime permission as well -->
+    <!-- <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> -->
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -60,6 +64,11 @@
         <!-- MainActivity (home/dashboard with drawer + bottom nav) -->
         <activity
             android:name=".MainActivity"
+            android:exported="false" />
+
+        <!-- Medication reminder receiver -->
+        <receiver
+            android:name=".presentation.medication.MedicationReminderReceiver"
             android:exported="false" />
 
     </application>

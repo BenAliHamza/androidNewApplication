@@ -14,6 +14,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 import tn.esprit.data.auth.AuthLocalDataSource;
 import tn.esprit.data.remote.ApiClient;
+import tn.esprit.data.remote.common.ListResponseDto;
 import tn.esprit.data.remote.doctor.DoctorApiService;
 import tn.esprit.domain.auth.AuthTokens;
 import tn.esprit.domain.doctor.DoctorPublicProfile;
@@ -60,7 +61,7 @@ public class DoctorDirectoryRepository {
 
         String authHeader = buildAuthHeaderIfAvailable();
 
-        Call<List<DoctorSearchResult>> call = doctorApiService.searchDoctors(
+        Call<ListResponseDto<DoctorSearchResult>> call = doctorApiService.searchDoctors(
                 authHeader,
                 filters.getQuery(),
                 filters.getSpecialtyId(),
@@ -70,25 +71,27 @@ public class DoctorDirectoryRepository {
                 filters.getAcceptingNewPatients()
         );
 
-        call.enqueue(new Callback<List<DoctorSearchResult>>() {
+        call.enqueue(new Callback<ListResponseDto<DoctorSearchResult>>() {
             @Override
-            public void onResponse(Call<List<DoctorSearchResult>> call,
-                                   Response<List<DoctorSearchResult>> response) {
+            public void onResponse(Call<ListResponseDto<DoctorSearchResult>> call,
+                                   Response<ListResponseDto<DoctorSearchResult>> response) {
                 if (!response.isSuccessful()) {
                     String errorBody = safeErrorBody(response.errorBody());
                     callback.onError(null, response.code(), errorBody);
                     return;
                 }
 
-                List<DoctorSearchResult> body = response.body();
-                if (body == null) {
-                    body = Collections.emptyList();
-                }
-                callback.onSuccess(body);
+                ListResponseDto<DoctorSearchResult> body = response.body();
+                List<DoctorSearchResult> items =
+                        (body != null && body.getItems() != null)
+                                ? body.getItems()
+                                : Collections.emptyList();
+
+                callback.onSuccess(items);
             }
 
             @Override
-            public void onFailure(Call<List<DoctorSearchResult>> call, Throwable t) {
+            public void onFailure(Call<ListResponseDto<DoctorSearchResult>> call, Throwable t) {
                 callback.onError(t, null, null);
             }
         });

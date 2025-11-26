@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card_patient_prescription"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="10dp"
+    app:cardUseCompatPadding="true"
+    app:cardElevation="1dp"
+    app:cardCornerRadius="14dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="10dp">
+
+        <!-- Top row: date range -->
+        <TextView
+            android:id="@+id/text_prescription_dates"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/color_on_background"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="2025-01-01 - 2025-01-10" />
+
+        <!-- Second row: short note or placeholder -->
+        <TextView
+            android:id="@+id/text_prescription_note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="13sp"
+            android:textColor="@color/color_on_background_secondary"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:text="Prescribed after routine checkup." />
+
+        <!-- Medications summary -->
+        <TextView
+            android:id="@+id/text_prescription_medications"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textSize="13sp"
+            android:textColor="@color/color_on_background"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:text="Paracetamol 500mg · Amoxicillin 1g" />
+
+        <!-- Bottom meta row: count of lines + status-ish -->
+        <TextView
+            android:id="@+id/text_prescription_meta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="11sp"
+            android:textColor="@color/color_on_background_secondary"
+            android:text="2 medications · until 2025-01-10" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

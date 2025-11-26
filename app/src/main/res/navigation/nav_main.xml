@@ -10,11 +10,22 @@
         android:name="tn.esprit.presentation.home.HomeGateFragment"
         android:label="@string/home_header_title" />
 
-    <!-- Doctor home (generic highlight/stats) -->
+    <!-- Doctor/patient role-aware home container -->
     <fragment
         android:id="@+id/homeFragment"
         android:name="tn.esprit.presentation.home.HomeFragment"
         android:label="@string/home_title" />
+
+    <!-- Doctor patients list (doctor role) -->
+    <fragment
+        android:id="@+id/doctorPatientsFragment"
+        android:name="tn.esprit.presentation.home.DoctorPatientsFragment"
+        android:label="@string/doctor_patients_title">
+
+        <action
+            android:id="@+id/action_doctorPatientsFragment_to_patientPublicProfileFragment"
+            app:destination="@id/patientPublicProfileFragment" />
+    </fragment>
 
     <!-- Patient home: search-based experience -->
     <fragment
@@ -26,7 +37,7 @@
             android:id="@+id/action_patientHomeFragment_to_doctorPublicProfileFragment"
             app:destination="@id/doctorPublicProfileFragment" />
 
-        <!-- New: navigate to patient's indicators screen -->
+        <!-- Navigate to patient's indicators screen -->
         <action
             android:id="@+id/action_patientHomeFragment_to_patientIndicatorsFragment"
             app:destination="@id/patientIndicatorsFragment" />
@@ -43,11 +54,28 @@
             app:argType="long" />
     </fragment>
 
+    <!-- Patient public profile (doctor view) -->
+    <fragment
+        android:id="@+id/patientPublicProfileFragment"
+        android:name="tn.esprit.presentation.home.PatientPublicProfileFragment"
+        android:label="@string/patient_public_title">
+
+        <argument
+            android:name="patientId"
+            app:argType="long" />
+    </fragment>
+
     <!-- Patient indicators screen (self) -->
     <fragment
         android:id="@+id/patientIndicatorsFragment"
         android:name="tn.esprit.presentation.home.PatientIndicatorsFragment"
         android:label="@string/patient_indicators_title" />
+
+    <!-- Patient medications screen (self) -->
+    <fragment
+        android:id="@+id/patientMedicationsFragment"
+        android:name="tn.esprit.presentation.medication.PatientMedicationsFragment"
+        android:label="@string/patient_medications_title" />
 
     <!-- Profile root -->
     <fragment
