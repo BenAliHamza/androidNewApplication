@@ -1,15 +1,9 @@
 package tn.esprit.domain.appointment;
 
-/**
- * Request body to update an appointment status.
- * Matches backend AppointmentStatusUpdateRequest (status: ACCEPTED / REJECTED / COMPLETED).
- */
 public class AppointmentStatusUpdateRequest {
-
     private String status;
 
-    public AppointmentStatusUpdateRequest() {
-    }
+    public AppointmentStatusUpdateRequest() {}
 
     public AppointmentStatusUpdateRequest(String status) {
         this.status = status;

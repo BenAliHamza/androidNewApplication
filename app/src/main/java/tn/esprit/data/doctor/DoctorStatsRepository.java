@@ -14,7 +14,7 @@ import retrofit2.Response;
 import tn.esprit.data.auth.AuthLocalDataSource;
 import tn.esprit.data.remote.ApiClient;
 import tn.esprit.data.remote.doctor.DoctorStatsApiService;
-import tn.esprit.presentation.appointment.DoctorHomeStats;
+import tn.esprit.domain.doctor.DoctorHomeStats;
 
 public class DoctorStatsRepository {
 

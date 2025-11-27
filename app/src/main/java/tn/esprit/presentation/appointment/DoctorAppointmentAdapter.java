@@ -1,5 +1,6 @@
 package tn.esprit.presentation.appointment;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,6 +28,8 @@ import tn.esprit.domain.appointment.Appointment;
  * - Card click opens patient profile.
  */
 public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorAppointmentAdapter.AppointmentViewHolder> {
+
+    private static final String TAG = "DoctorApptAdapter";
 
     public interface OnAppointmentActionListener {
         void onAccept(@NonNull Appointment appointment);
@@ -104,6 +107,7 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
         private final TextView textReason;
         private final MaterialButton buttonAccept;
         private final MaterialButton buttonReject;
+        private final View layoutActions; // parent layout for buttons
 
         AppointmentViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -115,6 +119,7 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
             textReason = itemView.findViewById(R.id.text_reason);
             buttonAccept = itemView.findViewById(R.id.button_accept);
             buttonReject = itemView.findViewById(R.id.button_reject);
+            layoutActions = itemView.findViewById(R.id.layout_actions);
         }
 
         void bind(@NonNull Appointment appointment,
@@ -178,13 +183,32 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
 
             boolean isPending = "PENDING".equals(status);
 
+            Log.d(TAG, "bind: id=" + appointment.getId()
+                    + " statusRaw=" + statusRaw
+                    + " status=" + status
+                    + " isPending=" + isPending);
+
             if (isPending) {
+                // show parent + buttons
+                if (layoutActions != null) {
+                    layoutActions.setVisibility(View.VISIBLE);
+                }
                 buttonAccept.setVisibility(View.VISIBLE);
                 buttonReject.setVisibility(View.VISIBLE);
 
-                buttonAccept.setOnClickListener(v -> actionListener.onAccept(appointment));
-                buttonReject.setOnClickListener(v -> actionListener.onReject(appointment));
+                buttonAccept.setOnClickListener(v -> {
+                    Log.d(TAG, "Accept clicked for id=" + appointment.getId());
+                    actionListener.onAccept(appointment);
+                });
+                buttonReject.setOnClickListener(v -> {
+                    Log.d(TAG, "Reject clicked for id=" + appointment.getId());
+                    actionListener.onReject(appointment);
+                });
             } else {
+                // hide parent + buttons
+                if (layoutActions != null) {
+                    layoutActions.setVisibility(View.GONE);
+                }
                 buttonAccept.setVisibility(View.GONE);
                 buttonReject.setVisibility(View.GONE);
                 buttonAccept.setOnClickListener(null);

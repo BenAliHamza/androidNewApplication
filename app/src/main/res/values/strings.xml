@@ -739,15 +739,9 @@
     <!-- Doctor appointments -->
     <string name="doctor_appointments_title">My schedule</string>
     <string name="doctor_appointments_subtitle">Overview of today and upcoming appointments.</string>
-    <string name="doctor_appointments_tab_today">Today</string>
-    <string name="doctor_appointments_tab_upcoming">Upcoming</string>
-    <string name="doctor_appointments_tab_past">Past</string>
     <string name="doctor_appointments_empty">No appointments in this section.</string>
     <string name="doctor_appointments_patient_label">Patient</string>
     <string name="doctor_appointments_error_generic">Could not load your appointments. Please try again.</string>
-    <string name="appointment_status_pending">Pending</string>
-    <string name="appointment_status_accepted">Accepted</string>
-    <string name="appointment_status_rejected">Rejected</string>
     <string name="appointment_status_completed">Completed</string>
     <string name="appointment_status_unknown">Unknown</string>
     <string name="appointment_teleconsultation_label">Teleconsultation</string>
@@ -769,37 +763,38 @@
     <string name="doctor_book_select_slot_first">
         Please select a time slot first.
     </string>
-    <!-- Patient appointments -->
-
-    <!-- Doctor appointments -->
 
     <string name="doctor_appointment_action_accept">Accept</string>
     <string name="doctor_appointment_action_reject">Reject</string>
     <string name="app_name">docs</string>
 
-    <!-- ... all your existing strings unchanged ... -->
-
-    <!-- Doctor appointments -->
+    <string name="doctor_appointments_action_accept_error">Failed to accept appointment.</string>
 
 
-
-    <!-- NEW: doctor appointment accept/reject messages used in DoctorAppointmentsViewModel -->
-    <string name="doctor_appointments_action_accept_success">
-        Appointment accepted.
-    </string>
-    <string name="doctor_appointments_action_accept_error">
-        Could not accept this appointment. Please try again.
-    </string>
-    <string name="doctor_appointments_action_reject_success">
-        Appointment rejected.
-    </string>
-    <string name="doctor_appointments_action_reject_error">
-        Could not reject this appointment. Please try again.
-    </string>
     <string name="doctor_appointments_action_not_pending">
         Only pending appointments can be updated.
     </string>
     <!-- Appointment status / mode (shared) -->
+    <string name="doctor_appointments_button_accept">Accept</string>
+    <string name="doctor_appointments_button_reject">Reject</string>
+
+    <string name="appointment_status_pending">Pending</string>
+    <string name="appointment_status_accepted">Accepted</string>
+    <string name="appointment_status_rejected">Rejected</string>
+
+
+    <string name="doctor_appointments_action_reject_error">Failed to reject appointment.</string>
+
+    <string name="doctor_appointments_tab_today">Today</string>
+    <string name="doctor_appointments_tab_upcoming">Upcoming</string>
+    <string name="doctor_appointments_tab_past">Past</string>
+    <string name="doctor_appointments_action_accept">Accept</string>
+    <string name="doctor_appointments_action_reject">Reject</string>
+
+    <string name="doctor_appointments_action_accept_success">Appointment accepted</string>
+    <string name="doctor_appointments_action_reject_success">Appointment rejected</string>
+
+    <string name="doctor_appointments_action_error">Error updating appointment</string>
 
 </resources>
 

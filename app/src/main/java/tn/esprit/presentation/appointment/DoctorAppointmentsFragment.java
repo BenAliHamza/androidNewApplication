@@ -24,16 +24,6 @@ import java.util.List;
 import tn.esprit.R;
 import tn.esprit.domain.appointment.Appointment;
 
-/**
- * Doctor "My schedule" screen.
- *
- * Tabs:
- *  - Today
- *  - Upcoming
- *  - Past
- *
- * Allows accepting / rejecting pending appointments, and opening patient profile.
- */
 public class DoctorAppointmentsFragment extends Fragment {
 
     private static final String KEY_CURRENT_SECTION = "doctor_appointments_current_section";
@@ -77,16 +67,12 @@ public class DoctorAppointmentsFragment extends Fragment {
                 new DoctorAppointmentAdapter.OnAppointmentActionListener() {
                     @Override
                     public void onAccept(@NonNull Appointment appointment) {
-                        if (viewModel != null) {
-                            viewModel.acceptAppointment(appointment);
-                        }
+                        if (viewModel != null) viewModel.acceptAppointment(appointment);
                     }
 
                     @Override
                     public void onReject(@NonNull Appointment appointment) {
-                        if (viewModel != null) {
-                            viewModel.rejectAppointment(appointment);
-                        }
+                        if (viewModel != null) viewModel.rejectAppointment(appointment);
                     }
                 },
                 this::openPatientProfileForAppointment
@@ -97,128 +83,106 @@ public class DoctorAppointmentsFragment extends Fragment {
 
         viewModel = new ViewModelProvider(this).get(DoctorAppointmentsViewModel.class);
 
-        // Restore current section (tab) if we have saved state
         if (savedInstanceState != null) {
-            String secName = savedInstanceState.getString(KEY_CURRENT_SECTION);
-            if (secName != null) {
-                try {
-                    currentSection = Section.valueOf(secName);
-                } catch (IllegalArgumentException ignore) {
-                    currentSection = Section.TODAY;
-                }
+            try {
+                currentSection = Section.valueOf(
+                        savedInstanceState.getString(KEY_CURRENT_SECTION, "TODAY")
+                );
+            } catch (Exception ignore) {
+                currentSection = Section.TODAY;
             }
         }
 
         setupTabs();
         observeViewModel();
+
+        viewModel.loadAppointments();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (viewModel != null) {
-            viewModel.loadAppointments();
-        }
+        if (viewModel != null) viewModel.loadAppointments();
     }
 
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
-        super.onSaveInstanceState(outState);
         outState.putString(KEY_CURRENT_SECTION, currentSection.name());
+        super.onSaveInstanceState(outState);
     }
 
     private void setupTabs() {
-        if (tabs == null) return;
-
         tabs.removeAllTabs();
 
-        TabLayout.Tab tabToday = tabs.newTab()
-                .setText(R.string.doctor_appointments_tab_today)
-                .setTag(Section.TODAY);
-        tabs.addTab(tabToday, currentSection == Section.TODAY);
+        addTab(Section.TODAY, getString(R.string.doctor_appointments_tab_today));
+        addTab(Section.UPCOMING, getString(R.string.doctor_appointments_tab_upcoming));
+        addTab(Section.PAST, getString(R.string.doctor_appointments_tab_past));
 
-        TabLayout.Tab tabUpcoming = tabs.newTab()
-                .setText(R.string.doctor_appointments_tab_upcoming)
-                .setTag(Section.UPCOMING);
-        tabs.addTab(tabUpcoming, currentSection == Section.UPCOMING);
-
-        TabLayout.Tab tabPast = tabs.newTab()
-                .setText(R.string.doctor_appointments_tab_past)
-                .setTag(Section.PAST);
-        tabs.addTab(tabPast, currentSection == Section.PAST);
+        TabLayout.Tab tab = tabs.getTabAt(currentSection.ordinal());
+        if (tab != null) tab.select();
 
         tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
-            public void onTabSelected(TabLayout.Tab tab) {
-                Object tag = tab.getTag();
-                if (tag instanceof Section) {
-                    currentSection = (Section) tag;
+            public void onTabSelected(TabLayout.Tab selectedTab) {
+                Section sec = (Section) selectedTab.getTag();
+                if (sec != null) {
+                    currentSection = sec;
                     updateListForCurrentSection();
                 }
             }
 
-            @Override
-            public void onTabUnselected(TabLayout.Tab tab) {
-                // no-op
-            }
-
-            @Override
-            public void onTabReselected(TabLayout.Tab tab) {
-                Object tag = tab.getTag();
-                if (tag instanceof Section) {
-                    currentSection = (Section) tag;
+            @Override public void onTabUnselected(TabLayout.Tab tab) {}
+            @Override public void onTabReselected(TabLayout.Tab tab) {
+                Section sec = (Section) tab.getTag();
+                if (sec != null) {
+                    currentSection = sec;
                     updateListForCurrentSection();
                 }
             }
         });
+    }
 
-        // Ensure list matches the restored section
-        updateListForCurrentSection();
+    private void addTab(Section section, String label) {
+        TabLayout.Tab tab = tabs.newTab();
+        tab.setText(label);
+        tab.setTag(section);
+        tabs.addTab(tab, section == currentSection);
     }
 
     private void observeViewModel() {
-        viewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
-            if (loading == null) return;
-            progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
-        });
+
+        viewModel.getLoading().observe(getViewLifecycleOwner(), loading ->
+                progressBar.setVisibility(Boolean.TRUE.equals(loading) ? View.VISIBLE : View.GONE)
+        );
 
         viewModel.getTodayAppointments().observe(getViewLifecycleOwner(), list -> {
-            if (currentSection == Section.TODAY) {
-                showAppointments(list);
-            }
+            if (currentSection == Section.TODAY) showAppointments(list);
         });
 
         viewModel.getUpcomingAppointments().observe(getViewLifecycleOwner(), list -> {
-            if (currentSection == Section.UPCOMING) {
-                showAppointments(list);
-            }
+            if (currentSection == Section.UPCOMING) showAppointments(list);
         });
 
         viewModel.getPastAppointments().observe(getViewLifecycleOwner(), list -> {
-            if (currentSection == Section.PAST) {
-                showAppointments(list);
-            }
+            if (currentSection == Section.PAST) showAppointments(list);
         });
 
         viewModel.getErrorMessage().observe(getViewLifecycleOwner(), msg -> {
-            if (msg == null || msg.trim().isEmpty()) return;
-            if (isAdded()) {
+            if (msg != null && !msg.trim().isEmpty()) {
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+                viewModel.clearMessages();
             }
-            viewModel.clearMessages();
         });
 
         viewModel.getActionMessage().observe(getViewLifecycleOwner(), msg -> {
-            if (msg == null || msg.trim().isEmpty()) return;
-            if (isAdded()) {
+            if (msg != null && !msg.trim().isEmpty()) {
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
+                viewModel.clearMessages();
             }
-            viewModel.clearMessages();
         });
     }
 
     private void updateListForCurrentSection() {
-        if (viewModel == null) return;
         switch (currentSection) {
             case TODAY:
                 showAppointments(viewModel.getTodayAppointments().getValue());
@@ -234,28 +198,21 @@ public class DoctorAppointmentsFragment extends Fragment {
 
     private void showAppointments(@Nullable List<Appointment> list) {
         if (list == null || list.isEmpty()) {
-            adapter.submitList(null);
             textEmpty.setVisibility(View.VISIBLE);
             recycler.setVisibility(View.GONE);
+            adapter.submitList(null);
         } else {
-            adapter.submitList(list);
             textEmpty.setVisibility(View.GONE);
             recycler.setVisibility(View.VISIBLE);
+            adapter.submitList(list);
         }
     }
 
-    /**
-     * Open patient public profile from an appointment.
-     * IMPORTANT: uses patientUserId (not patientId).
-     */
     private void openPatientProfileForAppointment(@NonNull Appointment appointment) {
         Long patientUserId = appointment.getPatientUserId();
-        if (patientUserId == null || patientUserId <= 0L) {
-            return;
-        }
+        if (patientUserId == null || patientUserId <= 0L) return;
 
         Bundle args = new Bundle();
-        // nav_main.xml + PatientPublicProfileFragment expect "patientId" = User.id
         args.putLong("patientId", patientUserId);
 
         NavController navController = NavHostFragment.findNavController(this);

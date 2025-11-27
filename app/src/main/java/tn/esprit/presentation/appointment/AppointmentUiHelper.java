@@ -34,6 +34,7 @@ public final class AppointmentUiHelper {
      * Maps backend status string (PENDING / ACCEPTED / REJECTED / COMPLETED)
      * to a human-readable localized label.
      */
+
     @NonNull
     public static String getStatusLabel(@NonNull Context context,
                                         @Nullable String statusRaw) {
@@ -41,7 +42,7 @@ public final class AppointmentUiHelper {
             return context.getString(R.string.appointment_status_unknown);
         }
 
-        switch (statusRaw) {
+        switch (statusRaw.toUpperCase(Locale.getDefault())) {
             case "PENDING":
                 return context.getString(R.string.appointment_status_pending);
             case "ACCEPTED":

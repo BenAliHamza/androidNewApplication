@@ -6,11 +6,17 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 import tn.esprit.R;
+import tn.esprit.domain.appointment.Appointment;
 
 /**
  * Small UI helper for appointments (status labels, date helpers, etc.).
@@ -20,6 +26,10 @@ public final class AppointmentUiHelper {
     private AppointmentUiHelper() {
         // no instances
     }
+
+    // ------------------------------------------------------------------------
+    // Status helpers
+    // ------------------------------------------------------------------------
 
     /**
      * Maps backend status string (PENDING / ACCEPTED / REJECTED / COMPLETED)
@@ -56,17 +66,133 @@ public final class AppointmentUiHelper {
         return context.getString(R.string.appointment_status_prefix, label);
     }
 
+    // ------------------------------------------------------------------------
+    // Date helpers
+    // ------------------------------------------------------------------------
+
     /**
      * Returns today's date prefix in ISO-8601 date format (yyyy-MM-dd).
      *
-     * This is used by DoctorAppointmentsViewModel to quickly check if an
-     * appointment startAt string belongs to "today" by doing:
+     * Used by DoctorAppointmentsViewModel:
      *   startAt != null && startAt.startsWith(getTodayDatePrefix())
      */
     @NonNull
     public static String getTodayDatePrefix() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
         return sdf.format(new Date());
+    }
+
+    /**
+     * Safely extracts the "yyyy-MM-dd" prefix from an ISO-8601 date-time string.
+     * Returns null if the input is null/too short.
+     *
+     * Used by DoctorAppointmentsViewModel to split appointments into
+     * today / upcoming / past using lexicographic comparison.
+     */
+    @Nullable
+    public static String safeDatePrefix(@Nullable String isoDateTime) {
+        if (isoDateTime == null) return null;
+        String trimmed = isoDateTime.trim();
+        if (trimmed.length() < 10) return null;
+        // Expect "yyyy-MM-dd..." -> first 10 chars
+        return trimmed.substring(0, 10);
+    }
+
+    /**
+     * Parse ISO datetime string into Date using common backend patterns.
+     *
+     * Patterns tried:
+     *  - yyyy-MM-dd'T'HH:mm:ss
+     *  - yyyy-MM-dd'T'HH:mm:ss.SSS
+     */
+    @Nullable
+    public static Date parseDate(@Nullable String iso) {
+        if (iso == null || iso.trim().isEmpty()) return null;
+
+        String[] patterns = new String[]{
+                "yyyy-MM-dd'T'HH:mm:ss",
+                "yyyy-MM-dd'T'HH:mm:ss.SSS"
+        };
+
+        for (String pattern : patterns) {
+            try {
+                SimpleDateFormat parser = new SimpleDateFormat(pattern, Locale.getDefault());
+                return parser.parse(iso);
+            } catch (ParseException ignore) {
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Sort a list of appointments by startAt (ISO string, lexicographically).
+     *
+     * Returns a new list (does not mutate the input). Null -> empty list.
+     */
+    @NonNull
+    public static List<Appointment> sortByStart(@Nullable List<Appointment> list) {
+        if (list == null) return Collections.emptyList();
+        List<Appointment> copy = new ArrayList<>(list);
+
+        // ISO-8601 date strings are lexicographically sortable.
+        Collections.sort(copy, new Comparator<Appointment>() {
+            @Override
+            public int compare(Appointment o1, Appointment o2) {
+                String d1 = (o1 != null && o1.getStartAt() != null) ? o1.getStartAt() : "";
+                String d2 = (o2 != null && o2.getStartAt() != null) ? o2.getStartAt() : "";
+                return d1.compareTo(d2);
+            }
+        });
+
+        return copy;
+    }
+
+    /**
+     * Builds a human-readable date/time range from start/end ISO-8601 strings.
+     *
+     * Format example:
+     *   "Mon, 4 Mar  •  09:00 – 09:30"
+     * or (if end is missing)
+     *   "Mon, 4 Mar  •  09:00"
+     *
+     * Used by DoctorAppointmentAdapter.
+     */
+    @NonNull
+    public static String buildDateTimeDisplay(@Nullable String startIso,
+                                              @Nullable String endIso,
+                                              @NonNull Context context) {
+        if (startIso == null || startIso.trim().isEmpty()) {
+            return "";
+        }
+
+        SimpleDateFormat parser =
+                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+        SimpleDateFormat formatterDate =
+                new SimpleDateFormat("EEE, d MMM", Locale.getDefault());
+        SimpleDateFormat formatterTime =
+                new SimpleDateFormat("HH:mm", Locale.getDefault());
+
+        try {
+            Date start = parser.parse(startIso);
+            if (start == null) {
+                return startIso;
+            }
+            String datePart = formatterDate.format(start);
+            String startTime = formatterTime.format(start);
+
+            if (endIso != null && !endIso.trim().isEmpty()) {
+                Date end = parser.parse(endIso);
+                if (end != null) {
+                    String endTime = formatterTime.format(end);
+                    return datePart + "  •  " + startTime + " – " + endTime;
+                }
+            }
+
+            return datePart + "  •  " + startTime;
+        } catch (ParseException e) {
+            // Fallback: just show the raw ISO string if parsing fails
+            return startIso;
+        }
     }
 }
 
@@ -1089,6 +1215,76 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
 }
 
 
+===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/DoctorHomeViewModel.java =====
+package tn.esprit.presentation.appointment;
+
+import android.app.Application;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+
+import tn.esprit.R;
+import tn.esprit.data.appointment.AppointmentRepository;
+import tn.esprit.domain.doctor.DoctorHomeStats;
+
+public class DoctorHomeViewModel extends AndroidViewModel {
+
+    private final AppointmentRepository repository;
+
+    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
+    private final MutableLiveData<DoctorHomeStats> stats = new MutableLiveData<>();
+    private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
+
+    public DoctorHomeViewModel(@NonNull Application app) {
+        super(app);
+        repository = new AppointmentRepository(app.getApplicationContext());
+    }
+
+    public LiveData<Boolean> getLoading() {
+        return loading;
+    }
+
+    public LiveData<DoctorHomeStats> getStats() {
+        return stats;
+    }
+
+    public LiveData<String> getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void clearError() {
+        errorMessage.setValue(null);
+    }
+
+    public void loadStats() {
+        loading.setValue(true);
+        errorMessage.setValue(null);
+
+        repository.getDoctorHomeStats(new AppointmentRepository.HomeStatsCallback() {
+            @Override
+            public void onSuccess(@NonNull DoctorHomeStats result) {
+                stats.postValue(result);
+                loading.postValue(false);
+            }
+
+            @Override
+            public void onError(@Nullable Throwable throwable,
+                                @Nullable Integer httpCode,
+                                @Nullable String errorBody) {
+                loading.postValue(false);
+                String msg = getApplication().getString(
+                        R.string.doctor_appointments_error_generic
+                );
+                errorMessage.postValue(msg);
+            }
+        });
+    }
+}
+
+
 ===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentAdapter.java =====
 package tn.esprit.presentation.appointment;
 
@@ -1313,48 +1509,6 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
             }
             textStatusChip.setText(label);
         }
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/DoctorHomeStats.java =====
-package tn.esprit.domain.appointment;
-
-/**
- * Simple stats model for the doctor home highlight card.
- *
- * - todayAppointments: number of appointments scheduled for today.
- * - weekAppointments: number of appointments in the current week.
- * - patientsWithAppointments: distinct patients with at least one appointment this week.
- */
-public class DoctorHomeStats {
-
-    private final int todayAppointments;
-    private final int weekAppointments;
-    private final int patientsWithAppointments;
-
-    public DoctorHomeStats(int todayAppointments,
-                           int weekAppointments,
-                           int patientsWithAppointments) {
-        this.todayAppointments = todayAppointments;
-        this.weekAppointments = weekAppointments;
-        this.patientsWithAppointments = patientsWithAppointments;
-    }
-
-    public static DoctorHomeStats empty() {
-        return new DoctorHomeStats(0, 0, 0);
-    }
-
-    public int getTodayAppointments() {
-        return todayAppointments;
-    }
-
-    public int getWeekAppointments() {
-        return weekAppointments;
-    }
-
-    public int getPatientsWithAppointments() {
-        return patientsWithAppointments;
     }
 }
 

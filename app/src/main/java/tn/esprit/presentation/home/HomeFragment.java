@@ -41,6 +41,7 @@ public class HomeFragment extends Fragment {
     private DoctorHomeViewModel doctorHomeViewModel;
 
     private boolean doctorViewInflated = false;
+    private boolean firstStatsApplied = false;
 
     @Nullable
     @Override
@@ -63,12 +64,21 @@ public class HomeFragment extends Fragment {
         doctorContainer = view.findViewById(R.id.home_doctor_container);
         patientContainer = view.findViewById(R.id.home_patient_container);
 
+        // Start with doctor container hidden to avoid showing fake zeros
+        if (doctorContainer != null) {
+            doctorContainer.setVisibility(View.INVISIBLE);
+        }
+
         showDoctorHome();
     }
 
     private void showDoctorHome() {
-        doctorContainer.setVisibility(View.VISIBLE);
-        if (patientContainer != null) patientContainer.setVisibility(View.GONE);
+        if (doctorContainer == null) return;
+
+        doctorContainer.setVisibility(View.INVISIBLE); // will be made visible once stats are loaded
+        if (patientContainer != null) {
+            patientContainer.setVisibility(View.GONE);
+        }
 
         if (!doctorViewInflated) {
             LayoutInflater.from(requireContext())
@@ -76,6 +86,7 @@ public class HomeFragment extends Fragment {
             doctorViewInflated = true;
         }
 
+        // Bind views from the inflated doctor layout
         textStatToday = doctorContainer.findViewById(R.id.text_stat_today_count);
         textStatWeek = doctorContainer.findViewById(R.id.text_stat_week_count);
         textStatPatients = doctorContainer.findViewById(R.id.text_stat_patients_count);
@@ -100,12 +111,6 @@ public class HomeFragment extends Fragment {
         doctorContainer.findViewById(R.id.text_view_all_patients)
                 .setOnClickListener(v -> openPatients());
 
-        // NEW: click on next appointment card
-        View cardNext = doctorContainer.findViewById(R.id.card_next_appointment);
-        if (cardNext != null) {
-            cardNext.setOnClickListener(v -> openAppointments()); // temporary until Phase 2
-        }
-
         doctorHomeViewModel = new ViewModelProvider(this).get(DoctorHomeViewModel.class);
         observe();
 
@@ -114,11 +119,21 @@ public class HomeFragment extends Fragment {
 
     private void observe() {
         doctorHomeViewModel.getStats().observe(getViewLifecycleOwner(), s -> {
-            if (s != null) bindStats(s);
+            if (s != null) {
+                bindStats(s);
+
+                // First time we get real data -> show the doctor container
+                if (!firstStatsApplied && doctorContainer != null) {
+                    firstStatsApplied = true;
+                    doctorContainer.setVisibility(View.VISIBLE);
+                }
+            }
         });
 
         doctorHomeViewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
-            progressBar.setVisibility(Boolean.TRUE.equals(loading) ? View.VISIBLE : View.GONE);
+            if (progressBar != null) {
+                progressBar.setVisibility(Boolean.TRUE.equals(loading) ? View.VISIBLE : View.GONE);
+            }
         });
 
         doctorHomeViewModel.getErrorMessage().observe(getViewLifecycleOwner(), msg -> {
@@ -130,24 +145,38 @@ public class HomeFragment extends Fragment {
     }
 
     private void bindStats(@NonNull DoctorHomeStats s) {
-
-        // dynamic highlight subtitle
-        textHighlightSubtitle.setText(getString(R.string.home_highlight_subtitle));
-
-        textStatToday.setText(String.valueOf(s.todayAppointments));
-        textStatWeek.setText(String.valueOf(s.weekAppointments));
-        textStatPatients.setText(String.valueOf(s.totalPatients));
-
-        if (s.nextAppointmentStart != null && !s.nextAppointmentStart.isEmpty()) {
-            textNextTime.setText(s.nextAppointmentStart);
-        } else {
-            textNextTime.setText(getString(R.string.home_next_appointment_none));
+        // static highlight for now (you can later personalize based on stats if you want)
+        if (textHighlightTitle != null) {
+            textHighlightTitle.setText(getString(R.string.home_highlight_title));
+        }
+        if (textHighlightSubtitle != null) {
+            textHighlightSubtitle.setText(getString(R.string.home_highlight_subtitle));
         }
 
-        if (s.nextAppointmentPatientName != null && !s.nextAppointmentPatientName.isEmpty()) {
-            textNextPatient.setText(s.nextAppointmentPatientName);
-        } else {
-            textNextPatient.setText("");
+        if (textStatToday != null) {
+            textStatToday.setText(String.valueOf(s.todayAppointments));
+        }
+        if (textStatWeek != null) {
+            textStatWeek.setText(String.valueOf(s.weekAppointments));
+        }
+        if (textStatPatients != null) {
+            textStatPatients.setText(String.valueOf(s.totalPatients));
+        }
+
+        if (textNextTime != null) {
+            if (s.nextAppointmentStart != null && !s.nextAppointmentStart.isEmpty()) {
+                textNextTime.setText(s.nextAppointmentStart);
+            } else {
+                textNextTime.setText(getString(R.string.home_next_appointment_none));
+            }
+        }
+
+        if (textNextPatient != null) {
+            if (s.nextAppointmentPatientName != null && !s.nextAppointmentPatientName.isEmpty()) {
+                textNextPatient.setText(s.nextAppointmentPatientName);
+            } else {
+                textNextPatient.setText("");
+            }
         }
     }
 

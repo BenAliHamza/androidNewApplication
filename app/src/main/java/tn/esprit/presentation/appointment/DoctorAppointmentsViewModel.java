@@ -19,16 +19,6 @@ import tn.esprit.data.appointment.AppointmentRepository;
 import tn.esprit.domain.appointment.Appointment;
 import tn.esprit.domain.appointment.AppointmentStatusUpdateRequest;
 
-/**
- * ViewModel for doctor "My schedule" / appointments screen.
- *
- * Holds three lists:
- *  - todayAppointments
- *  - upcomingAppointments
- *  - pastAppointments
- *
- * Also exposes loading + error/action messages.
- */
 public class DoctorAppointmentsViewModel extends AndroidViewModel {
 
     private final AppointmentRepository repository;
@@ -48,33 +38,12 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
         repository = new AppointmentRepository(application.getApplicationContext());
     }
 
-    // -------------------------------------------------------------------------
-    // LiveData getters
-    // -------------------------------------------------------------------------
-
-    public LiveData<Boolean> getLoading() {
-        return loading;
-    }
-
-    public LiveData<List<Appointment>> getTodayAppointments() {
-        return todayAppointments;
-    }
-
-    public LiveData<List<Appointment>> getUpcomingAppointments() {
-        return upcomingAppointments;
-    }
-
-    public LiveData<List<Appointment>> getPastAppointments() {
-        return pastAppointments;
-    }
-
-    public LiveData<String> getErrorMessage() {
-        return errorMessage;
-    }
-
-    public LiveData<String> getActionMessage() {
-        return actionMessage;
-    }
+    public LiveData<Boolean> getLoading() { return loading; }
+    public LiveData<List<Appointment>> getTodayAppointments() { return todayAppointments; }
+    public LiveData<List<Appointment>> getUpcomingAppointments() { return upcomingAppointments; }
+    public LiveData<List<Appointment>> getPastAppointments() { return pastAppointments; }
+    public LiveData<String> getErrorMessage() { return errorMessage; }
+    public LiveData<String> getActionMessage() { return actionMessage; }
 
     public void clearMessages() {
         errorMessage.setValue(null);
@@ -82,13 +51,9 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
     }
 
     // -------------------------------------------------------------------------
-    // Loading appointments
+    // Load appointments
     // -------------------------------------------------------------------------
 
-    /**
-     * Load all appointments for current doctor.
-     * For now we don't pass date range; backend returns relevant range.
-     */
     public void loadAppointments() {
         loading.setValue(true);
 
@@ -107,8 +72,9 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
                                         @Nullable Integer httpCode,
                                         @Nullable String errorBody) {
                         loading.postValue(false);
-                        String msg = getApplication()
-                                .getString(R.string.doctor_appointments_error_generic);
+                        String msg = getApplication().getString(
+                                R.string.doctor_appointments_error_generic
+                        );
                         errorMessage.postValue(msg);
                     }
                 }
@@ -131,23 +97,18 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
 
         for (Appointment a : list) {
             if (a == null) continue;
-            String start = a.getStartAt();
-            String datePart = AppointmentUiHelper.safeDatePrefix(start);
 
+            String datePart = AppointmentUiHelper.safeDatePrefix(a.getStartAt());
             if (datePart == null) {
-                // Unknown -> treat as upcoming
                 upcoming.add(a);
                 continue;
             }
 
             int cmp = datePart.compareTo(todayDate);
-            if (cmp == 0) {
-                today.add(a);
-            } else if (cmp < 0) {
-                past.add(a);
-            } else {
-                upcoming.add(a);
-            }
+
+            if (cmp == 0) today.add(a);
+            else if (cmp < 0) past.add(a);
+            else upcoming.add(a);
         }
 
         todayAppointments.postValue(AppointmentUiHelper.sortByStart(today));
@@ -160,35 +121,41 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
     // -------------------------------------------------------------------------
 
     public void acceptAppointment(@NonNull Appointment appointment) {
-        changeStatus(appointment, "ACCEPTED",
+        changeStatus(
+                appointment,
+                "ACCEPTED",
                 getApplication().getString(R.string.doctor_appointments_action_accept_success),
-                getApplication().getString(R.string.doctor_appointments_action_accept_error));
+                getApplication().getString(R.string.doctor_appointments_action_accept_error)
+        );
     }
 
     public void rejectAppointment(@NonNull Appointment appointment) {
-        changeStatus(appointment, "REJECTED",
+        changeStatus(
+                appointment,
+                "REJECTED",
                 getApplication().getString(R.string.doctor_appointments_action_reject_success),
-                getApplication().getString(R.string.doctor_appointments_action_reject_error));
+                getApplication().getString(R.string.doctor_appointments_action_reject_error)
+        );
     }
 
-    private void changeStatus(@NonNull Appointment appointment,
-                              @NonNull String newStatus,
-                              @NonNull String successMessage,
-                              @NonNull String errorMessageText) {
+    private void changeStatus(
+            @NonNull Appointment appointment,
+            @NonNull String newStatus,
+            @NonNull String successMessage,
+            @NonNull String errorMessageText
+    ) {
         Long id = appointment.getId();
-        if (id == null || id <= 0L) {
-            return;
-        }
+        if (id == null || id <= 0L) return;
 
         String currentStatusRaw = appointment.getStatus();
         String currentStatus = currentStatusRaw != null
                 ? currentStatusRaw.toUpperCase(Locale.getDefault())
                 : "";
 
-        // Only allow status change from PENDING in this v1
         if (!"PENDING".equals(currentStatus)) {
-            actionMessage.setValue(getApplication()
-                    .getString(R.string.doctor_appointments_action_not_pending));
+            actionMessage.setValue(
+                    getApplication().getString(R.string.doctor_appointments_action_not_pending)
+            );
             return;
         }
 
@@ -205,14 +172,15 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
                     public void onSuccess(@NonNull Appointment updated) {
                         loading.postValue(false);
                         actionMessage.postValue(successMessage);
-                        // Reload lists to ensure all tabs are in sync
-                        loadAppointments();
+                        loadAppointments(); // <--- we keep your logic
                     }
 
                     @Override
-                    public void onError(@Nullable Throwable throwable,
-                                        @Nullable Integer httpCode,
-                                        @Nullable String errorBody) {
+                    public void onError(
+                            @Nullable Throwable throwable,
+                            @Nullable Integer httpCode,
+                            @Nullable String errorBody
+                    ) {
                         loading.postValue(false);
                         actionMessage.postValue(errorMessageText);
                     }
@@ -220,11 +188,6 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
         );
     }
 
-    // -------------------------------------------------------------------------
-    // (Optional) helper if we ever need "is in past" logic here
-    // -------------------------------------------------------------------------
-
-    @SuppressWarnings("unused")
     private boolean isInPast(@NonNull Appointment appointment) {
         Date start = AppointmentUiHelper.parseDate(appointment.getStartAt());
         if (start == null) return false;

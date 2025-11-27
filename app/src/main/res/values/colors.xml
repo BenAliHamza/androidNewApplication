@@ -12,6 +12,12 @@
 
     <color name="color_on_background">#111827</color>         <!-- main text -->
     <color name="color_on_background_secondary">#6B7280</color> <!-- secondary text -->
+    <color name="black_70">#B3000000</color> <!-- 70% black -->
+    <color name="colorPrimary">#2979FF</color> <!-- or your brand primary -->
+    <color name="color_status_pending">#FFA726</color>   <!-- orange -->
+    <color name="color_status_accepted">@color/color_primary</color>
+    <color name="color_status_rejected">#EF5350</color>  <!-- red -->
+    <color name="color_status_completed">#66BB6A</color> <!-- green -->
 
     <!-- Theme-specific aliases -->
     <color name="color_on_primary">@color/white</color>       <!-- text/icon on primary -->

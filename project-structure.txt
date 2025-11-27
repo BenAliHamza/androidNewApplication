@@ -229,7 +229,6 @@
 ./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentsViewModel.java
 ./app/src/main/java/tn/esprit/presentation/appointment/DoctorHomeViewModel.java
 ./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentAdapter.java
-./app/src/main/java/tn/esprit/presentation/appointment/DoctorHomeStats.java
 ./app/src/main/java/tn/esprit/presentation/indicator
 ./app/src/main/java/tn/esprit/presentation/indicator/PatientIndicatorAdapter.java
 ./app/src/main/java/tn/esprit/presentation/auth

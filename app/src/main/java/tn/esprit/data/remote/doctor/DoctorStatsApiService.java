@@ -3,7 +3,7 @@ package tn.esprit.data.remote.doctor;
 import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Header;
-import tn.esprit.presentation.appointment.DoctorHomeStats;
+import tn.esprit.domain.doctor.DoctorHomeStats;
 
 public interface DoctorStatsApiService {
 
