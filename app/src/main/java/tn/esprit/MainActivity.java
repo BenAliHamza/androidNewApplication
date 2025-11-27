@@ -457,22 +457,29 @@ public class MainActivity extends AppCompatActivity {
     private void navigateToHomeForRole(@Nullable String role) {
         if (navController == null) return;
 
-        int currentDestId = 0;
-        if (navController.getCurrentDestination() != null) {
-            currentDestId = navController.getCurrentDestination().getId();
-        }
+        int currentDestId = navController.getCurrentDestination() != null
+                ? navController.getCurrentDestination().getId()
+                : -1;
 
-        // Only redirect when we're still at the gate (or graph just created).
-        if (currentDestId != R.id.homeGateFragment && currentDestId != 0) {
+        // If already on any home fragment → STOP (prevents infinite loops)
+        if (currentDestId == R.id.homeFragment ||
+                currentDestId == R.id.patientHomeFragment) {
             return;
         }
 
-        int targetDestId;
-        if (role != null && "PATIENT".equalsIgnoreCase(role)) {
-            targetDestId = R.id.patientHomeFragment;
-        } else {
-            // Default: doctor/unknown uses generic HomeFragment
-            targetDestId = R.id.homeFragment;
+        // If not on the gate → STOP (no redirection)
+        if (currentDestId != R.id.homeGateFragment && currentDestId != -1) {
+            return;
+        }
+
+        // Determine target home
+        int targetDestId = (role != null && "PATIENT".equalsIgnoreCase(role))
+                ? R.id.patientHomeFragment
+                : R.id.homeFragment;
+
+        // Prevent double-navigation race from async profile load
+        if (currentDestId == targetDestId) {
+            return;
         }
 
         navController.navigate(targetDestId);

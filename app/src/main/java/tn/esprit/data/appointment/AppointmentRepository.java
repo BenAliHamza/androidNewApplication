@@ -22,6 +22,7 @@ import tn.esprit.domain.appointment.AppointmentCreateRequest;
 import tn.esprit.domain.appointment.AppointmentStatusUpdateRequest;
 import tn.esprit.domain.appointment.WeeklyCalendarResponse;
 import tn.esprit.domain.auth.AuthTokens;
+import tn.esprit.domain.doctor.DoctorHomeStats;
 
 /**
  * Repository for appointment operations (patient + doctor).
@@ -354,4 +355,33 @@ public class AppointmentRepository {
             return null;
         }
     }
+    public interface HomeStatsCallback {
+        void onSuccess(@NonNull DoctorHomeStats stats);
+        void onError(@Nullable Throwable throwable,
+                     @Nullable Integer httpCode,
+                     @Nullable String errorBody);
+    }
+
+    public void getDoctorHomeStats(@NonNull HomeStatsCallback callback) {
+        String authHeader = buildAuthHeaderIfAvailable();
+        Call<DoctorHomeStats> call = appointmentApiService.getDoctorHomeStats(authHeader);
+
+        call.enqueue(new Callback<DoctorHomeStats>() {
+            @Override
+            public void onResponse(@NonNull Call<DoctorHomeStats> call,
+                                   @NonNull Response<DoctorHomeStats> response) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    callback.onError(null, response.code(), safeErrorBody(response.errorBody()));
+                    return;
+                }
+                callback.onSuccess(response.body());
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<DoctorHomeStats> call, @NonNull Throwable t) {
+                callback.onError(t, null, null);
+            }
+        });
+    }
+
 }

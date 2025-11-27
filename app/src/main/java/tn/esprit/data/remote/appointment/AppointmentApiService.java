@@ -15,6 +15,7 @@ import tn.esprit.domain.appointment.Appointment;
 import tn.esprit.domain.appointment.AppointmentCreateRequest;
 import tn.esprit.domain.appointment.AppointmentStatusUpdateRequest;
 import tn.esprit.domain.appointment.WeeklyCalendarResponse;
+import tn.esprit.domain.doctor.DoctorHomeStats;
 
 public interface AppointmentApiService {
 
@@ -64,4 +65,10 @@ public interface AppointmentApiService {
             @Path("doctorId") long doctorId,
             @Query("weekStart") String weekStartIso
     );
+
+    @GET("api/doctors/me/home-stats")
+    Call<DoctorHomeStats> getDoctorHomeStats(
+            @Header("Authorization") String authorization
+    );
+
 }
