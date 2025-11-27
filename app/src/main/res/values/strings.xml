@@ -14,6 +14,8 @@
     <string name="login_error_invalid_email">Enter a valid email</string>
     <string name="login_error_required_password">Password is required</string>
     <string name="login_error_short_password">Password must be at least 6 characters</string>
+    <string name="home_next_appointment">Next appointment</string>
+    <string name="home_next_appointment_none">No upcoming appointments</string>
 
     <!-- Network / backend errors -->
     <string name="login_error_network">Network error. Please check your connection.</string>

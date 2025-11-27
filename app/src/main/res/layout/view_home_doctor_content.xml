@@ -163,6 +163,50 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- Next appointment preview card (NEW) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_next_appointment"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardElevation="1dp"
+                app:cardUseCompatPadding="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:id="@+id/text_next_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_next_appointment"
+                        android:textColor="@color/color_on_background"
+                        android:textStyle="bold"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/text_next_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="--"
+                        android:textColor="@color/color_on_background_secondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/text_next_patient"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text=""
+                        android:textColor="@color/color_on_background_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Quick actions title -->
             <TextView
                 android:id="@+id/text_quick_actions_title"
