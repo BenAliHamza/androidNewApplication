@@ -247,6 +247,8 @@ public class DoctorCalendarFragment extends Fragment {
         return days;
     }
 
+    // inside DoctorCalendarFragment
+
     private void saveAvailability() {
         String token = getBearerToken();
         if (token == null) {
@@ -263,43 +265,149 @@ public class DoctorCalendarFragment extends Fragment {
         int duration = npDuration.getValue();
 
         String startTime = String.format(Locale.US, "%02d:%02d", sh, sm);
-        String endTime = String.format(Locale.US, "%02d:%02d", eh, em);
+        String endTime   = String.format(Locale.US, "%02d:%02d", eh, em);
+
+        boolean weekly = cbWeekly != null && cbWeekly.isChecked();
+        List<String> selectedDays = collectSelectedDays();
+
+        // Today (fallback)
+        Calendar todayCal = Calendar.getInstance();
+        String todayStr = formatDate(
+                todayCal.get(Calendar.YEAR),
+                todayCal.get(Calendar.MONTH),
+                todayCal.get(Calendar.DAY_OF_MONTH)
+        );
+
+        // 1) WEEKLY ON + 1+ days → repeat weekly for the coming weeks (rule 1)
+        if (weekly && !selectedDays.isEmpty()) {
+
+            // Start from nearest next selected weekday
+            Calendar startCal = getNearestNextDate(selectedDays);
+            String startDateStr = formatDate(
+                    startCal.get(Calendar.YEAR),
+                    startCal.get(Calendar.MONTH),
+                    startCal.get(Calendar.DAY_OF_MONTH)
+            );
+
+            Calendar endCal = (Calendar) startCal.clone();
+            endCal.add(Calendar.DAY_OF_MONTH, 30); // ~4 weeks
+            String endDateStr = formatDate(
+                    endCal.get(Calendar.YEAR),
+                    endCal.get(Calendar.MONTH),
+                    endCal.get(Calendar.DAY_OF_MONTH)
+            );
+
+            AvailabilitySessionRequest req = new AvailabilitySessionRequest();
+            req.setStartTime(startTime);
+            req.setEndTime(endTime);
+            req.setSlotDurationMinutes(duration);
+            req.setStartDate(startDateStr);
+            req.setEndDate(endDateStr);
+            req.setRecurrenceType("WEEKLY");
+            req.setDaysOfWeek(selectedDays);
+
+            viewModel.createAvailability(token, req);
+            return;
+        }
+
+        // 2) WEEKLY OFF + 1+ days → each selected day = ONE_TIME at its next occurrence (rules 2 & 3)
+        if (!weekly && !selectedDays.isEmpty()) {
+
+            for (String dayName : selectedDays) {
+                Calendar next = getNextDateForDayName(dayName);
+                String dateStr = formatDate(
+                        next.get(Calendar.YEAR),
+                        next.get(Calendar.MONTH),
+                        next.get(Calendar.DAY_OF_MONTH)
+                );
+
+                AvailabilitySessionRequest req = new AvailabilitySessionRequest();
+                req.setStartTime(startTime);
+                req.setEndTime(endTime);
+                req.setSlotDurationMinutes(duration);
+                req.setStartDate(dateStr);
+                req.setEndDate(dateStr);
+                req.setRecurrenceType("ONE_TIME");
+                req.setDaysOfWeek(null);
+
+                // One request per selected weekday
+                viewModel.createAvailability(token, req);
+            }
+
+            return;
+        }
+
+        // 3) No weekly, no day checkbox → ONE_TIME on selected calendar date (or today)
+        String selectedDate = (currentDateStr != null) ? currentDateStr : todayStr;
 
         AvailabilitySessionRequest req = new AvailabilitySessionRequest();
         req.setStartTime(startTime);
         req.setEndTime(endTime);
         req.setSlotDurationMinutes(duration);
-
-        boolean weekly = cbWeekly != null && cbWeekly.isChecked();
-
-        if (weekly) {
-            Calendar cal = Calendar.getInstance();
-            String startDate = formatDate(cal.get(Calendar.YEAR),
-                    cal.get(Calendar.MONTH),
-                    cal.get(Calendar.DAY_OF_MONTH));
-            cal.add(Calendar.DAY_OF_MONTH, 30);
-            String endDate = formatDate(cal.get(Calendar.YEAR),
-                    cal.get(Calendar.MONTH),
-                    cal.get(Calendar.DAY_OF_MONTH));
-
-            req.setStartDate(startDate);
-            req.setEndDate(endDate);
-            req.setRecurrenceType("WEEKLY");
-            req.setDaysOfWeek(collectSelectedDays());
-
-        } else {
-            Calendar cal = Calendar.getInstance();
-            String today = formatDate(cal.get(Calendar.YEAR),
-                    cal.get(Calendar.MONTH),
-                    cal.get(Calendar.DAY_OF_MONTH));
-
-            req.setStartDate(today);
-            req.setEndDate(today);
-            req.setRecurrenceType("ONE_TIME");
-            req.setDaysOfWeek(null);
-        }
+        req.setStartDate(selectedDate);
+        req.setEndDate(selectedDate);
+        req.setRecurrenceType("ONE_TIME");
+        req.setDaysOfWeek(null);
 
         viewModel.createAvailability(token, req);
     }
+
+
+
+    /**
+     * Return the nearest (>= today) Calendar date among the selected weekday names.
+     * Example selectedDays: ["FRIDAY", "MONDAY"]
+     */
+    private Calendar getNearestNextDate(List<String> selectedDays) {
+        Calendar best = null;
+        for (String dayName : selectedDays) {
+            Calendar candidate = getNextDateForDayName(dayName);
+            if (candidate == null) continue;
+            if (best == null || candidate.before(best)) {
+                best = candidate;
+            }
+        }
+        // Fallback to today if something goes wrong
+        if (best == null) {
+            best = Calendar.getInstance();
+        }
+        return best;
+    }
+
+    /**
+     * Given a day name like "MONDAY", returns the next date (>= today) with that weekday.
+     */
+    private Calendar getNextDateForDayName(String dayName) {
+        int targetDow = mapDayNameToCalendar(dayName);
+        if (targetDow == -1) return null;
+
+        Calendar cal = Calendar.getInstance();
+        int todayDow = cal.get(Calendar.DAY_OF_WEEK);
+
+        int diff = targetDow - todayDow;
+        if (diff < 0) diff += 7; // wrap to next week if needed
+
+        // diff == 0 means "today" is the selected weekday
+        cal.add(Calendar.DAY_OF_MONTH, diff);
+        return cal;
+    }
+
+    /**
+     * Map "MONDAY" -> Calendar.MONDAY, etc.
+     */
+    private int mapDayNameToCalendar(String dayName) {
+        if (dayName == null) return -1;
+        switch (dayName) {
+            case "MONDAY":    return Calendar.MONDAY;
+            case "TUESDAY":   return Calendar.TUESDAY;
+            case "WEDNESDAY": return Calendar.WEDNESDAY;
+            case "THURSDAY":  return Calendar.THURSDAY;
+            case "FRIDAY":    return Calendar.FRIDAY;
+            case "SATURDAY":  return Calendar.SATURDAY;
+            case "SUNDAY":    return Calendar.SUNDAY;
+            default:          return -1;
+        }
+    }
+
 
 }
