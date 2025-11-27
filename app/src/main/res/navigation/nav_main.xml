@@ -52,6 +52,11 @@
         <argument
             android:name="doctorId"
             app:argType="long" />
+
+        <!-- NEW: navigate to patient's "My appointments" after booking -->
+        <action
+            android:id="@+id/action_doctorPublicProfileFragment_to_patientAppointmentsFragment"
+            app:destination="@id/patientAppointmentsFragment" />
     </fragment>
 
     <!-- Patient public profile (doctor view) -->
@@ -76,6 +81,18 @@
         android:id="@+id/patientMedicationsFragment"
         android:name="tn.esprit.presentation.medication.PatientMedicationsFragment"
         android:label="@string/patient_medications_title" />
+
+    <!-- Patient appointments screen (self) -->
+    <fragment
+        android:id="@+id/patientAppointmentsFragment"
+        android:name="tn.esprit.presentation.appointment.PatientAppointmentsFragment"
+        android:label="@string/patient_appointments_title" />
+
+    <!-- Doctor appointments screen (self) -->
+    <fragment
+        android:id="@+id/doctorAppointmentsFragment"
+        android:name="tn.esprit.presentation.appointment.DoctorAppointmentsFragment"
+        android:label="@string/doctor_appointments_title" />
 
     <!-- Profile root -->
     <fragment

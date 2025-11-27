@@ -24,7 +24,6 @@ import com.bumptech.glide.Glide;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 
-import tn.esprit.R;
 import tn.esprit.data.auth.AuthLocalDataSource;
 import tn.esprit.data.profile.ProfileRepository;
 import tn.esprit.domain.doctor.DoctorProfile;
@@ -366,6 +365,19 @@ public class MainActivity extends AppCompatActivity {
                 navController.navigate(targetDestId);
                 return true;
 
+            } else if (id == R.id.menu_calendar) {
+                // Doctor bottom tab: Calendar -> My schedule (appointments)
+                int targetDestId = R.id.doctorAppointmentsFragment;
+
+                if (navController.getCurrentDestination() != null
+                        && navController.getCurrentDestination().getId() == targetDestId) {
+                    // Already on My schedule; no-op.
+                    return true;
+                }
+
+                navController.navigate(targetDestId);
+                return true;
+
             } else if (id == R.id.menu_patients) {
                 // Doctor bottom tab: navigate to doctor patients list
                 int targetDestId = R.id.doctorPatientsFragment;
@@ -410,8 +422,21 @@ public class MainActivity extends AppCompatActivity {
                 return true;
 
             } else if (id == R.id.menu_appointments) {
-                // Placeholder: not wired yet
-                Toast.makeText(this, R.string.home_bottom_appointments_coming_soon, Toast.LENGTH_SHORT).show();
+                // PATIENT: go to My appointments screen
+                if (lastKnownRole != null && "PATIENT".equalsIgnoreCase(lastKnownRole)) {
+                    int targetDestId = R.id.patientAppointmentsFragment;
+
+                    if (navController.getCurrentDestination() != null
+                            && navController.getCurrentDestination().getId() == targetDestId) {
+                        // Already on My appointments
+                        return true;
+                    }
+
+                    navController.navigate(targetDestId);
+                } else {
+                    // For non-patient (or generic menu), keep it as "coming soon"
+                    Toast.makeText(this, R.string.home_bottom_appointments_coming_soon, Toast.LENGTH_SHORT).show();
+                }
                 return true;
 
             } else if (id == R.id.menu_history) {

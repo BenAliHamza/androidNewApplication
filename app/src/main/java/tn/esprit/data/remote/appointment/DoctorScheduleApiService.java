@@ -14,42 +14,28 @@ import tn.esprit.domain.appointment.DoctorSchedule;
 
 /**
  * Retrofit interface for doctor schedule & availability endpoints.
- * Matches backend DoctorScheduleController.
+ * Corrected endpoint paths.
  */
 public interface DoctorScheduleApiService {
 
-    /**
-     * GET /api/doctors/me/schedule
-     */
-    @GET("/api/doctors/me/schedule")
+    @GET("api/doctors/me/schedule")
     Call<ListResponseDto<DoctorSchedule>> getMySchedule(
             @Header("Authorization") String authHeader
     );
 
-    /**
-     * PUT /api/doctors/me/schedule
-     */
-    @PUT("/api/doctors/me/schedule")
+    @PUT("api/doctors/me/schedule")
     Call<ListResponseDto<DoctorSchedule>> updateMySchedule(
             @Header("Authorization") String authHeader,
             @Body List<DoctorSchedule> entries
     );
 
-    /**
-     * GET /api/doctors/{doctorId}/schedule
-     * (not used yet – for patient view in future).
-     */
-    @GET("/api/doctors/{doctorId}/schedule")
+    @GET("api/doctors/{doctorId}/schedule")
     Call<ListResponseDto<DoctorSchedule>> getDoctorSchedule(
             @Header("Authorization") String authHeader,
             @Path("doctorId") Long doctorId
     );
 
-    /**
-     * GET /api/doctors/{doctorId}/available-slots?from=...&to=...
-     * (not used yet – for appointment booking in future).
-     */
-    @GET("/api/doctors/{doctorId}/available-slots")
+    @GET("api/doctors/{doctorId}/available-slots")
     Call<ListResponseDto<String>> getDoctorAvailableSlots(
             @Header("Authorization") String authHeader,
             @Path("doctorId") Long doctorId,

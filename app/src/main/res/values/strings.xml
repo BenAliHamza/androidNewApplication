@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">docs</string>
 
     <!-- Login screen -->
     <string name="login_title">Welcome back</string>
@@ -707,7 +706,98 @@
     <string name="doctor_schedule_shift_morning">Morning (08:00 - 13:00)</string>
     <string name="doctor_schedule_shift_afternoon">Afternoon (14:00 - 19:00)</string>
     <string name="doctor_schedule_shift_full_day">All day (08:00 - 19:00)</string>
+    <!-- Doctor booking bottom sheet -->
+    <string name="doctor_book_title">Book appointment</string>
+    <string name="doctor_book_choose_time_title">Choose a time this week</string>
+    <string name="doctor_book_reason_hint">Reason for visit (optional)</string>
+    <string name="doctor_book_teleconsultation_label">Teleconsultation</string>
+    <string name="doctor_book_confirm">Confirm appointment</string>
+    <string name="doctor_book_no_slots_day">No available slots for this day.</string>
+    <string name="doctor_book_error_calendar_generic">Could not load available times. Please try again.</string>
+    <string name="doctor_book_error_create_generic">Could not book this appointment. Please try again.</string>
+    <string name="doctor_book_success">Appointment booked successfully.</string>
+    <!-- Patient appointments -->
+    <string name="patient_appointments_title">My appointments</string>
+    <string name="patient_appointments_subtitle">Manage your upcoming and past visits.</string>
+    <string name="patient_appointments_empty">You do not have any appointments yet.</string>
 
+    <string name="patient_appointments_tab_upcoming">Upcoming</string>
+    <string name="patient_appointments_tab_past">Past</string>
+
+    <string name="appointment_status_prefix">Status: %1$s</string>
+    <string name="appointment_teleconsultation_badge">Teleconsultation</string>
+    <string name="appointment_in_person_badge">In person</string>
+
+    <string name="appointment_cancel">Cancel appointment</string>
+    <string name="appointment_cancel_confirm_title">Cancel appointment</string>
+    <string name="appointment_cancel_confirm_message">Do you want to cancel this appointment?</string>
+    <string name="appointment_cancel_success">Appointment cancelled.</string>
+    <string name="appointment_cancel_error">Could not cancel the appointment. Please try again.</string>
+    <string name="appointment_list_error_generic">Could not load your appointments. Please try again.</string>
+    <!-- Doctor appointments -->
+    <string name="doctor_appointments_title">My schedule</string>
+    <string name="doctor_appointments_subtitle">Overview of today and upcoming appointments.</string>
+    <string name="doctor_appointments_tab_today">Today</string>
+    <string name="doctor_appointments_tab_upcoming">Upcoming</string>
+    <string name="doctor_appointments_tab_past">Past</string>
+    <string name="doctor_appointments_empty">No appointments in this section.</string>
+    <string name="doctor_appointments_patient_label">Patient</string>
+    <string name="doctor_appointments_error_generic">Could not load your appointments. Please try again.</string>
+    <string name="appointment_status_pending">Pending</string>
+    <string name="appointment_status_accepted">Accepted</string>
+    <string name="appointment_status_rejected">Rejected</string>
+    <string name="appointment_status_completed">Completed</string>
+    <string name="appointment_status_unknown">Unknown</string>
+    <string name="appointment_teleconsultation_label">Teleconsultation</string>
+    <string name="patient_appointments_error_generic">
+    Could not load your appointments. Please try again.
+</string>
+    <string name="home_doctor_my_appointments">My appointments</string>
+    <string name="doctor_home_my_appointments_cta">Consult my appointments</string>
+    <string name="doctor_appointments_action_too_late">
+    This appointment time has already passed. You cannot change its status.
+</string>
+    <string name="doctor_appointments_action_update_error">
+    Could not update appointment status. Please try again.
+</string>
+    <string name="doctor_appointments_action_update_success">
+    Appointment updated.
+</string>
+    <string name="doctor_home_appointments_cta">Consult my appointments</string>
+    <string name="doctor_book_select_slot_first">
+        Please select a time slot first.
+    </string>
+    <!-- Patient appointments -->
+
+    <!-- Doctor appointments -->
+
+    <string name="doctor_appointment_action_accept">Accept</string>
+    <string name="doctor_appointment_action_reject">Reject</string>
+    <string name="app_name">docs</string>
+
+    <!-- ... all your existing strings unchanged ... -->
+
+    <!-- Doctor appointments -->
+
+
+
+    <!-- NEW: doctor appointment accept/reject messages used in DoctorAppointmentsViewModel -->
+    <string name="doctor_appointments_action_accept_success">
+        Appointment accepted.
+    </string>
+    <string name="doctor_appointments_action_accept_error">
+        Could not accept this appointment. Please try again.
+    </string>
+    <string name="doctor_appointments_action_reject_success">
+        Appointment rejected.
+    </string>
+    <string name="doctor_appointments_action_reject_error">
+        Could not reject this appointment. Please try again.
+    </string>
+    <string name="doctor_appointments_action_not_pending">
+        Only pending appointments can be updated.
+    </string>
+    <!-- Appointment status / mode (shared) -->
 
 </resources>
 

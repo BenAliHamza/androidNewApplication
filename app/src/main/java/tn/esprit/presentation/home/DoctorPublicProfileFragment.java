@@ -7,7 +7,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Button;
 import android.widget.Toast;
@@ -19,7 +18,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.chip.Chip;
 
 import java.math.BigDecimal;
@@ -37,7 +35,7 @@ import tn.esprit.domain.doctor.DoctorPublicProfile;
  *  - flags (accepting new patients, teleconsultation)
  *  - fee, bio, clinic info
  *  - list of acts
- *  - CTAs (Book, Message) -- currently stubbed with toasts.
+ *  - CTAs (Book, Message)
  */
 public class DoctorPublicProfileFragment extends Fragment {
 
@@ -375,7 +373,7 @@ public class DoctorPublicProfileFragment extends Fragment {
         }
     }
 
-    // ---------- CTAs (stubbed) ----------
+    // ---------- CTAs ----------
 
     private void handleBookClick() {
         if (!isAdded()) return;
@@ -391,7 +389,6 @@ public class DoctorPublicProfileFragment extends Fragment {
 
         Boolean acceptingNew = currentProfile.getAcceptingNewPatients();
         if (acceptingNew != null && !acceptingNew) {
-            // Doctor is not taking new patients
             Toast.makeText(
                     requireContext(),
                     getString(R.string.doctor_public_flag_not_accepting),
@@ -400,12 +397,30 @@ public class DoctorPublicProfileFragment extends Fragment {
             return;
         }
 
-        // Future: navigate to booking flow.
-        Toast.makeText(
-                requireContext(),
-                "Booking is not implemented yet.",
-                Toast.LENGTH_SHORT
-        ).show();
+        Long doctorId = currentProfile.getDoctorId();
+        if (doctorId == null || doctorId <= 0L) {
+            Toast.makeText(
+                    requireContext(),
+                    getString(R.string.doctor_public_error_generic),
+                    Toast.LENGTH_SHORT
+            ).show();
+            return;
+        }
+
+        String name = currentProfile.getFullName();
+        if (TextUtils.isEmpty(name)) {
+            name = getString(R.string.doctor_public_title);
+        }
+        String specialty = currentProfile.getSpecialtyName();
+        boolean teleEnabled = Boolean.TRUE.equals(currentProfile.getTeleconsultationEnabled());
+
+        BookAppointmentBottomSheet.show(
+                getParentFragmentManager(),
+                doctorId,
+                name,
+                specialty,
+                teleEnabled
+        );
     }
 
     private void handleMessageClick() {

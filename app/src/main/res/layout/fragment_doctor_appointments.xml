@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/doctor_appointments_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/color_background"
+    tools:context="tn.esprit.presentation.appointment.DoctorAppointmentsFragment">
+
+    <!-- Centered spinner while loading appointments -->
+    <ProgressBar
+        android:id="@+id/doctor_appointments_progress"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Main content -->
+    <LinearLayout
+        android:id="@+id/layout_doctor_appointments_content"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        android:padding="16dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Small overview / mini-calendar style header -->
+        <TextView
+            android:id="@+id/text_doctor_appointments_overview_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/color_on_background"
+            tools:text="Today · Thu, 27 Nov 2025" />
+
+        <TextView
+            android:id="@+id/text_doctor_appointments_overview_counts"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="13sp"
+            android:textColor="@color/color_on_background_secondary"
+            tools:text="Today: 1 · Upcoming: 2 · Past: 0" />
+
+        <!-- Tabs: Today / Upcoming / Past -->
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabs_doctor_appointments"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:tabIndicatorFullWidth="false"
+            app:tabMode="fixed"
+            app:tabGravity="fill" />
+
+        <!-- Appointments list -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_doctor_appointments"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_weight="1"
+            tools:listitem="@layout/item_doctor_appointment" />
+
+        <!-- Empty state text -->
+        <TextView
+            android:id="@+id/text_doctor_appointments_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/doctor_appointments_empty"
+            android:textColor="@color/color_on_background_secondary"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

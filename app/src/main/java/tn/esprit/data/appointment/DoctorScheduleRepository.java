@@ -18,12 +18,13 @@ import tn.esprit.data.remote.ApiClient;
 import tn.esprit.data.remote.appointment.DoctorScheduleApiService;
 import tn.esprit.data.remote.common.ListResponseDto;
 import tn.esprit.domain.appointment.DoctorSchedule;
-import tn.esprit.domain.auth.AuthTokens;
 
 /**
  * Repository for doctor weekly schedule operations.
- * - getMySchedule
- * - updateMySchedule
+ *
+ * Uses DoctorScheduleApiService:
+ *  - GET /api/doctors/me/schedule
+ *  - PUT /api/doctors/me/schedule
  */
 public class DoctorScheduleRepository {
 
@@ -36,17 +37,29 @@ public class DoctorScheduleRepository {
         this.apiService = ApiClient.createService(DoctorScheduleApiService.class);
     }
 
-    // ------------------------------------------------------------------------
-    // Load schedule
-    // ------------------------------------------------------------------------
+    // ---------------------------------------------------------------------
+    // Callbacks
+    // ---------------------------------------------------------------------
 
     public interface LoadScheduleCallback {
-        void onSuccess(List<DoctorSchedule> schedule);
+        void onSuccess(@NonNull List<DoctorSchedule> schedule);
 
         void onError(@Nullable Throwable throwable,
                      @Nullable Integer httpCode,
                      @Nullable String errorBody);
     }
+
+    public interface ScheduleCallback {
+        void onSuccess(@NonNull List<DoctorSchedule> schedule);
+
+        void onError(@Nullable Throwable throwable,
+                     @Nullable Integer httpCode,
+                     @Nullable String errorBody);
+    }
+
+    // ---------------------------------------------------------------------
+    // API methods
+    // ---------------------------------------------------------------------
 
     /**
      * GET /api/doctors/me/schedule
@@ -59,10 +72,8 @@ public class DoctorScheduleRepository {
 
         call.enqueue(new Callback<ListResponseDto<DoctorSchedule>>() {
             @Override
-            public void onResponse(
-                    @NonNull Call<ListResponseDto<DoctorSchedule>> call,
-                    @NonNull Response<ListResponseDto<DoctorSchedule>> response
-            ) {
+            public void onResponse(@NonNull Call<ListResponseDto<DoctorSchedule>> call,
+                                   @NonNull Response<ListResponseDto<DoctorSchedule>> response) {
                 if (!response.isSuccessful()) {
                     callback.onError(null, response.code(), safeErrorBody(response.errorBody()));
                     return;
@@ -78,29 +89,17 @@ public class DoctorScheduleRepository {
             }
 
             @Override
-            public void onFailure(
-                    @NonNull Call<ListResponseDto<DoctorSchedule>> call,
-                    @NonNull Throwable t
-            ) {
+            public void onFailure(@NonNull Call<ListResponseDto<DoctorSchedule>> call,
+                                  @NonNull Throwable t) {
                 callback.onError(t, null, null);
             }
         });
     }
 
-    // ------------------------------------------------------------------------
-    // Update schedule
-    // ------------------------------------------------------------------------
-
-    public interface ScheduleCallback {
-        void onSuccess(List<DoctorSchedule> updatedSchedule);
-
-        void onError(@Nullable Throwable throwable,
-                     @Nullable Integer httpCode,
-                     @Nullable String errorBody);
-    }
-
     /**
      * PUT /api/doctors/me/schedule
+     *
+     * Sends the full weekly schedule (only active days, as built in DoctorScheduleEditFragment).
      */
     public void updateMySchedule(@NonNull List<DoctorSchedule> entries,
                                  @NonNull ScheduleCallback callback) {
@@ -111,10 +110,8 @@ public class DoctorScheduleRepository {
 
         call.enqueue(new Callback<ListResponseDto<DoctorSchedule>>() {
             @Override
-            public void onResponse(
-                    @NonNull Call<ListResponseDto<DoctorSchedule>> call,
-                    @NonNull Response<ListResponseDto<DoctorSchedule>> response
-            ) {
+            public void onResponse(@NonNull Call<ListResponseDto<DoctorSchedule>> call,
+                                   @NonNull Response<ListResponseDto<DoctorSchedule>> response) {
                 if (!response.isSuccessful()) {
                     callback.onError(null, response.code(), safeErrorBody(response.errorBody()));
                     return;
@@ -130,22 +127,20 @@ public class DoctorScheduleRepository {
             }
 
             @Override
-            public void onFailure(
-                    @NonNull Call<ListResponseDto<DoctorSchedule>> call,
-                    @NonNull Throwable t
-            ) {
+            public void onFailure(@NonNull Call<ListResponseDto<DoctorSchedule>> call,
+                                  @NonNull Throwable t) {
                 callback.onError(t, null, null);
             }
         });
     }
 
-    // ------------------------------------------------------------------------
+    // ---------------------------------------------------------------------
     // Helpers
-    // ------------------------------------------------------------------------
+    // ---------------------------------------------------------------------
 
     @Nullable
     private String buildAuthHeaderIfAvailable() {
-        AuthTokens tokens = authLocalDataSource.getTokens();
+        tn.esprit.domain.auth.AuthTokens tokens = authLocalDataSource.getTokens();
         if (tokens == null || tokens.getAccessToken() == null) {
             return null;
         }

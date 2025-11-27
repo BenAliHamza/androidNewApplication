@@ -1,994 +1,1360 @@
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/ApiClient.java =====
-package tn.esprit.data.remote;
+===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/AppointmentUiHelper.java =====
+package tn.esprit.presentation.appointment;
 
-import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
-import retrofit2.Call;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
-import retrofit2.http.Body;
-import retrofit2.http.POST;
+import android.content.Context;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
+import tn.esprit.R;
 
 /**
- * Provides a configured Retrofit instance to talk to the Spring Boot backend.
- * Uses 10.0.2.2 so the Android emulator can reach localhost:8080 on your machine.
- *
- * NOTE: This client is intentionally small and focused on auth for now.
- * Later we can split it into separate files (AuthApi, UserApi, DoctorApi...)
- * to avoid it becoming a god-class.
+ * Small UI helper for appointments (status labels, date helpers, etc.).
  */
-public class ApiClient {
+public final class AppointmentUiHelper {
 
-    private static final String BASE_URL = "http://10.0.2.2:8080/";
-    private static Retrofit retrofit;
-
-    private ApiClient() {
-        // No instances
-    }
-    public static <T> T createService(Class<T> serviceClass) {
-        return getRetrofit().create(serviceClass);
-    }
-
-    private static Retrofit getRetrofit() {
-        if (retrofit == null) {
-            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-            // Always log BODY for now (you can change to NONE for production)
-            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .addInterceptor(logging)
-                    .build();
-
-            retrofit = new Retrofit.Builder()
-                    .baseUrl(BASE_URL)
-                    .client(client)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build();
-        }
-        return retrofit;
-    }
-
-    public static AuthApiService getAuthApiService() {
-        return getRetrofit().create(AuthApiService.class);
+    private AppointmentUiHelper() {
+        // no instances
     }
 
     /**
-     * Retrofit API for /auth endpoints.
+     * Maps backend status string (PENDING / ACCEPTED / REJECTED / COMPLETED)
+     * to a human-readable localized label.
      */
-    public interface AuthApiService {
-
-        @POST("auth/login")
-        Call<TokenResponseDto> login(@Body LoginRequestDto request);
-
-        @POST("auth/signup")
-        Call<TokenResponseDto> signup(@Body SignupRequestDto request);
-
-        @POST("auth/refresh")
-        Call<TokenResponseDto> refresh(@Body RefreshTokenRequestDto request);
-    }
-
-    /**
-     * Matches backend dto.auth.LoginRequest (email, password).
-     */
-    public static class LoginRequestDto {
-        private String email;
-        private String password;
-
-        public LoginRequestDto(String email, String password) {
-            this.email = email;
-            this.password = password;
+    @NonNull
+    public static String getStatusLabel(@NonNull Context context,
+                                        @Nullable String statusRaw) {
+        if (statusRaw == null) {
+            return context.getString(R.string.appointment_status_unknown);
         }
 
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
+        switch (statusRaw) {
+            case "PENDING":
+                return context.getString(R.string.appointment_status_pending);
+            case "ACCEPTED":
+                return context.getString(R.string.appointment_status_accepted);
+            case "REJECTED":
+                return context.getString(R.string.appointment_status_rejected);
+            case "COMPLETED":
+                return context.getString(R.string.appointment_status_completed);
+            default:
+                return context.getString(R.string.appointment_status_unknown);
         }
     }
 
     /**
-     * Matches backend dto.auth.SignupRequest
-     * (firstname, lastname, email, phone, password, role).
+     * Returns "Status: X" using appointment_status_prefix.
      */
-    public static class SignupRequestDto {
-        private String firstname;
-        private String lastname;
-        private String email;
-        private String phone;
-        private String password;
-        private String role; // "DOCTOR" or "PATIENT"
-
-        public SignupRequestDto(String firstname,
-                                String lastname,
-                                String email,
-                                String phone,
-                                String password,
-                                String role) {
-            this.firstname = firstname;
-            this.lastname = lastname;
-            this.email = email;
-            this.phone = phone;
-            this.password = password;
-            this.role = role;
-        }
-
-        public String getFirstname() {
-            return firstname;
-        }
-
-        public void setFirstname(String firstname) {
-            this.firstname = firstname;
-        }
-
-        public String getLastname() {
-            return lastname;
-        }
-
-        public void setLastname(String lastname) {
-            this.lastname = lastname;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getPhone() {
-            return phone;
-        }
-
-        public void setPhone(String phone) {
-            this.phone = phone;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-
-        public String getRole() {
-            return role;
-        }
-
-        public void setRole(String role) {
-            this.role = role;
-        }
+    @NonNull
+    public static String getStatusWithPrefix(@NonNull Context context,
+                                             @Nullable String statusRaw) {
+        String label = getStatusLabel(context, statusRaw);
+        return context.getString(R.string.appointment_status_prefix, label);
     }
 
     /**
-     * Matches backend dto.auth.RefreshTokenRequest (refreshToken).
+     * Returns today's date prefix in ISO-8601 date format (yyyy-MM-dd).
+     *
+     * This is used by DoctorAppointmentsViewModel to quickly check if an
+     * appointment startAt string belongs to "today" by doing:
+     *   startAt != null && startAt.startsWith(getTodayDatePrefix())
      */
-    public static class RefreshTokenRequestDto {
-        private String refreshToken;
-
-        public RefreshTokenRequestDto(String refreshToken) {
-            this.refreshToken = refreshToken;
-        }
-
-        public String getRefreshToken() {
-            return refreshToken;
-        }
-
-        public void setRefreshToken(String refreshToken) {
-            this.refreshToken = refreshToken;
-        }
-    }
-
-    /**
-     * Matches backend dto.auth.TokenResponse
-     * (accessToken, refreshToken, tokenType, expiresIn).
-     */
-    public static class TokenResponseDto {
-        private String accessToken;
-        private String refreshToken;
-        private String tokenType;
-        private Long expiresIn;
-
-        public String getAccessToken() {
-            return accessToken;
-        }
-
-        public void setAccessToken(String accessToken) {
-            this.accessToken = accessToken;
-        }
-
-        public String getRefreshToken() {
-            return refreshToken;
-        }
-
-        public void setRefreshToken(String refreshToken) {
-            this.refreshToken = refreshToken;
-        }
-
-        public String getTokenType() {
-            return tokenType;
-        }
-
-        public void setTokenType(String tokenType) {
-            this.tokenType = tokenType;
-        }
-
-        public Long getExpiresIn() {
-            return expiresIn;
-        }
-
-        public void setExpiresIn(Long expiresIn) {
-            this.expiresIn = expiresIn;
-        }
+    @NonNull
+    public static String getTodayDatePrefix() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        return sdf.format(new Date());
     }
 }
 
 
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/indicator/IndicatorApiService.java =====
-package tn.esprit.data.remote.indicator;
+===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/PatientAppointmentsViewModel.java =====
+package tn.esprit.presentation.appointment;
 
-import java.math.BigDecimal;
+import android.app.Application;
 
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.DELETE;
-import retrofit2.http.GET;
-import retrofit2.http.Header;
-import retrofit2.http.POST;
-import retrofit2.http.Path;
-import retrofit2.http.Query;
-import tn.esprit.data.remote.common.ListResponseDto;
-import tn.esprit.domain.indicator.IndicatorType;
-import tn.esprit.domain.indicator.PatientIndicator;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
 
-/**
- * Retrofit API for indicator-related endpoints.
- *
- * Matches backend:
- *  - GET /indicator-types
- *  - GET /indicators/me
- *  - POST /indicators/me
- *  - DELETE /indicators/me/{id}
- *  - GET /indicators/patient/{patientUserId}
- */
-public interface IndicatorApiService {
-
-    /**
-     * GET /indicator-types
-     *
-     * Returns the static catalog of available indicator types.
-     * (If you later require auth for this, we can add Authorization header.)
-     */
-    @GET("indicator-types")
-    Call<ListResponseDto<IndicatorType>> getIndicatorTypes();
-
-    /**
-     * GET /indicators/me
-     *
-     * Lists indicators of the current patient.
-     *
-     * Query params (all optional):
-     *  - indicatorTypeId
-     *  - from (ISO-8601 date-time string)
-     *  - to   (ISO-8601 date-time string)
-     */
-    @GET("indicators/me")
-    Call<ListResponseDto<PatientIndicator>> getMyIndicators(
-            @Header("Authorization") String authorization,
-            @Query("indicatorTypeId") Long indicatorTypeId,
-            @Query("from") String fromIso,
-            @Query("to") String toIso
-    );
-
-    /**
-     * POST /indicators/me
-     *
-     * Current patient adds a new indicator measurement.
-     */
-    @POST("indicators/me")
-    Call<PatientIndicator> addMyIndicator(
-            @Header("Authorization") String authorization,
-            @Body PatientIndicatorCreateRequestDto request
-    );
-
-    /**
-     * DELETE /indicators/me/{id}
-     *
-     * Current patient deletes one of their indicators by id.
-     */
-    @DELETE("indicators/me/{id}")
-    Call<Void> deleteMyIndicator(
-            @Header("Authorization") String authorization,
-            @Path("id") Long indicatorId
-    );
-
-    /**
-     * GET /indicators/patient/{patientUserId}
-     *
-     * Doctor lists indicators of a given patient (by patient User.id).
-     * Requires current user to be DOCTOR and linked to that patient.
-     */
-    @GET("indicators/patient/{patientUserId}")
-    Call<ListResponseDto<PatientIndicator>> getIndicatorsForPatientAsDoctor(
-            @Header("Authorization") String authorization,
-            @Path("patientUserId") Long patientUserId,
-            @Query("indicatorTypeId") Long indicatorTypeId,
-            @Query("from") String fromIso,
-            @Query("to") String toIso
-    );
-
-    /**
-     * Request body for POST /indicators/me.
-     * Mirrors backend dto.indicator.PatientIndicatorCreateRequest.
-     */
-    class PatientIndicatorCreateRequestDto {
-
-        private Long indicatorTypeId;   // required
-
-        private BigDecimal numericValue; // optional; at least one of numeric/text
-        private String textValue;
-
-        /**
-         * Optional ISO-8601 timestamp string.
-         * If null, backend will use now().
-         */
-        private String measuredAt;
-
-        private String note;
-
-        public PatientIndicatorCreateRequestDto() {
-        }
-
-        public Long getIndicatorTypeId() {
-            return indicatorTypeId;
-        }
-
-        public void setIndicatorTypeId(Long indicatorTypeId) {
-            this.indicatorTypeId = indicatorTypeId;
-        }
-
-        public BigDecimal getNumericValue() {
-            return numericValue;
-        }
-
-        public void setNumericValue(BigDecimal numericValue) {
-            this.numericValue = numericValue;
-        }
-
-        public String getTextValue() {
-            return textValue;
-        }
-
-        public void setTextValue(String textValue) {
-            this.textValue = textValue;
-        }
-
-        public String getMeasuredAt() {
-            return measuredAt;
-        }
-
-        public void setMeasuredAt(String measuredAt) {
-            this.measuredAt = measuredAt;
-        }
-
-        public String getNote() {
-            return note;
-        }
-
-        public void setNote(String note) {
-            this.note = note;
-        }
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/doctor/SpecialtyApiService.java =====
-package tn.esprit.data.remote.specialty;
-
-import java.math.BigDecimal;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.GET;
-import retrofit2.http.Header;
-import retrofit2.http.Path;
+import tn.esprit.R;
+import tn.esprit.data.appointment.AppointmentRepository;
+import tn.esprit.domain.appointment.Appointment;
 
-public interface SpecialtyApiService {
+/**
+ * ViewModel for the patient "My appointments" screen.
+ */
+public class PatientAppointmentsViewModel extends AndroidViewModel {
 
-    @GET("/api/specialties")
-    Call<List<SpecialtyDto>> getAllSpecialties(
-            @Header("Authorization") String authHeader
-    );
+    private final AppointmentRepository repository;
 
-    @GET("/api/specialties/{specialtyId}/acts")
-    Call<List<ActDto>> getActsBySpecialty(
-            @Header("Authorization") String authHeader,
-            @Path("specialtyId") Long specialtyId
-    );
+    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
+    private final MutableLiveData<List<Appointment>> appointments = new MutableLiveData<>(Collections.emptyList());
+    private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
+    private final MutableLiveData<String> actionMessage = new MutableLiveData<>();
 
-    // --- DTOs mirroring your backend ---
-
-    public static class SpecialtyDto {
-        public Long id;
-        public String code;
-        public String name;
-        public String description;
-        public Boolean active;
+    public PatientAppointmentsViewModel(@NonNull Application application) {
+        super(application);
+        repository = new AppointmentRepository(application.getApplicationContext());
     }
 
-    public static class ActDto {
-        public Long id;
-        public String code;
-        public String name;
-        public String description;
-        public BigDecimal basePrice;
-        public Integer defaultDurationMinutes;
-        public Boolean teleconsultationAvailable;
+    public LiveData<Boolean> getLoading() {
+        return loading;
+    }
+
+    public LiveData<List<Appointment>> getAppointments() {
+        return appointments;
+    }
+
+    public LiveData<String> getErrorMessage() {
+        return errorMessage;
+    }
+
+    public LiveData<String> getActionMessage() {
+        return actionMessage;
+    }
+
+    public void clearError() {
+        errorMessage.setValue(null);
+    }
+
+    /**
+     * Clear both error and action messages.
+     */
+    public void clearMessages() {
+        errorMessage.setValue(null);
+        actionMessage.setValue(null);
+    }
+
+    /**
+     * Load current patient's appointments (optionally in a date range).
+     * For now we pass null range -> backend decides.
+     */
+    public void loadAppointments() {
+        loading.setValue(true);
+
+        repository.getMyAppointments(
+                null,
+                null,
+                new AppointmentRepository.LoadAppointmentsCallback() {
+                    @Override
+                    public void onSuccess(@NonNull List<Appointment> list) {
+                        loading.postValue(false);
+                        appointments.postValue(sortByStart(list));
+                    }
+
+                    @Override
+                    public void onError(@Nullable Throwable throwable,
+                                        @Nullable Integer httpCode,
+                                        @Nullable String errorBody) {
+                        loading.postValue(false);
+                        String msg = getApplication().getString(R.string.patient_appointments_error_generic);
+                        errorMessage.postValue(msg);
+                    }
+                }
+        );
+    }
+
+    /**
+     * Patient cancels an appointment.
+     * - Only allowed for future appointments (not in the past).
+     */
+    public void cancelAppointment(@NonNull Appointment appointment) {
+        Long id = appointment.getId();
+        if (id == null || id <= 0L) {
+            return;
+        }
+
+        if (isInPast(appointment)) {
+            actionMessage.setValue("You cannot cancel a past appointment.");
+            return;
+        }
+
+        loading.setValue(true);
+
+        repository.cancelAppointment(id, new AppointmentRepository.CancelAppointmentCallback() {
+            @Override
+            public void onSuccess() {
+                loading.postValue(false);
+                actionMessage.postValue("Appointment cancelled.");
+                // Reload list so UI stays in sync
+                loadAppointments();
+            }
+
+            @Override
+            public void onError(@Nullable Throwable throwable,
+                                @Nullable Integer httpCode,
+                                @Nullable String errorBody) {
+                loading.postValue(false);
+                actionMessage.postValue("Failed to cancel appointment.");
+            }
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private List<Appointment> sortByStart(List<Appointment> list) {
+        if (list == null) return Collections.emptyList();
+        List<Appointment> copy = new ArrayList<>(list);
+        // ISO-8601 date strings are lexicographically sortable
+        Collections.sort(copy, new Comparator<Appointment>() {
+            @Override
+            public int compare(Appointment o1, Appointment o2) {
+                String d1 = o1 != null && o1.getStartAt() != null ? o1.getStartAt() : "";
+                String d2 = o2 != null && o2.getStartAt() != null ? o2.getStartAt() : "";
+                return d1.compareTo(d2);
+            }
+        });
+        return copy;
+    }
+
+    private boolean isInPast(@NonNull Appointment appointment) {
+        Date start = parseDate(appointment.getStartAt());
+        if (start == null) return false;
+        Date now = new Date();
+        return start.before(now);
+    }
+
+    @Nullable
+    private Date parseDate(@Nullable String iso) {
+        if (iso == null || iso.trim().isEmpty()) return null;
+
+        String[] patterns = new String[]{
+                "yyyy-MM-dd'T'HH:mm:ss",
+                "yyyy-MM-dd'T'HH:mm:ss.SSS"
+        };
+
+        for (String pattern : patterns) {
+            try {
+                SimpleDateFormat parser = new SimpleDateFormat(pattern, Locale.getDefault());
+                return parser.parse(iso);
+            } catch (ParseException ignore) {
+            }
+        }
+        return null;
     }
 }
 
 
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/doctor/DoctorApiService.java =====
-package tn.esprit.data.remote.doctor;
+===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/PatientAppointmentsFragment.java =====
+package tn.esprit.presentation.appointment;
+
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import tn.esprit.R;
+import tn.esprit.domain.appointment.Appointment;
+
+/**
+ * Patient "My appointments" screen.
+ *
+ * (Navigation wiring to bottom bar will be done separately.)
+ */
+public class PatientAppointmentsFragment extends Fragment {
+
+    private PatientAppointmentsViewModel viewModel;
+
+    private ProgressBar progressBar;
+    private RecyclerView recyclerView;
+    private TextView emptyText;
+
+    private PatientAppointmentAdapter adapter;
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_patient_appointments, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view,
+                              @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        progressBar = view.findViewById(R.id.patient_appointments_progress);
+        recyclerView = view.findViewById(R.id.recycler_patient_appointments);
+        emptyText = view.findViewById(R.id.text_patient_appointments_empty);
+
+        adapter = new PatientAppointmentAdapter(new PatientAppointmentAdapter.OnAppointmentClickListener() {
+            @Override
+            public void onAppointmentClicked(@NonNull Appointment appointment) {
+                if (!isAdded()) return;
+
+                // Confirm cancellation
+                new AlertDialog.Builder(requireContext())
+                        .setTitle("Cancel appointment")
+                        .setMessage("Do you want to cancel this appointment?")
+                        .setNegativeButton("Keep", null)
+                        .setPositiveButton("Cancel appointment", (dialog, which) -> {
+                            if (viewModel != null) {
+                                viewModel.cancelAppointment(appointment);
+                            }
+                        })
+                        .show();
+            }
+        });
+        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerView.setAdapter(adapter);
+
+        viewModel = new ViewModelProvider(this)
+                .get(PatientAppointmentsViewModel.class);
+
+        observeViewModel();
+
+        // Initial load
+        viewModel.loadAppointments();
+    }
+
+    private void observeViewModel() {
+        viewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
+            if (loading == null) return;
+            progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+        });
+
+        viewModel.getAppointments().observe(getViewLifecycleOwner(), list -> {
+            if (list == null || list.isEmpty()) {
+                emptyText.setVisibility(View.VISIBLE);
+                recyclerView.setVisibility(View.GONE);
+            } else {
+                emptyText.setVisibility(View.GONE);
+                recyclerView.setVisibility(View.VISIBLE);
+            }
+            adapter.submitList(list);
+        });
+
+        viewModel.getErrorMessage().observe(getViewLifecycleOwner(), msg -> {
+            if (msg == null || msg.trim().isEmpty()) return;
+            if (isAdded()) {
+                Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+            }
+            viewModel.clearMessages();
+        });
+
+        viewModel.getActionMessage().observe(getViewLifecycleOwner(), msg -> {
+            if (msg == null || msg.trim().isEmpty()) return;
+            if (isAdded()) {
+                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
+            }
+            viewModel.clearMessages();
+        });
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentsFragment.java =====
+package tn.esprit.presentation.appointment;
+
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.NavController;
+import androidx.navigation.fragment.NavHostFragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.tabs.TabLayout;
 
 import java.util.List;
 
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.DELETE;
-import retrofit2.http.GET;
-import retrofit2.http.Header;
-import retrofit2.http.POST;
-import retrofit2.http.PUT;
-import retrofit2.http.Path;
-import retrofit2.http.Query;
-import tn.esprit.data.remote.common.ListResponseDto;
-import tn.esprit.domain.doctor.DoctorProfile;
-import tn.esprit.domain.doctor.DoctorPublicProfile;
-import tn.esprit.domain.doctor.DoctorSearchResult;
-import tn.esprit.domain.patient.PatientProfile;
+import tn.esprit.R;
+import tn.esprit.domain.appointment.Appointment;
 
-public interface DoctorApiService {
+/**
+ * Doctor "My schedule" screen.
+ *
+ * Tabs:
+ *  - Today
+ *  - Upcoming
+ *  - Past
+ *
+ * Allows accepting / rejecting pending appointments, and opening patient profile.
+ */
+public class DoctorAppointmentsFragment extends Fragment {
 
-    /**
-     * GET /api/doctors/me
-     * Returns the current doctor's profile.
-     */
-    @GET("/api/doctors/me")
-    Call<DoctorProfile> getMyProfile(
-            @Header("Authorization") String authHeader
-    );
+    private static final String KEY_CURRENT_SECTION = "doctor_appointments_current_section";
 
-    /**
-     * PUT /api/doctors/me
-     * Updates the current doctor's profile (bio, clinicAddress, etc.).
-     */
-    @PUT("/api/doctors/me")
-    Call<DoctorProfile> updateMyProfile(
-            @Header("Authorization") String authHeader,
-            @Body DoctorProfileUpdateRequestDto request
-    );
+    private DoctorAppointmentsViewModel viewModel;
 
-    /**
-     * POST /api/doctors/me/practice-setup
-     * Onboarding step: choose one specialty and the acts performed.
-     * (Matches backend @PostMapping("/me/practice-setup")).
-     */
-    @POST("/api/doctors/me/practice-setup")
-    Call<DoctorProfile> setupPracticeForCurrentDoctor(
-            @Header("Authorization") String authHeader,
-            @Body DoctorPracticeSetupRequestDto request
-    );
+    private TabLayout tabs;
+    private RecyclerView recycler;
+    private ProgressBar progressBar;
+    private TextView textEmpty;
 
-    // ----------- Doctor's patients endpoints -----------
+    private DoctorAppointmentAdapter adapter;
 
-    /**
-     * GET /api/doctors/me/patients
-     * Returns patients linked to the current doctor, wrapped in ListResponse.
-     */
-    @GET("/api/doctors/me/patients")
-    Call<ListResponseDto<PatientProfile>> getMyPatients(
-            @Header("Authorization") String authHeader
-    );
+    private enum Section {
+        TODAY,
+        UPCOMING,
+        PAST
+    }
 
-    /**
-     * GET /api/doctors/me/patients/{patientUserId}
-     * Returns details of a single patient (by User.id) linked to the current doctor.
-     */
-    @GET("/api/doctors/me/patients/{patientUserId}")
-    Call<PatientProfile> getMyPatientByUserId(
-            @Header("Authorization") String authHeader,
-            @Path("patientUserId") Long patientUserId
-    );
+    private Section currentSection = Section.TODAY;
 
-    /**
-     * DELETE /api/doctors/me/patients/{patientUserId}
-     * Removes link between current doctor and a patient.
-     */
-    @DELETE("/api/doctors/me/patients/{patientUserId}")
-    Call<Void> removePatientFromMe(
-            @Header("Authorization") String authHeader,
-            @Path("patientUserId") Long patientUserId
-    );
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_doctor_appointments, container, false);
+    }
 
-    // ----------- Public/search endpoints -----------
+    @Override
+    public void onViewCreated(@NonNull View view,
+                              @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
 
-    /**
-     * Public search endpoint for doctors.
-     *
-     * GET /api/doctors/search
-     *
-     * Backend now wraps results in ListResponse<DoctorSearchResultDto>.
-     */
-    @GET("/api/doctors/search")
-    Call<ListResponseDto<DoctorSearchResult>> searchDoctors(
-            @Header("Authorization") String authHeader,
-            @Query("q") String query,
-            @Query("specialtyId") Long specialtyId,
-            @Query("city") String city,
-            @Query("country") String country,
-            @Query("teleconsultationEnabled") Boolean teleconsultationEnabled,
-            @Query("acceptingNewPatients") Boolean acceptingNewPatients
-    );
+        tabs = view.findViewById(R.id.tabs_doctor_appointments);
+        recycler = view.findViewById(R.id.recycler_doctor_appointments);
+        progressBar = view.findViewById(R.id.doctor_appointments_progress);
+        textEmpty = view.findViewById(R.id.text_doctor_appointments_empty);
 
-    /**
-     * Public doctor profile endpoint.
-     *
-     * GET /api/doctors/{doctorId}/public
-     */
-    @GET("/api/doctors/{doctorId}/public")
-    Call<DoctorPublicProfile> getDoctorPublicProfile(
-            @Header("Authorization") String authHeader,
-            @Path("doctorId") Long doctorId
-    );
+        adapter = new DoctorAppointmentAdapter(
+                new DoctorAppointmentAdapter.OnAppointmentActionListener() {
+                    @Override
+                    public void onAccept(@NonNull Appointment appointment) {
+                        if (viewModel != null) {
+                            viewModel.acceptAppointment(appointment);
+                        }
+                    }
 
-    // ----------- DTOs used as request bodies -----------
+                    @Override
+                    public void onReject(@NonNull Appointment appointment) {
+                        if (viewModel != null) {
+                            viewModel.rejectAppointment(appointment);
+                        }
+                    }
+                },
+                this::openPatientProfileForAppointment
+        );
 
-    /**
-     * Mirrors backend DoctorProfileUpdateRequest.
-     */
-    class DoctorProfileUpdateRequestDto {
+        recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recycler.setAdapter(adapter);
 
-        private String bio;
-        private Integer yearsOfExperience;
-        private String clinicAddress;
-        private String city;
-        private String country;
-        private String medicalRegistrationNumber;
-        private java.math.BigDecimal consultationFee;
-        private Boolean acceptsNewPatients;
-        private Boolean teleconsultationEnabled;
-        private Integer maxDailyAppointments;
-        private Integer averageConsultationDurationMinutes;
+        viewModel = new ViewModelProvider(this).get(DoctorAppointmentsViewModel.class);
 
-        // --- getters & setters ---
-
-        public String getBio() {
-            return bio;
+        // Restore current section (tab) if we have saved state
+        if (savedInstanceState != null) {
+            String secName = savedInstanceState.getString(KEY_CURRENT_SECTION);
+            if (secName != null) {
+                try {
+                    currentSection = Section.valueOf(secName);
+                } catch (IllegalArgumentException ignore) {
+                    currentSection = Section.TODAY;
+                }
+            }
         }
 
-        public void setBio(String bio) {
-            this.bio = bio;
-        }
+        setupTabs();
+        observeViewModel();
+    }
 
-        public Integer getYearsOfExperience() {
-            return yearsOfExperience;
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (viewModel != null) {
+            viewModel.loadAppointments();
         }
+    }
 
-        public void setYearsOfExperience(Integer yearsOfExperience) {
-            this.yearsOfExperience = yearsOfExperience;
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString(KEY_CURRENT_SECTION, currentSection.name());
+    }
+
+    private void setupTabs() {
+        if (tabs == null) return;
+
+        tabs.removeAllTabs();
+
+        TabLayout.Tab tabToday = tabs.newTab()
+                .setText(R.string.doctor_appointments_tab_today)
+                .setTag(Section.TODAY);
+        tabs.addTab(tabToday, currentSection == Section.TODAY);
+
+        TabLayout.Tab tabUpcoming = tabs.newTab()
+                .setText(R.string.doctor_appointments_tab_upcoming)
+                .setTag(Section.UPCOMING);
+        tabs.addTab(tabUpcoming, currentSection == Section.UPCOMING);
+
+        TabLayout.Tab tabPast = tabs.newTab()
+                .setText(R.string.doctor_appointments_tab_past)
+                .setTag(Section.PAST);
+        tabs.addTab(tabPast, currentSection == Section.PAST);
+
+        tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                Object tag = tab.getTag();
+                if (tag instanceof Section) {
+                    currentSection = (Section) tag;
+                    updateListForCurrentSection();
+                }
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+                // no-op
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+                Object tag = tab.getTag();
+                if (tag instanceof Section) {
+                    currentSection = (Section) tag;
+                    updateListForCurrentSection();
+                }
+            }
+        });
+
+        // Ensure list matches the restored section
+        updateListForCurrentSection();
+    }
+
+    private void observeViewModel() {
+        viewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
+            if (loading == null) return;
+            progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+        });
+
+        viewModel.getTodayAppointments().observe(getViewLifecycleOwner(), list -> {
+            if (currentSection == Section.TODAY) {
+                showAppointments(list);
+            }
+        });
+
+        viewModel.getUpcomingAppointments().observe(getViewLifecycleOwner(), list -> {
+            if (currentSection == Section.UPCOMING) {
+                showAppointments(list);
+            }
+        });
+
+        viewModel.getPastAppointments().observe(getViewLifecycleOwner(), list -> {
+            if (currentSection == Section.PAST) {
+                showAppointments(list);
+            }
+        });
+
+        viewModel.getErrorMessage().observe(getViewLifecycleOwner(), msg -> {
+            if (msg == null || msg.trim().isEmpty()) return;
+            if (isAdded()) {
+                Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+            }
+            viewModel.clearMessages();
+        });
+
+        viewModel.getActionMessage().observe(getViewLifecycleOwner(), msg -> {
+            if (msg == null || msg.trim().isEmpty()) return;
+            if (isAdded()) {
+                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
+            }
+            viewModel.clearMessages();
+        });
+    }
+
+    private void updateListForCurrentSection() {
+        if (viewModel == null) return;
+        switch (currentSection) {
+            case TODAY:
+                showAppointments(viewModel.getTodayAppointments().getValue());
+                break;
+            case UPCOMING:
+                showAppointments(viewModel.getUpcomingAppointments().getValue());
+                break;
+            case PAST:
+                showAppointments(viewModel.getPastAppointments().getValue());
+                break;
         }
+    }
 
-        public String getClinicAddress() {
-            return clinicAddress;
-        }
-
-        public void setClinicAddress(String clinicAddress) {
-            this.clinicAddress = clinicAddress;
-        }
-
-        public String getCity() {
-            return city;
-        }
-
-        public void setCity(String city) {
-            this.city = city;
-        }
-
-        public String getCountry() {
-            return country;
-        }
-
-        public void setCountry(String country) {
-            this.country = country;
-        }
-
-        public String getMedicalRegistrationNumber() {
-            return medicalRegistrationNumber;
-        }
-
-        public void setMedicalRegistrationNumber(String medicalRegistrationNumber) {
-            this.medicalRegistrationNumber = medicalRegistrationNumber;
-        }
-
-        public java.math.BigDecimal getConsultationFee() {
-            return consultationFee;
-        }
-
-        public void setConsultationFee(java.math.BigDecimal consultationFee) {
-            this.consultationFee = consultationFee;
-        }
-
-        public Boolean getAcceptsNewPatients() {
-            return acceptsNewPatients;
-        }
-
-        public void setAcceptsNewPatients(Boolean acceptsNewPatients) {
-            this.acceptsNewPatients = acceptsNewPatients;
-        }
-
-        public Boolean getTeleconsultationEnabled() {
-            return teleconsultationEnabled;
-        }
-
-        public void setTeleconsultationEnabled(Boolean teleconsultationEnabled) {
-            this.teleconsultationEnabled = teleconsultationEnabled;
-        }
-
-        public Integer getMaxDailyAppointments() {
-            return maxDailyAppointments;
-        }
-
-        public void setMaxDailyAppointments(Integer maxDailyAppointments) {
-            this.maxDailyAppointments = maxDailyAppointments;
-        }
-
-        public Integer getAverageConsultationDurationMinutes() {
-            return averageConsultationDurationMinutes;
-        }
-
-        public void setAverageConsultationDurationMinutes(Integer averageConsultationDurationMinutes) {
-            this.averageConsultationDurationMinutes = averageConsultationDurationMinutes;
+    private void showAppointments(@Nullable List<Appointment> list) {
+        if (list == null || list.isEmpty()) {
+            adapter.submitList(null);
+            textEmpty.setVisibility(View.VISIBLE);
+            recycler.setVisibility(View.GONE);
+        } else {
+            adapter.submitList(list);
+            textEmpty.setVisibility(View.GONE);
+            recycler.setVisibility(View.VISIBLE);
         }
     }
 
     /**
-     * Mirrors backend DoctorPracticeSetupRequest.
+     * Open patient public profile from an appointment.
+     * IMPORTANT: uses patientUserId (not patientId).
      */
-    class DoctorPracticeSetupRequestDto {
-        public Long specialtyId;
-        public java.util.List<Long> actIds;
+    private void openPatientProfileForAppointment(@NonNull Appointment appointment) {
+        Long patientUserId = appointment.getPatientUserId();
+        if (patientUserId == null || patientUserId <= 0L) {
+            return;
+        }
+
+        Bundle args = new Bundle();
+        // nav_main.xml + PatientPublicProfileFragment expect "patientId" = User.id
+        args.putLong("patientId", patientUserId);
+
+        NavController navController = NavHostFragment.findNavController(this);
+        navController.navigate(R.id.patientPublicProfileFragment, args);
     }
 }
 
 
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/user/UserApiService.java =====
-package tn.esprit.data.remote.user;
+===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/PatientAppointmentAdapter.java =====
+package tn.esprit.presentation.appointment;
 
-import retrofit2.Call;
-import retrofit2.http.GET;
-import retrofit2.http.Header;
-import tn.esprit.domain.user.User;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
 
-/**
- * Retrofit API for general user operations.
- *
- * We directly return the domain User model to avoid extra mapping.
- */
-public interface UserApiService {
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ListAdapter;
+import androidx.recyclerview.widget.RecyclerView;
 
-    /**
-     * GET /me
-     * Authorization: Bearer <access_token>
-     */
-    @GET("me")
-    Call<User> getCurrentUser(@Header("Authorization") String authorization);
-}
+import com.google.android.material.card.MaterialCardView;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/user/UserImageApiService.java =====
-package tn.esprit.data.remote.user;
-
-import okhttp3.MultipartBody;
-import retrofit2.Call;
-import retrofit2.http.Header;
-import retrofit2.http.Multipart;
-import retrofit2.http.POST;
-import retrofit2.http.Part;
-import tn.esprit.domain.user.User;
+import tn.esprit.R;
+import tn.esprit.domain.appointment.Appointment;
 
 /**
- * Retrofit service for user profile image operations.
- *
- * Matches backend:
- *   POST /users/me/profile-image
- *   multipart/form-data, field name = "image"
- *   returns UserDto → mapped to tn.esprit.domain.user.User
+ * Adapter for displaying patient's appointments.
  */
-public interface UserImageApiService {
+public class PatientAppointmentAdapter extends ListAdapter<Appointment, PatientAppointmentAdapter.AppointmentViewHolder> {
 
-    @Multipart
-    @POST("/users/me/profile-image")
-    Call<User> uploadMyProfileImage(
-            @Header("Authorization") String authHeader,
-            @Part MultipartBody.Part image
-    );
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/user/UserAccountApiService.java =====
-package tn.esprit.data.remote.user;
-
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.Header;
-import retrofit2.http.PUT;
-
-import tn.esprit.domain.user.User;
-
-/**
- * API for base user information (firstname, lastname, email, phone).
- *
- * Uses:
- *   PUT /me
- */
-public interface UserAccountApiService {
-
-    class UserUpdateRequestDto {
-        private String firstname;
-        private String lastname;
-        private String email;
-        private String phone;
-
-        public String getFirstname() {
-            return firstname;
-        }
-
-        public void setFirstname(String firstname) {
-            this.firstname = firstname;
-        }
-
-        public String getLastname() {
-            return lastname;
-        }
-
-        public void setLastname(String lastname) {
-            this.lastname = lastname;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getPhone() {
-            return phone;
-        }
-
-        public void setPhone(String phone) {
-            this.phone = phone;
-        }
+    public interface OnAppointmentClickListener {
+        void onAppointmentClicked(@NonNull Appointment appointment);
     }
 
-    @PUT("/me")
-    Call<User> updateCurrentUser(
-            @Header("Authorization") String authHeader,
-            @Body UserUpdateRequestDto body
-    );
+    private final OnAppointmentClickListener listener;
+
+    private static final DiffUtil.ItemCallback<Appointment> DIFF_CALLBACK =
+            new DiffUtil.ItemCallback<Appointment>() {
+                @Override
+                public boolean areItemsTheSame(@NonNull Appointment oldItem, @NonNull Appointment newItem) {
+                    if (oldItem.getId() == null || newItem.getId() == null) {
+                        return oldItem == newItem;
+                    }
+                    return oldItem.getId().equals(newItem.getId());
+                }
+
+                @Override
+                public boolean areContentsTheSame(@NonNull Appointment oldItem, @NonNull Appointment newItem) {
+                    String s1 = oldItem.getStartAt();
+                    String s2 = newItem.getStartAt();
+                    String e1 = oldItem.getEndAt();
+                    String e2 = newItem.getEndAt();
+                    String st1 = oldItem.getStatus();
+                    String st2 = newItem.getStatus();
+                    return safeEquals(s1, s2)
+                            && safeEquals(e1, e2)
+                            && safeEquals(st1, st2);
+                }
+
+                private boolean safeEquals(@Nullable Object a, @Nullable Object b) {
+                    if (a == b) return true;
+                    if (a == null || b == null) return false;
+                    return a.equals(b);
+                }
+            };
+
+    public PatientAppointmentAdapter(@NonNull OnAppointmentClickListener listener) {
+        super(DIFF_CALLBACK);
+        this.listener = listener;
+    }
+
+    @NonNull
+    @Override
+    public AppointmentViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_patient_appointment, parent, false);
+        return new AppointmentViewHolder(view);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull AppointmentViewHolder holder, int position) {
+        Appointment appointment = getItem(position);
+        holder.bind(appointment, listener);
+    }
+
+    static class AppointmentViewHolder extends RecyclerView.ViewHolder {
+
+        private final MaterialCardView cardRoot;
+        private final TextView textDoctorName;
+        private final TextView textDateTime;
+        private final TextView textStatusChip;
+        private final TextView textTele;
+        private final TextView textReason;
+
+        private final SimpleDateFormat parser =
+                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+        private final SimpleDateFormat formatterDate =
+                new SimpleDateFormat("EEE, d MMM", Locale.getDefault());
+        private final SimpleDateFormat formatterTime =
+                new SimpleDateFormat("HH:mm", Locale.getDefault());
+
+        AppointmentViewHolder(@NonNull View itemView) {
+            super(itemView);
+            cardRoot = itemView.findViewById(R.id.card_appointment_root);
+            textDoctorName = itemView.findViewById(R.id.text_doctor_name);
+            textDateTime = itemView.findViewById(R.id.text_date_time);
+            textStatusChip = itemView.findViewById(R.id.text_status_chip);
+            textTele = itemView.findViewById(R.id.text_teleconsultation);
+            textReason = itemView.findViewById(R.id.text_reason);
+        }
+
+        void bind(@NonNull Appointment appointment,
+                  @NonNull OnAppointmentClickListener listener) {
+
+            String first = appointment.getDoctorFirstName();
+            String last = appointment.getDoctorLastName();
+            String name;
+            if (first == null && last == null) {
+                name = itemView.getContext().getString(R.string.profile_role_doctor);
+            } else {
+                StringBuilder b = new StringBuilder();
+                if (first != null) b.append(first.trim());
+                if (last != null) {
+                    if (b.length() > 0) b.append(" ");
+                    b.append(last.trim());
+                }
+                name = b.toString();
+            }
+            textDoctorName.setText(name);
+
+            String dateTime = buildDateTimeDisplay(appointment.getStartAt(), appointment.getEndAt());
+            textDateTime.setText(dateTime);
+
+            // Status chip
+            String status = appointment.getStatus();
+            bindStatus(status);
+
+            // Teleconsultation label
+            Boolean tele = appointment.getTeleconsultation();
+            if (tele != null && tele) {
+                textTele.setVisibility(View.VISIBLE);
+                textTele.setText(R.string.appointment_teleconsultation_label);
+            } else {
+                textTele.setVisibility(View.GONE);
+            }
+
+            // Reason
+            String reason = appointment.getReason();
+            if (reason != null && !reason.trim().isEmpty()) {
+                textReason.setVisibility(View.VISIBLE);
+                textReason.setText(reason.trim());
+            } else {
+                textReason.setVisibility(View.GONE);
+            }
+
+            cardRoot.setOnClickListener(v -> listener.onAppointmentClicked(appointment));
+        }
+
+        private String buildDateTimeDisplay(@Nullable String startIso, @Nullable String endIso) {
+            if (startIso == null || startIso.trim().isEmpty()) {
+                return "";
+            }
+            try {
+                Date start = parser.parse(startIso);
+                if (start == null) {
+                    return startIso;
+                }
+                String datePart = formatterDate.format(start);
+                String startTime = formatterTime.format(start);
+
+                if (endIso != null && !endIso.trim().isEmpty()) {
+                    Date end = parser.parse(endIso);
+                    if (end != null) {
+                        String endTime = formatterTime.format(end);
+                        return datePart + "  •  " + startTime + " – " + endTime;
+                    }
+                }
+
+                return datePart + "  •  " + startTime;
+            } catch (ParseException e) {
+                return startIso;
+            }
+        }
+
+        private void bindStatus(@Nullable String statusRaw) {
+            String label;
+            if (statusRaw == null) {
+                label = itemView.getContext().getString(R.string.appointment_status_unknown);
+            } else {
+                String s = statusRaw.toUpperCase(Locale.getDefault());
+                switch (s) {
+                    case "PENDING":
+                        label = itemView.getContext().getString(R.string.appointment_status_pending);
+                        break;
+                    case "ACCEPTED":
+                        label = itemView.getContext().getString(R.string.appointment_status_accepted);
+                        break;
+                    case "REJECTED":
+                        label = itemView.getContext().getString(R.string.appointment_status_rejected);
+                        break;
+                    case "COMPLETED":
+                        label = itemView.getContext().getString(R.string.appointment_status_completed);
+                        break;
+                    default:
+                        label = itemView.getContext().getString(R.string.appointment_status_unknown);
+                        break;
+                }
+            }
+            textStatusChip.setText(label);
+        }
+    }
 }
 
 
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/common/ListResponseDto.java =====
-package tn.esprit.data.remote.common;
+===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentsViewModel.java =====
+package tn.esprit.presentation.appointment;
 
+import android.app.Application;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+
+import tn.esprit.R;
+import tn.esprit.data.appointment.AppointmentRepository;
+import tn.esprit.domain.appointment.Appointment;
+import tn.esprit.domain.appointment.AppointmentStatusUpdateRequest;
 
 /**
- * Generic list wrapper matching backend dto.common.ListResponse<T>.
+ * ViewModel for doctor "My schedule" / appointments screen.
  *
- * JSON example:
- * {
- *   "items": [ ... ],
- *   "total": 3
- * }
+ * Holds three lists:
+ *  - todayAppointments
+ *  - upcomingAppointments
+ *  - pastAppointments
+ *
+ * Also exposes loading + error/action messages.
  */
-public class ListResponseDto<T> {
+public class DoctorAppointmentsViewModel extends AndroidViewModel {
 
-    private List<T> items;
-    private long total;
+    private final AppointmentRepository repository;
 
-    public ListResponseDto() {
+    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
+    private final MutableLiveData<List<Appointment>> todayAppointments =
+            new MutableLiveData<>(Collections.emptyList());
+    private final MutableLiveData<List<Appointment>> upcomingAppointments =
+            new MutableLiveData<>(Collections.emptyList());
+    private final MutableLiveData<List<Appointment>> pastAppointments =
+            new MutableLiveData<>(Collections.emptyList());
+    private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
+    private final MutableLiveData<String> actionMessage = new MutableLiveData<>();
+
+    public DoctorAppointmentsViewModel(@NonNull Application application) {
+        super(application);
+        repository = new AppointmentRepository(application.getApplicationContext());
     }
 
-    public List<T> getItems() {
-        return items;
+    // -------------------------------------------------------------------------
+    // LiveData getters
+    // -------------------------------------------------------------------------
+
+    public LiveData<Boolean> getLoading() {
+        return loading;
     }
 
-    public void setItems(List<T> items) {
-        this.items = items;
+    public LiveData<List<Appointment>> getTodayAppointments() {
+        return todayAppointments;
     }
 
-    public long getTotal() {
-        return total;
+    public LiveData<List<Appointment>> getUpcomingAppointments() {
+        return upcomingAppointments;
     }
 
-    public void setTotal(long total) {
-        this.total = total;
+    public LiveData<List<Appointment>> getPastAppointments() {
+        return pastAppointments;
+    }
+
+    public LiveData<String> getErrorMessage() {
+        return errorMessage;
+    }
+
+    public LiveData<String> getActionMessage() {
+        return actionMessage;
+    }
+
+    public void clearMessages() {
+        errorMessage.setValue(null);
+        actionMessage.setValue(null);
+    }
+
+    // -------------------------------------------------------------------------
+    // Loading appointments
+    // -------------------------------------------------------------------------
+
+    /**
+     * Load all appointments for current doctor.
+     * For now we don't pass date range; backend returns relevant range.
+     */
+    public void loadAppointments() {
+        loading.setValue(true);
+
+        repository.getDoctorAppointments(
+                null,
+                null,
+                new AppointmentRepository.LoadAppointmentsCallback() {
+                    @Override
+                    public void onSuccess(@NonNull List<Appointment> list) {
+                        loading.postValue(false);
+                        splitIntoSections(list);
+                    }
+
+                    @Override
+                    public void onError(@Nullable Throwable throwable,
+                                        @Nullable Integer httpCode,
+                                        @Nullable String errorBody) {
+                        loading.postValue(false);
+                        String msg = getApplication()
+                                .getString(R.string.doctor_appointments_error_generic);
+                        errorMessage.postValue(msg);
+                    }
+                }
+        );
+    }
+
+    private void splitIntoSections(@NonNull List<Appointment> list) {
+        if (list.isEmpty()) {
+            todayAppointments.postValue(Collections.emptyList());
+            upcomingAppointments.postValue(Collections.emptyList());
+            pastAppointments.postValue(Collections.emptyList());
+            return;
+        }
+
+        String todayDate = AppointmentUiHelper.getTodayDatePrefix(); // yyyy-MM-dd
+
+        List<Appointment> today = new ArrayList<>();
+        List<Appointment> upcoming = new ArrayList<>();
+        List<Appointment> past = new ArrayList<>();
+
+        for (Appointment a : list) {
+            if (a == null) continue;
+            String start = a.getStartAt();
+            String datePart = AppointmentUiHelper.safeDatePrefix(start);
+
+            if (datePart == null) {
+                // Unknown -> treat as upcoming
+                upcoming.add(a);
+                continue;
+            }
+
+            int cmp = datePart.compareTo(todayDate);
+            if (cmp == 0) {
+                today.add(a);
+            } else if (cmp < 0) {
+                past.add(a);
+            } else {
+                upcoming.add(a);
+            }
+        }
+
+        todayAppointments.postValue(AppointmentUiHelper.sortByStart(today));
+        upcomingAppointments.postValue(AppointmentUiHelper.sortByStart(upcoming));
+        pastAppointments.postValue(AppointmentUiHelper.sortByStart(past));
+    }
+
+    // -------------------------------------------------------------------------
+    // Accept / reject
+    // -------------------------------------------------------------------------
+
+    public void acceptAppointment(@NonNull Appointment appointment) {
+        changeStatus(appointment, "ACCEPTED",
+                getApplication().getString(R.string.doctor_appointments_action_accept_success),
+                getApplication().getString(R.string.doctor_appointments_action_accept_error));
+    }
+
+    public void rejectAppointment(@NonNull Appointment appointment) {
+        changeStatus(appointment, "REJECTED",
+                getApplication().getString(R.string.doctor_appointments_action_reject_success),
+                getApplication().getString(R.string.doctor_appointments_action_reject_error));
+    }
+
+    private void changeStatus(@NonNull Appointment appointment,
+                              @NonNull String newStatus,
+                              @NonNull String successMessage,
+                              @NonNull String errorMessageText) {
+        Long id = appointment.getId();
+        if (id == null || id <= 0L) {
+            return;
+        }
+
+        String currentStatusRaw = appointment.getStatus();
+        String currentStatus = currentStatusRaw != null
+                ? currentStatusRaw.toUpperCase(Locale.getDefault())
+                : "";
+
+        // Only allow status change from PENDING in this v1
+        if (!"PENDING".equals(currentStatus)) {
+            actionMessage.setValue(getApplication()
+                    .getString(R.string.doctor_appointments_action_not_pending));
+            return;
+        }
+
+        loading.setValue(true);
+
+        AppointmentStatusUpdateRequest request = new AppointmentStatusUpdateRequest();
+        request.setStatus(newStatus);
+
+        repository.updateAppointmentStatus(
+                id,
+                request,
+                new AppointmentRepository.UpdateStatusCallback() {
+                    @Override
+                    public void onSuccess(@NonNull Appointment updated) {
+                        loading.postValue(false);
+                        actionMessage.postValue(successMessage);
+                        // Reload lists to ensure all tabs are in sync
+                        loadAppointments();
+                    }
+
+                    @Override
+                    public void onError(@Nullable Throwable throwable,
+                                        @Nullable Integer httpCode,
+                                        @Nullable String errorBody) {
+                        loading.postValue(false);
+                        actionMessage.postValue(errorMessageText);
+                    }
+                }
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // (Optional) helper if we ever need "is in past" logic here
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("unused")
+    private boolean isInPast(@NonNull Appointment appointment) {
+        Date start = AppointmentUiHelper.parseDate(appointment.getStartAt());
+        if (start == null) return false;
+        Date now = new Date();
+        return start.before(now);
     }
 }
 
 
-===== FILE: ./app/src/main/java/tn/esprit/data/remote/patient/PatientApiService.java =====
-package tn.esprit.data.remote.patient;
+===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentAdapter.java =====
+package tn.esprit.presentation.appointment;
 
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.GET;
-import retrofit2.http.Header;
-import retrofit2.http.PUT;
-import tn.esprit.domain.patient.PatientProfile;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ListAdapter;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+
+import java.util.Locale;
+
+import tn.esprit.R;
+import tn.esprit.domain.appointment.Appointment;
 
 /**
- * Retrofit API for patient-specific operations.
+ * Adapter for displaying DOCTOR's appointments.
  *
- * We directly return the domain PatientProfile model.
+ * - Shows patient name, time range, status, tele flag, reason.
+ * - If status == PENDING -> shows Accept / Reject buttons.
+ * - Card click opens patient profile.
  */
-public interface PatientApiService {
+public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorAppointmentAdapter.AppointmentViewHolder> {
 
-    /**
-     * GET /patients/me
-     * Authorization: Bearer <access_token>
-     */
-    @GET("patients/me")
-    Call<PatientProfile> getMyProfile(@Header("Authorization") String authorization);
+    public interface OnAppointmentActionListener {
+        void onAccept(@NonNull Appointment appointment);
 
-    /**
-     * PUT /patients/me
-     * Authorization: Bearer <access_token>
-     *
-     * Body matches backend dto.patient.PatientProfileUpdateRequest
-     * (with dates formatted as ISO-8601 strings: yyyy-MM-dd).
-     */
-    @PUT("patients/me")
-    Call<PatientProfile> updateMyProfile(
-            @Header("Authorization") String authorization,
-            @Body PatientProfileUpdateRequestDto request
-    );
+        void onReject(@NonNull Appointment appointment);
+    }
 
-    /**
-     * DTO mirroring backend PatientProfileUpdateRequest.
-     * Used directly as Retrofit request body (no extra mapping).
-     */
-    class PatientProfileUpdateRequestDto {
+    public interface OnAppointmentClickListener {
+        void onAppointmentClick(@NonNull Appointment appointment);
+    }
 
-        private String dateOfBirth; // ISO date string yyyy-MM-dd
-        private String gender;
-        private String bloodType;
-        private Integer heightCm;
-        private Integer weightKg;
-        private String address;
-        private String city;
-        private String country;
-        private String maritalStatus;
-        private Boolean smoker;
-        private Boolean alcoholUse;
-        private String notes;
+    private final OnAppointmentActionListener actionListener;
+    private final OnAppointmentClickListener clickListener;
 
-        public PatientProfileUpdateRequestDto() {
+    private static final DiffUtil.ItemCallback<Appointment> DIFF_CALLBACK =
+            new DiffUtil.ItemCallback<Appointment>() {
+                @Override
+                public boolean areItemsTheSame(@NonNull Appointment oldItem,
+                                               @NonNull Appointment newItem) {
+                    if (oldItem.getId() == null || newItem.getId() == null) {
+                        return oldItem == newItem;
+                    }
+                    return oldItem.getId().equals(newItem.getId());
+                }
+
+                @Override
+                public boolean areContentsTheSame(@NonNull Appointment oldItem,
+                                                  @NonNull Appointment newItem) {
+                    String s1 = oldItem.getStartAt();
+                    String s2 = newItem.getStartAt();
+                    String e1 = oldItem.getEndAt();
+                    String e2 = newItem.getEndAt();
+                    String st1 = oldItem.getStatus();
+                    String st2 = newItem.getStatus();
+                    return safeEquals(s1, s2)
+                            && safeEquals(e1, e2)
+                            && safeEquals(st1, st2);
+                }
+
+                private boolean safeEquals(@Nullable Object a, @Nullable Object b) {
+                    if (a == b) return true;
+                    if (a == null || b == null) return false;
+                    return a.equals(b);
+                }
+            };
+
+    public DoctorAppointmentAdapter(@NonNull OnAppointmentActionListener actionListener,
+                                    @NonNull OnAppointmentClickListener clickListener) {
+        super(DIFF_CALLBACK);
+        this.actionListener = actionListener;
+        this.clickListener = clickListener;
+    }
+
+    @NonNull
+    @Override
+    public AppointmentViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_doctor_appointment, parent, false);
+        return new AppointmentViewHolder(view);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull AppointmentViewHolder holder, int position) {
+        Appointment appointment = getItem(position);
+        holder.bind(appointment, actionListener, clickListener);
+    }
+
+    static class AppointmentViewHolder extends RecyclerView.ViewHolder {
+
+        private final MaterialCardView cardRoot;
+        private final TextView textPatientName;
+        private final TextView textDateTime;
+        private final TextView textStatusChip;
+        private final TextView textTele;
+        private final TextView textReason;
+        private final MaterialButton buttonAccept;
+        private final MaterialButton buttonReject;
+
+        AppointmentViewHolder(@NonNull View itemView) {
+            super(itemView);
+            cardRoot = itemView.findViewById(R.id.card_appointment_root);
+            textPatientName = itemView.findViewById(R.id.text_patient_name);
+            textDateTime = itemView.findViewById(R.id.text_date_time);
+            textStatusChip = itemView.findViewById(R.id.text_status_chip);
+            textTele = itemView.findViewById(R.id.text_teleconsultation);
+            textReason = itemView.findViewById(R.id.text_reason);
+            buttonAccept = itemView.findViewById(R.id.button_accept);
+            buttonReject = itemView.findViewById(R.id.button_reject);
         }
 
-        // Getters & setters
+        void bind(@NonNull Appointment appointment,
+                  @NonNull OnAppointmentActionListener actionListener,
+                  @NonNull OnAppointmentClickListener clickListener) {
 
-        public String getDateOfBirth() {
-            return dateOfBirth;
+            // Patient name
+            String first = appointment.getPatientFirstName();
+            String last = appointment.getPatientLastName();
+            String name;
+            if ((first == null || first.trim().isEmpty())
+                    && (last == null || last.trim().isEmpty())) {
+                name = itemView.getContext().getString(R.string.profile_role_patient);
+            } else {
+                StringBuilder b = new StringBuilder();
+                if (first != null && !first.trim().isEmpty()) {
+                    b.append(first.trim());
+                }
+                if (last != null && !last.trim().isEmpty()) {
+                    if (b.length() > 0) b.append(" ");
+                    b.append(last.trim());
+                }
+                name = b.toString();
+            }
+            textPatientName.setText(name);
+
+            // Date/time
+            String dateTime = AppointmentUiHelper.buildDateTimeDisplay(
+                    appointment.getStartAt(),
+                    appointment.getEndAt(),
+                    itemView.getContext()
+            );
+            textDateTime.setText(dateTime);
+
+            // Status chip
+            bindStatus(appointment.getStatus());
+
+            // Teleconsultation label
+            Boolean tele = appointment.getTeleconsultation();
+            if (tele != null && tele) {
+                textTele.setVisibility(View.VISIBLE);
+                textTele.setText(R.string.appointment_teleconsultation_label);
+            } else {
+                textTele.setVisibility(View.GONE);
+            }
+
+            // Reason
+            String reason = appointment.getReason();
+            if (reason != null && !reason.trim().isEmpty()) {
+                textReason.setVisibility(View.VISIBLE);
+                textReason.setText(reason.trim());
+            } else {
+                textReason.setVisibility(View.GONE);
+            }
+
+            // Accept / Reject visibility & click
+            String statusRaw = appointment.getStatus();
+            String status = statusRaw != null
+                    ? statusRaw.toUpperCase(Locale.getDefault())
+                    : "";
+
+            boolean isPending = "PENDING".equals(status);
+
+            if (isPending) {
+                buttonAccept.setVisibility(View.VISIBLE);
+                buttonReject.setVisibility(View.VISIBLE);
+
+                buttonAccept.setOnClickListener(v -> actionListener.onAccept(appointment));
+                buttonReject.setOnClickListener(v -> actionListener.onReject(appointment));
+            } else {
+                buttonAccept.setVisibility(View.GONE);
+                buttonReject.setVisibility(View.GONE);
+                buttonAccept.setOnClickListener(null);
+                buttonReject.setOnClickListener(null);
+            }
+
+            // Card click -> open patient profile
+            cardRoot.setOnClickListener(v -> clickListener.onAppointmentClick(appointment));
         }
 
-        public void setDateOfBirth(String dateOfBirth) {
-            this.dateOfBirth = dateOfBirth;
+        private void bindStatus(@Nullable String statusRaw) {
+            String label;
+            if (statusRaw == null) {
+                label = itemView.getContext().getString(R.string.appointment_status_unknown);
+            } else {
+                String s = statusRaw.toUpperCase(Locale.getDefault());
+                switch (s) {
+                    case "PENDING":
+                        label = itemView.getContext().getString(R.string.appointment_status_pending);
+                        break;
+                    case "ACCEPTED":
+                        label = itemView.getContext().getString(R.string.appointment_status_accepted);
+                        break;
+                    case "REJECTED":
+                        label = itemView.getContext().getString(R.string.appointment_status_rejected);
+                        break;
+                    case "COMPLETED":
+                        label = itemView.getContext().getString(R.string.appointment_status_completed);
+                        break;
+                    default:
+                        label = itemView.getContext().getString(R.string.appointment_status_unknown);
+                        break;
+                }
+            }
+            textStatusChip.setText(label);
         }
+    }
+}
 
-        public String getGender() {
-            return gender;
-        }
 
-        public void setGender(String gender) {
-            this.gender = gender;
-        }
+===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/DoctorHomeStats.java =====
+package tn.esprit.domain.appointment;
 
-        public String getBloodType() {
-            return bloodType;
-        }
+/**
+ * Simple stats model for the doctor home highlight card.
+ *
+ * - todayAppointments: number of appointments scheduled for today.
+ * - weekAppointments: number of appointments in the current week.
+ * - patientsWithAppointments: distinct patients with at least one appointment this week.
+ */
+public class DoctorHomeStats {
 
-        public void setBloodType(String bloodType) {
-            this.bloodType = bloodType;
-        }
+    private final int todayAppointments;
+    private final int weekAppointments;
+    private final int patientsWithAppointments;
 
-        public Integer getHeightCm() {
-            return heightCm;
-        }
+    public DoctorHomeStats(int todayAppointments,
+                           int weekAppointments,
+                           int patientsWithAppointments) {
+        this.todayAppointments = todayAppointments;
+        this.weekAppointments = weekAppointments;
+        this.patientsWithAppointments = patientsWithAppointments;
+    }
 
-        public void setHeightCm(Integer heightCm) {
-            this.heightCm = heightCm;
-        }
+    public static DoctorHomeStats empty() {
+        return new DoctorHomeStats(0, 0, 0);
+    }
 
-        public Integer getWeightKg() {
-            return weightKg;
-        }
+    public int getTodayAppointments() {
+        return todayAppointments;
+    }
 
-        public void setWeightKg(Integer weightKg) {
-            this.weightKg = weightKg;
-        }
+    public int getWeekAppointments() {
+        return weekAppointments;
+    }
 
-        public String getAddress() {
-            return address;
-        }
-
-        public void setAddress(String address) {
-            this.address = address;
-        }
-
-        public String getCity() {
-            return city;
-        }
-
-        public void setCity(String city) {
-            this.city = city;
-        }
-
-        public String getCountry() {
-            return country;
-        }
-
-        public void setCountry(String country) {
-            this.country = country;
-        }
-
-        public String getMaritalStatus() {
-            return maritalStatus;
-        }
-
-        public void setMaritalStatus(String maritalStatus) {
-            this.maritalStatus = maritalStatus;
-        }
-
-        public Boolean getSmoker() {
-            return smoker;
-        }
-
-        public void setSmoker(Boolean smoker) {
-            this.smoker = smoker;
-        }
-
-        public Boolean getAlcoholUse() {
-            return alcoholUse;
-        }
-
-        public void setAlcoholUse(Boolean alcoholUse) {
-            this.alcoholUse = alcoholUse;
-        }
-
-        public String getNotes() {
-            return notes;
-        }
-
-        public void setNotes(String notes) {
-            this.notes = notes;
-        }
+    public int getPatientsWithAppointments() {
+        return patientsWithAppointments;
     }
 }
 
