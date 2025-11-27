@@ -28,9 +28,11 @@ public class HomeFragment extends Fragment {
     private TextView textStatToday;
     private TextView textStatWeek;
     private TextView textStatPatients;
-
     private TextView textNextTime;
     private TextView textNextPatient;
+
+    private TextView textHighlightTitle;
+    private TextView textHighlightSubtitle;
 
     private TextView chipQuickBook;
     private TextView chipQuickMessages;
@@ -66,9 +68,7 @@ public class HomeFragment extends Fragment {
 
     private void showDoctorHome() {
         doctorContainer.setVisibility(View.VISIBLE);
-        if (patientContainer != null) {
-            patientContainer.setVisibility(View.GONE);
-        }
+        if (patientContainer != null) patientContainer.setVisibility(View.GONE);
 
         if (!doctorViewInflated) {
             LayoutInflater.from(requireContext())
@@ -83,6 +83,9 @@ public class HomeFragment extends Fragment {
         textNextTime = doctorContainer.findViewById(R.id.text_next_time);
         textNextPatient = doctorContainer.findViewById(R.id.text_next_patient);
 
+        textHighlightTitle = doctorContainer.findViewById(R.id.text_highlight_title);
+        textHighlightSubtitle = doctorContainer.findViewById(R.id.text_highlight_subtitle);
+
         chipQuickBook = doctorContainer.findViewById(R.id.chip_quick_book);
         chipQuickMessages = doctorContainer.findViewById(R.id.chip_quick_messages);
         chipQuickReports = doctorContainer.findViewById(R.id.chip_quick_reports);
@@ -96,6 +99,12 @@ public class HomeFragment extends Fragment {
 
         doctorContainer.findViewById(R.id.text_view_all_patients)
                 .setOnClickListener(v -> openPatients());
+
+        // NEW: click on next appointment card
+        View cardNext = doctorContainer.findViewById(R.id.card_next_appointment);
+        if (cardNext != null) {
+            cardNext.setOnClickListener(v -> openAppointments()); // temporary until Phase 2
+        }
 
         doctorHomeViewModel = new ViewModelProvider(this).get(DoctorHomeViewModel.class);
         observe();
@@ -121,20 +130,21 @@ public class HomeFragment extends Fragment {
     }
 
     private void bindStats(@NonNull DoctorHomeStats s) {
-        // counts
+
+        // dynamic highlight subtitle
+        textHighlightSubtitle.setText(getString(R.string.home_highlight_subtitle));
+
         textStatToday.setText(String.valueOf(s.todayAppointments));
         textStatWeek.setText(String.valueOf(s.weekAppointments));
         textStatPatients.setText(String.valueOf(s.totalPatients));
 
-        // next appointment
         if (s.nextAppointmentStart != null && !s.nextAppointmentStart.isEmpty()) {
             textNextTime.setText(s.nextAppointmentStart);
         } else {
             textNextTime.setText(getString(R.string.home_next_appointment_none));
         }
 
-        if (s.nextAppointmentPatientName != null
-                && !s.nextAppointmentPatientName.isEmpty()) {
+        if (s.nextAppointmentPatientName != null && !s.nextAppointmentPatientName.isEmpty()) {
             textNextPatient.setText(s.nextAppointmentPatientName);
         } else {
             textNextPatient.setText("");

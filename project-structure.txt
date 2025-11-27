@@ -203,7 +203,6 @@
 ./app/src/main/java/tn/esprit/presentation/home/SlotAdapter.java
 ./app/src/main/java/tn/esprit/presentation/home/BookAppointmentBottomSheet.java
 ./app/src/main/java/tn/esprit/presentation/home/HomeFragment.java
-./app/src/main/java/tn/esprit/presentation/home/DoctorHomeViewModel.java
 ./app/src/main/java/tn/esprit/presentation/home/PatientPublicProfileFragment.java
 ./app/src/main/java/tn/esprit/presentation/home/HomeGateFragment.java
 ./app/src/main/java/tn/esprit/presentation/home/PatientIndicatorsViewModel.java

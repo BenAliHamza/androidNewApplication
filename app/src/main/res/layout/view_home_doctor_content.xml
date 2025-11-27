@@ -62,7 +62,7 @@
                         android:layout_marginTop="6dp"
                         android:text="@string/home_highlight_subtitle"
                         android:textColor="#E0F2F1"
-                        android:textSize="13sp" />
+                        android:textSize="14sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -163,7 +163,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Next appointment preview card (NEW) -->
+            <!-- Next appointment preview card -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_next_appointment"
                 android:layout_width="match_parent"
