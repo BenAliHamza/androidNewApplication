@@ -12,10 +12,6 @@ import retrofit2.http.Query;
 import tn.esprit.data.remote.common.ListResponseDto;
 import tn.esprit.domain.appointment.DoctorSchedule;
 
-/**
- * Retrofit interface for doctor schedule & availability endpoints.
- * Corrected endpoint paths.
- */
 public interface DoctorScheduleApiService {
 
     @GET("api/doctors/me/schedule")

@@ -16,10 +16,6 @@ import tn.esprit.domain.appointment.AppointmentCreateRequest;
 import tn.esprit.domain.appointment.AppointmentStatusUpdateRequest;
 import tn.esprit.domain.appointment.WeeklyCalendarResponse;
 
-/**
- * Retrofit API for appointment operations.
- * Corrected to include "api/" prefix for all endpoints.
- */
 public interface AppointmentApiService {
 
     @POST("api/appointments")

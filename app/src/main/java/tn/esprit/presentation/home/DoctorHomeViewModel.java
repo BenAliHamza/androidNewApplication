@@ -20,7 +20,7 @@ import java.util.Set;
 import tn.esprit.R;
 import tn.esprit.data.appointment.AppointmentRepository;
 import tn.esprit.domain.appointment.Appointment;
-import tn.esprit.domain.appointment.DoctorHomeStats;
+import tn.esprit.presentation.appointment.DoctorHomeStats;
 
 /**
  * ViewModel backing the doctor home highlight stats card.

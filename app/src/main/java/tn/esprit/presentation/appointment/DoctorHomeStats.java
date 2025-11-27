@@ -1,11 +1,9 @@
-package tn.esprit.domain.appointment;
+package tn.esprit.presentation.appointment;
+
+import androidx.annotation.NonNull;
 
 /**
- * Simple stats model for the doctor home highlight card.
- *
- * - todayAppointments: number of appointments scheduled for today.
- * - weekAppointments: number of appointments in the current week.
- * - patientsWithAppointments: distinct patients with at least one appointment this week.
+ * Small value object for the doctor home stats card.
  */
 public class DoctorHomeStats {
 
@@ -21,10 +19,6 @@ public class DoctorHomeStats {
         this.patientsWithAppointments = patientsWithAppointments;
     }
 
-    public static DoctorHomeStats empty() {
-        return new DoctorHomeStats(0, 0, 0);
-    }
-
     public int getTodayAppointments() {
         return todayAppointments;
     }
@@ -35,5 +29,10 @@ public class DoctorHomeStats {
 
     public int getPatientsWithAppointments() {
         return patientsWithAppointments;
+    }
+
+    @NonNull
+    public static DoctorHomeStats empty() {
+        return new DoctorHomeStats(0, 0, 0);
     }
 }

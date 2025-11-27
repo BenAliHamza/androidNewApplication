@@ -17,22 +17,10 @@ import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 
 import tn.esprit.R;
-import tn.esprit.domain.appointment.DoctorHomeStats;
+import tn.esprit.presentation.appointment.DoctorHomeStats;
 
 /**
- * Role-aware Home container.
- *
- * In the current flow:
- *  - PATIENT users are routed directly to PatientHomeFragment (not here) by HomeGate/MainActivity.
- *  - DOCTOR (and unknown) users land here, and we show the doctor home content.
- *
- * This fragment:
- *  - Shows a progress bar (kept for possible future async work).
- *  - Inflates the doctor-specific home layout into the doctor container.
- *  - Wires:
- *      - "View all patients" CTA -> DoctorPatientsFragment
- *      - "My appointments" button -> DoctorAppointmentsFragment
- *      - Highlight stats -> DoctorHomeViewModel (today / week / patients)
+ * Role-aware Home container for doctor home UI.
  */
 public class HomeFragment extends Fragment {
 
@@ -40,15 +28,14 @@ public class HomeFragment extends Fragment {
     private FrameLayout doctorContainer;
     private FrameLayout patientContainer;
 
-    // Doctor stats views
-    @Nullable
-    private TextView textStatTodayCount;
-    @Nullable
-    private TextView textStatWeekCount;
-    @Nullable
-    private TextView textStatPatientsCount;
+    private TextView textStatToday;
+    private TextView textStatWeek;
+    private TextView textStatPatients;
 
-    @Nullable
+    private TextView chipQuickBook;
+    private TextView chipQuickMessages;
+    private TextView chipQuickReports;
+
     private DoctorHomeViewModel doctorHomeViewModel;
 
     @Nullable
@@ -68,99 +55,80 @@ public class HomeFragment extends Fragment {
         doctorContainer = view.findViewById(R.id.home_doctor_container);
         patientContainer = view.findViewById(R.id.home_patient_container);
 
-        // Current navigation: this fragment is used for doctors.
         showDoctorHome();
     }
 
     private void showDoctorHome() {
-        if (doctorContainer == null) return;
-
         doctorContainer.setVisibility(View.VISIBLE);
-        if (patientContainer != null) {
-            patientContainer.setVisibility(View.GONE);
-        }
-
-        if (progressBar != null) {
-            progressBar.setVisibility(View.GONE);
-        }
+        if (patientContainer != null) patientContainer.setVisibility(View.GONE);
 
         if (doctorContainer.getChildCount() == 0) {
             LayoutInflater.from(requireContext())
                     .inflate(R.layout.view_home_doctor_content, doctorContainer, true);
         }
 
-        // Grab stats views
-        textStatTodayCount = doctorContainer.findViewById(R.id.text_stat_today_count);
-        textStatWeekCount = doctorContainer.findViewById(R.id.text_stat_week_count);
-        textStatPatientsCount = doctorContainer.findViewById(R.id.text_stat_patients_count);
+        textStatToday = doctorContainer.findViewById(R.id.text_stat_today_count);
+        textStatWeek = doctorContainer.findViewById(R.id.text_stat_week_count);
+        textStatPatients = doctorContainer.findViewById(R.id.text_stat_patients_count);
 
-        // "View all patients"
-        TextView viewAllPatients = doctorContainer.findViewById(R.id.text_view_all_patients);
-        if (viewAllPatients != null) {
-            viewAllPatients.setOnClickListener(v -> navigateToDoctorPatients());
-        }
+        chipQuickBook = doctorContainer.findViewById(R.id.chip_quick_book);
+        chipQuickMessages = doctorContainer.findViewById(R.id.chip_quick_messages);
+        chipQuickReports = doctorContainer.findViewById(R.id.chip_quick_reports);
 
-        // "My appointments" CTA
-        View btnAppointments = doctorContainer.findViewById(R.id.button_doctor_home_appointments);
-        if (btnAppointments != null) {
-            btnAppointments.setOnClickListener(v -> navigateToDoctorAppointments());
-        }
+        chipQuickBook.setOnClickListener(v -> openAppointments());
+        chipQuickMessages.setOnClickListener(v -> showComingSoon());
+        chipQuickReports.setOnClickListener(v -> showComingSoon());
 
-        // ViewModel for stats
-        doctorHomeViewModel = new ViewModelProvider(this)
-                .get(DoctorHomeViewModel.class);
+        doctorContainer.findViewById(R.id.button_doctor_home_appointments)
+                .setOnClickListener(v -> openAppointments());
 
-        observeDoctorHomeStats();
+        doctorContainer.findViewById(R.id.text_view_all_patients)
+                .setOnClickListener(v -> openPatients());
 
-        if (doctorHomeViewModel != null) {
-            doctorHomeViewModel.loadStats();
-        }
+        doctorHomeViewModel = new ViewModelProvider(this).get(DoctorHomeViewModel.class);
+
+        observe();
+        doctorHomeViewModel.loadStats();
     }
 
-    private void observeDoctorHomeStats() {
-        if (doctorHomeViewModel == null) return;
+    private void observe() {
+        doctorHomeViewModel.getStats().observe(getViewLifecycleOwner(), stats -> {
+            if (stats != null) bindStats(stats);
+        });
 
-        doctorHomeViewModel.getStats().observe(
-                getViewLifecycleOwner(),
-                stats -> {
-                    if (stats == null) return;
-                    bindStatsToViews(stats);
-                }
-        );
+        doctorHomeViewModel.getLoading().observe(getViewLifecycleOwner(), isLoading -> {
+            if (progressBar != null) {
+                progressBar.setVisibility(Boolean.TRUE.equals(isLoading) ? View.VISIBLE : View.GONE);
+            }
+        });
 
-        doctorHomeViewModel.getErrorMessage().observe(
-                getViewLifecycleOwner(),
-                msg -> {
-                    if (msg == null || msg.trim().isEmpty()) return;
-                    if (isAdded()) {
-                        Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
-                    }
-                    doctorHomeViewModel.clearError();
-                }
-        );
+        doctorHomeViewModel.getErrorMessage().observe(getViewLifecycleOwner(), msg -> {
+            if (msg != null && !msg.trim().isEmpty() && isAdded()) {
+                Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+            }
+            doctorHomeViewModel.clearError();
+        });
     }
 
-    private void bindStatsToViews(@NonNull DoctorHomeStats stats) {
-        if (textStatTodayCount != null) {
-            textStatTodayCount.setText(String.valueOf(stats.getTodayAppointments()));
-        }
-        if (textStatWeekCount != null) {
-            textStatWeekCount.setText(String.valueOf(stats.getWeekAppointments()));
-        }
-        if (textStatPatientsCount != null) {
-            textStatPatientsCount.setText(
-                    String.valueOf(stats.getPatientsWithAppointments())
-            );
-        }
+    private void bindStats(DoctorHomeStats s) {
+        textStatToday.setText(String.valueOf(s.getTodayAppointments()));
+        textStatWeek.setText(String.valueOf(s.getWeekAppointments()));
+        textStatPatients.setText(String.valueOf(s.getPatientsWithAppointments()));
     }
 
-    private void navigateToDoctorPatients() {
-        NavController navController = NavHostFragment.findNavController(this);
-        navController.navigate(R.id.doctorPatientsFragment);
+    private void openAppointments() {
+        NavHostFragment.findNavController(this)
+                .navigate(R.id.doctorAppointmentsFragment);
     }
 
-    private void navigateToDoctorAppointments() {
-        NavController navController = NavHostFragment.findNavController(this);
-        navController.navigate(R.id.doctorAppointmentsFragment);
+    private void openPatients() {
+        NavHostFragment.findNavController(this)
+                .navigate(R.id.doctorPatientsFragment);
+    }
+
+    private void showComingSoon() {
+        Toast.makeText(requireContext(),
+                R.string.home_bottom_history_coming_soon,
+                Toast.LENGTH_SHORT).show();
     }
 }
