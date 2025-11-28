@@ -6,7 +6,8 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="20dp"
-    android:background="@color/color_surface">
+    android:background="@color/color_surface"
+    tools:context="tn.esprit.presentation.appointment.DoctorAppointmentDetailBottomSheet">
 
     <!-- Title -->
     <TextView
@@ -14,17 +15,18 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/doctor_appointment_detail_title"
+        android:textSize="18sp"
+        android:textStyle="bold"
         android:textColor="@color/color_on_background"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        tools:text="Appointment details" />
 
     <!-- Patient name -->
     <TextView
         android:id="@+id/text_patient_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:textSize="15sp"
+        android:layout_marginTop="12dp"
+        android:textSize="16sp"
         android:textStyle="bold"
         android:textColor="@color/color_on_background"
         tools:text="John Doe" />
@@ -35,33 +37,33 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:textSize="13sp"
+        android:textSize="14sp"
         android:textColor="@color/color_on_background_secondary"
-        tools:text="Thu, 28 Nov  •  09:00 – 09:30" />
+        tools:text="Today • 09:00 – 09:30" />
 
     <!-- Status chip -->
     <TextView
         android:id="@+id/text_status_chip"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:paddingHorizontal="10dp"
+        android:layout_marginTop="10dp"
+        android:paddingHorizontal="12dp"
         android:paddingVertical="4dp"
         android:textSize="12sp"
         android:textColor="@color/white"
-        tools:text="Pending" />
+        android:background="@drawable/bg_chip_outline"
+        tools:text="Accepted" />
 
     <!-- Teleconsultation -->
     <TextView
         android:id="@+id/text_teleconsultation"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="@string/appointment_teleconsultation_label"
+        android:layout_marginTop="8dp"
         android:textSize="13sp"
         android:textColor="@color/color_primary_variant"
         android:visibility="gone"
-        tools:visibility="visible" />
+        tools:text="Teleconsultation" />
 
     <!-- Reason -->
     <TextView
@@ -72,18 +74,26 @@
         android:textSize="13sp"
         android:textColor="@color/color_on_background"
         android:visibility="gone"
-        tools:visibility="visible"
-        tools:text="Reason goes here lorem ipsum dolor sit amet, consectetur adipiscing elit." />
+        tools:text="Reason: follow-up on blood test results" />
 
-    <!-- View profile action -->
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="#EEEEEE" />
+
+    <!-- View profile CTA -->
     <TextView
         android:id="@+id/text_view_profile"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
+        android:paddingVertical="8dp"
         android:text="@string/doctor_appointment_detail_view_profile"
         android:textColor="@color/color_primary"
         android:textSize="14sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="View patient profile" />
 
 </LinearLayout>

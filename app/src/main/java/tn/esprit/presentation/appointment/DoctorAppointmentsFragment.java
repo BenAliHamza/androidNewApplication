@@ -24,9 +24,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Date;
 
 import tn.esprit.R;
 import tn.esprit.domain.appointment.Appointment;
@@ -42,7 +42,7 @@ public class DoctorAppointmentsFragment extends Fragment {
     private ProgressBar progressBar;
     private TextView textEmpty;
 
-    // NEW: root content container (matches layout_doctor_appointments_content)
+    // Root content container
     private View contentLayout;
 
     // Header views
@@ -93,7 +93,6 @@ public class DoctorAppointmentsFragment extends Fragment {
         progressBar = view.findViewById(R.id.doctor_appointments_progress);
         textEmpty = view.findViewById(R.id.text_doctor_appointments_empty);
 
-        // NEW: content root inside the layout
         contentLayout = view.findViewById(R.id.layout_doctor_appointments_content);
 
         overviewTitle = view.findViewById(R.id.text_doctor_appointments_overview_title);
@@ -113,7 +112,7 @@ public class DoctorAppointmentsFragment extends Fragment {
                         if (viewModel != null) viewModel.rejectAppointment(appointment);
                     }
                 },
-                this::openPatientProfileForAppointment
+                this::openAppointmentDetail  // <-- open bottom sheet instead of direct profile
         );
 
         recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -189,12 +188,10 @@ public class DoctorAppointmentsFragment extends Fragment {
     }
 
     private void setupHeaderClicks() {
-        // Obvious "Choose date" chip
         if (pickDateText != null) {
             pickDateText.setOnClickListener(v -> openDatePicker());
         }
 
-        // Title & counts also open the picker
         if (overviewTitle != null) {
             overviewTitle.setOnClickListener(v -> openDatePicker());
         }
@@ -219,7 +216,6 @@ public class DoctorAppointmentsFragment extends Fragment {
             if (progressBar != null) {
                 progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
             }
-            // NEW: hide content while loading so spinner is not "behind" the list
             if (contentLayout != null) {
                 contentLayout.setVisibility(isLoading ? View.INVISIBLE : View.VISIBLE);
             }
@@ -376,6 +372,7 @@ public class DoctorAppointmentsFragment extends Fragment {
         }
     }
 
+    // Still here if you ever want to reuse direct navigation
     private void openPatientProfileForAppointment(@NonNull Appointment appointment) {
         Long patientUserId = appointment.getPatientUserId();
         if (patientUserId == null || patientUserId <= 0L) return;
@@ -385,6 +382,46 @@ public class DoctorAppointmentsFragment extends Fragment {
 
         NavController navController = NavHostFragment.findNavController(this);
         navController.navigate(R.id.patientPublicProfileFragment, args);
+    }
+
+    /**
+     * New: open detail bottom sheet when tapping a card.
+     */
+    private void openAppointmentDetail(@NonNull Appointment appointment) {
+        if (!isAdded()) return;
+
+        Long patientUserId = appointment.getPatientUserId();
+
+        String first = appointment.getPatientFirstName();
+        String last = appointment.getPatientLastName();
+        String name;
+        if ((first == null || first.trim().isEmpty())
+                && (last == null || last.trim().isEmpty())) {
+            name = getString(R.string.profile_role_patient);
+        } else {
+            StringBuilder b = new StringBuilder();
+            if (first != null && !first.trim().isEmpty()) {
+                b.append(first.trim());
+            }
+            if (last != null && !last.trim().isEmpty()) {
+                if (b.length() > 0) b.append(" ");
+                b.append(last.trim());
+            }
+            name = b.toString();
+        }
+
+        boolean tele = Boolean.TRUE.equals(appointment.getTeleconsultation());
+
+        DoctorAppointmentDetailBottomSheet.show(
+                getParentFragmentManager(),
+                patientUserId != null ? patientUserId : -1L,
+                name,
+                appointment.getStartAt(),
+                appointment.getEndAt(),
+                appointment.getStatus(),
+                appointment.getReason(),
+                tele
+        );
     }
 
     // -------------------------------------------------------------------------

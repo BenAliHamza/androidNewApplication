@@ -823,6 +823,8 @@
 
 
 
+    <string name="home_next_appointment_today">Today • %1$s</string>
+    <string name="home_next_appointment_date_time">%1$s • %2$s</string>
 
 
     <!-- If you haven't added this earlier for the "in past" restriction -->

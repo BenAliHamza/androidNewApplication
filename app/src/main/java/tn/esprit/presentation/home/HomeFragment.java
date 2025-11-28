@@ -1,7 +1,6 @@
 package tn.esprit.presentation.home;
 
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -78,6 +77,10 @@ public class HomeFragment extends Fragment {
         showDoctorHome();
     }
 
+    // -------------------------------------------------------------------------
+    // Doctor home setup
+    // -------------------------------------------------------------------------
+
     private void showDoctorHome() {
         if (doctorContainer == null) return;
 
@@ -117,17 +120,15 @@ public class HomeFragment extends Fragment {
         doctorContainer.findViewById(R.id.text_view_all_patients)
                 .setOnClickListener(v -> openPatients());
 
-        // NEW: tap on the "Next appointment" card also opens the appointments screen
-        View nextCard = doctorContainer.findViewById(R.id.card_next_appointment);
-        if (nextCard != null) {
-            nextCard.setOnClickListener(v -> openAppointments());
-        }
-
         doctorHomeViewModel = new ViewModelProvider(this).get(DoctorHomeViewModel.class);
         observe();
 
         doctorHomeViewModel.loadStats();
     }
+
+    // -------------------------------------------------------------------------
+    // Observers
+    // -------------------------------------------------------------------------
 
     private void observe() {
         doctorHomeViewModel.getStats().observe(getViewLifecycleOwner(), s -> {
@@ -156,8 +157,12 @@ public class HomeFragment extends Fragment {
         });
     }
 
+    // -------------------------------------------------------------------------
+    // Bind UI
+    // -------------------------------------------------------------------------
+
     private void bindStats(@NonNull DoctorHomeStats s) {
-        // static highlight for now (you can later personalize based on stats if you want)
+        // Static highlight for now
         if (textHighlightTitle != null) {
             textHighlightTitle.setText(getString(R.string.home_highlight_title));
         }
@@ -175,34 +180,66 @@ public class HomeFragment extends Fragment {
             textStatPatients.setText(String.valueOf(s.totalPatients));
         }
 
-        // Nicely formatted "next appointment" datetime
+        // Next appointment time: pretty format
         if (textNextTime != null) {
-            String rawStart = s.nextAppointmentStart;
-            if (!TextUtils.isEmpty(rawStart)) {
-                Date parsed = AppointmentUiHelper.parseDate(rawStart);
-                if (parsed != null) {
-                    SimpleDateFormat fmt =
-                            new SimpleDateFormat("EEE, d MMM • HH:mm", Locale.getDefault());
-                    String pretty = fmt.format(parsed);
-                    textNextTime.setText(pretty);
-                } else {
-                    // Fallback: show whatever backend sent
-                    textNextTime.setText(rawStart);
-                }
+            String pretty = formatNextAppointmentStart(s.nextAppointmentStart);
+            if (pretty != null && !pretty.isEmpty()) {
+                textNextTime.setText(pretty);
             } else {
                 textNextTime.setText(getString(R.string.home_next_appointment_none));
             }
         }
 
+        // Next patient name (if any)
         if (textNextPatient != null) {
-            if (s.nextAppointmentPatientName != null
-                    && !s.nextAppointmentPatientName.isEmpty()) {
+            if (s.nextAppointmentPatientName != null && !s.nextAppointmentPatientName.isEmpty()) {
                 textNextPatient.setText(s.nextAppointmentPatientName);
             } else {
                 textNextPatient.setText("");
             }
         }
     }
+
+    /**
+     * Formats ISO datetime into something like:
+     *  - "Today • 09:30"  (if same date as today)
+     *  - "Thu, 27 Nov • 09:30" (otherwise)
+     *
+     * Returns null if input is empty or cannot be parsed.
+     */
+    @Nullable
+    private String formatNextAppointmentStart(@Nullable String startIso) {
+        if (startIso == null || startIso.trim().isEmpty()) {
+            return null;
+        }
+
+        Date date = AppointmentUiHelper.parseDate(startIso);
+        if (date == null) {
+            // Fall back to raw string if parsing fails rather than crashing
+            return startIso;
+        }
+
+        String todayPrefix = AppointmentUiHelper.getTodayDatePrefix();
+        String datePrefix = AppointmentUiHelper.safeDatePrefix(startIso);
+
+        SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        SimpleDateFormat dateFmt = new SimpleDateFormat("EEE, d MMM", Locale.getDefault());
+
+        String time = timeFmt.format(date);
+
+        if (todayPrefix != null && todayPrefix.equals(datePrefix)) {
+            // Example: "Today • 09:30"
+            return getString(R.string.home_next_appointment_today, time);
+        } else {
+            // Example: "Thu, 27 Nov • 09:30"
+            String dateLabel = dateFmt.format(date);
+            return getString(R.string.home_next_appointment_date_time, dateLabel, time);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Navigation helpers
+    // -------------------------------------------------------------------------
 
     private void openAppointments() {
         NavHostFragment.findNavController(this)
