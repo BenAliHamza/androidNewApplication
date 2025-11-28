@@ -1,6 +1,9 @@
 package tn.esprit.presentation.appointment;
 
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,7 +28,7 @@ import tn.esprit.domain.appointment.Appointment;
  *
  * - Shows patient name, time range, status, tele flag, reason.
  * - If status == PENDING and appointment is in the future -> shows Accept / Reject buttons.
- * - Card click opens patient profile.
+ * - Card click opens appointment detail bottom sheet (then patient profile from there).
  */
 public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorAppointmentAdapter.AppointmentViewHolder> {
 
@@ -33,7 +36,6 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
 
     public interface OnAppointmentActionListener {
         void onAccept(@NonNull Appointment appointment);
-
         void onReject(@NonNull Appointment appointment);
     }
 
@@ -154,7 +156,7 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
             );
             textDateTime.setText(dateTime);
 
-            // Status chip
+            // Status chip (with color)
             bindStatus(appointment.getStatus());
 
             // Teleconsultation label
@@ -181,8 +183,6 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
                     ? statusRaw.toUpperCase(Locale.getDefault())
                     : "";
             boolean isPending = "PENDING".equals(status);
-
-            // ✅ FIX: pass the ISO string, not the Appointment object
             boolean isPast = AppointmentUiHelper.isInPast(appointment.getStartAt());
 
             Log.d(TAG, "bind: id=" + appointment.getId()
@@ -225,16 +225,17 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
                 buttonReject.setOnClickListener(null);
             }
 
-            // Card click -> open patient profile
+            // Card click -> open appointment details bottom sheet
             cardRoot.setOnClickListener(v -> clickListener.onAppointmentClick(appointment));
         }
 
         private void bindStatus(@Nullable String statusRaw) {
             String label;
+            String s = "";
             if (statusRaw == null) {
                 label = itemView.getContext().getString(R.string.appointment_status_unknown);
             } else {
-                String s = statusRaw.toUpperCase(Locale.getDefault());
+                s = statusRaw.toUpperCase(Locale.getDefault());
                 switch (s) {
                     case "PENDING":
                         label = itemView.getContext().getString(R.string.appointment_status_pending);
@@ -253,7 +254,46 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
                         break;
                 }
             }
+
             textStatusChip.setText(label);
+
+            // Color logic (background + text) – using hardcoded colors, not extra resources
+            int bgColor;
+            int textColor = Color.WHITE;
+
+            switch (s) {
+                case "PENDING":
+                    bgColor = Color.parseColor("#F9A825"); // amber
+                    break;
+                case "ACCEPTED":
+                    bgColor = Color.parseColor("#2E7D32"); // green
+                    break;
+                case "REJECTED":
+                    bgColor = Color.parseColor("#C62828"); // red
+                    break;
+                case "COMPLETED":
+                    bgColor = Color.parseColor("#546E7A"); // blue-grey
+                    break;
+                default:
+                    bgColor = Color.parseColor("#757575"); // grey
+                    break;
+            }
+
+            GradientDrawable bg = new GradientDrawable();
+            bg.setShape(GradientDrawable.RECTANGLE);
+            bg.setCornerRadius(dpToPx(999)); // pill
+            bg.setColor(bgColor);
+
+            textStatusChip.setBackground(bg);
+            textStatusChip.setTextColor(textColor);
+        }
+
+        private float dpToPx(float dp) {
+            return TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP,
+                    dp,
+                    itemView.getResources().getDisplayMetrics()
+            );
         }
     }
 }

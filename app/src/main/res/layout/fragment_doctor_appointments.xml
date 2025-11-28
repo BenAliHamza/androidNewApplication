@@ -32,7 +32,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Overview title (clickable to open date picker) -->
+        <!-- Small overview / mini-calendar style header -->
         <TextView
             android:id="@+id/text_doctor_appointments_overview_title"
             android:layout_width="wrap_content"
@@ -40,9 +40,8 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/color_on_background"
-            tools:text="Today · Fri, 28 Nov" />
+            tools:text="Today · Thu, 27 Nov 2025" />
 
-        <!-- Overview counts -->
         <TextView
             android:id="@+id/text_doctor_appointments_overview_counts"
             android:layout_width="wrap_content"
@@ -52,39 +51,45 @@
             android:textColor="@color/color_on_background_secondary"
             tools:text="Today: 1 · Upcoming: 2 · Past: 0" />
 
-        <!-- Date filter chips row -->
+        <!-- Header actions row: Pick date / Clear filter -->
         <LinearLayout
-            android:id="@+id/layout_doctor_appointments_filters"
+            android:id="@+id/layout_doctor_appointments_header_actions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
-            <!-- Visible chip: open date picker -->
+            <!-- Pick date chip -->
             <TextView
                 android:id="@+id/text_doctor_appointments_pick_date"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_chip_outline"
-                android:paddingHorizontal="12dp"
+                android:paddingHorizontal="14dp"
                 android:paddingVertical="6dp"
-                android:text="@string/doctor_appointments_pick_date_label"
+                android:text="@string/doctor_appointments_pick_date_chip"
+                android:textColor="@color/color_primary"
                 android:textSize="13sp"
-                android:textColor="@color/color_on_background" />
+                tools:text="Pick a date 📅" />
 
-            <!-- Clear filter chip (shown only when filtered) -->
+            <Space
+                android:layout_width="8dp"
+                android:layout_height="wrap_content" />
+
+            <!-- Clear filter chip (only visible when a date filter is active) -->
             <TextView
                 android:id="@+id/text_doctor_appointments_filter_clear"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
                 android:background="@drawable/bg_chip_outline"
-                android:paddingHorizontal="12dp"
+                android:paddingHorizontal="14dp"
                 android:paddingVertical="6dp"
-                android:text="@string/doctor_appointments_clear_filter_label"
-                android:textSize="13sp"
+                android:text="@string/doctor_appointments_filter_clear"
                 android:textColor="@color/color_on_background_secondary"
-                android:visibility="gone" />
+                android:textSize="13sp"
+                android:visibility="gone"
+                tools:visibility="visible"
+                tools:text="Clear filter" />
         </LinearLayout>
 
         <!-- Tabs: Today / Upcoming / Past -->
@@ -116,7 +121,8 @@
             android:text="@string/doctor_appointments_empty"
             android:textColor="@color/color_on_background_secondary"
             android:textSize="14sp"
-            android:visibility="gone" />
+            android:visibility="gone"
+            tools:text="No appointments to show." />
 
     </LinearLayout>
 

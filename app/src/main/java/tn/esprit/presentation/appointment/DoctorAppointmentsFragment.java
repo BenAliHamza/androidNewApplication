@@ -24,9 +24,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Date;
 
 import tn.esprit.R;
 import tn.esprit.domain.appointment.Appointment;
@@ -41,6 +41,9 @@ public class DoctorAppointmentsFragment extends Fragment {
     private RecyclerView recycler;
     private ProgressBar progressBar;
     private TextView textEmpty;
+
+    // NEW: root content container (matches layout_doctor_appointments_content)
+    private View contentLayout;
 
     // Header views
     private TextView overviewTitle;
@@ -89,6 +92,9 @@ public class DoctorAppointmentsFragment extends Fragment {
         recycler = view.findViewById(R.id.recycler_doctor_appointments);
         progressBar = view.findViewById(R.id.doctor_appointments_progress);
         textEmpty = view.findViewById(R.id.text_doctor_appointments_empty);
+
+        // NEW: content root inside the layout
+        contentLayout = view.findViewById(R.id.layout_doctor_appointments_content);
 
         overviewTitle = view.findViewById(R.id.text_doctor_appointments_overview_title);
         overviewCounts = view.findViewById(R.id.text_doctor_appointments_overview_counts);
@@ -183,12 +189,12 @@ public class DoctorAppointmentsFragment extends Fragment {
     }
 
     private void setupHeaderClicks() {
-        // Dedicated "Choose date" chip
+        // Obvious "Choose date" chip
         if (pickDateText != null) {
             pickDateText.setOnClickListener(v -> openDatePicker());
         }
 
-        // Title & counts clickable too
+        // Title & counts also open the picker
         if (overviewTitle != null) {
             overviewTitle.setOnClickListener(v -> openDatePicker());
         }
@@ -196,7 +202,6 @@ public class DoctorAppointmentsFragment extends Fragment {
             overviewCounts.setOnClickListener(v -> openDatePicker());
         }
 
-        // Clear filter chip
         if (clearFilterText != null) {
             clearFilterText.setOnClickListener(v -> {
                 if (viewModel != null) {
@@ -208,9 +213,17 @@ public class DoctorAppointmentsFragment extends Fragment {
 
     private void observeViewModel() {
 
-        viewModel.getLoading().observe(getViewLifecycleOwner(), loading ->
-                progressBar.setVisibility(Boolean.TRUE.equals(loading) ? View.VISIBLE : View.GONE)
-        );
+        viewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
+            boolean isLoading = Boolean.TRUE.equals(loading);
+
+            if (progressBar != null) {
+                progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+            }
+            // NEW: hide content while loading so spinner is not "behind" the list
+            if (contentLayout != null) {
+                contentLayout.setVisibility(isLoading ? View.INVISIBLE : View.VISIBLE);
+            }
+        });
 
         viewModel.getTodayAppointments().observe(getViewLifecycleOwner(), list -> {
             todayList = list != null ? list : Collections.emptyList();

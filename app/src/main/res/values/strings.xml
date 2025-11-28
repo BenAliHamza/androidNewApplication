@@ -833,13 +833,20 @@
     <!-- Doctor appointments: date filtering / overview -->
     <string name="doctor_appointments_overview_title_default">Today · %1$s</string>
     <string name="doctor_appointments_clear_filter">Clear date filter</string>
-    <string name="doctor_appointments_overview_filtered_title">Appointments on %1$s</string>
-    <string name="doctor_appointments_overview_filtered_count">Appointments: %1$d</string>
-    <string name="doctor_appointments_overview_filtered_unknown_date">Selected day</string>
     <string name="doctor_appointments_action_in_past">You can NOT change a past appointment.</string>
     <string name="doctor_appointments_pick_date_label">Choose date</string>
     <string name="doctor_appointments_clear_filter_label">Clear</string>
     <string name="home_next_appointment_today_label">Today · %1$s</string>
+    <string name="doctor_appointments_pick_date_chip">Pick a date 📅</string>
+
+    <string name="doctor_appointments_overview_filtered_unknown_date">selected day</string>
+    <string name="doctor_appointments_overview_filtered_title">%1$s</string>
+    <string name="doctor_appointments_overview_filtered_count">%1$d appointments</string>
+
+    <string name="doctor_appointments_empty_filtered">No appointments on this day.</string>
+
+    <string name="doctor_appointment_detail_title">Appointment details</string>
+    <string name="doctor_appointment_detail_view_profile">View patient profile</string>
 
 </resources>
 

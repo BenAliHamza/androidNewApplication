@@ -1,6 +1,7 @@
 package tn.esprit.presentation.home;
 
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,9 +16,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
@@ -118,6 +117,12 @@ public class HomeFragment extends Fragment {
         doctorContainer.findViewById(R.id.text_view_all_patients)
                 .setOnClickListener(v -> openPatients());
 
+        // NEW: tap on the "Next appointment" card also opens the appointments screen
+        View nextCard = doctorContainer.findViewById(R.id.card_next_appointment);
+        if (nextCard != null) {
+            nextCard.setOnClickListener(v -> openAppointments());
+        }
+
         doctorHomeViewModel = new ViewModelProvider(this).get(DoctorHomeViewModel.class);
         observe();
 
@@ -170,57 +175,32 @@ public class HomeFragment extends Fragment {
             textStatPatients.setText(String.valueOf(s.totalPatients));
         }
 
+        // Nicely formatted "next appointment" datetime
         if (textNextTime != null) {
-            textNextTime.setText(formatNextAppointmentTime(s.nextAppointmentStart));
+            String rawStart = s.nextAppointmentStart;
+            if (!TextUtils.isEmpty(rawStart)) {
+                Date parsed = AppointmentUiHelper.parseDate(rawStart);
+                if (parsed != null) {
+                    SimpleDateFormat fmt =
+                            new SimpleDateFormat("EEE, d MMM • HH:mm", Locale.getDefault());
+                    String pretty = fmt.format(parsed);
+                    textNextTime.setText(pretty);
+                } else {
+                    // Fallback: show whatever backend sent
+                    textNextTime.setText(rawStart);
+                }
+            } else {
+                textNextTime.setText(getString(R.string.home_next_appointment_none));
+            }
         }
 
         if (textNextPatient != null) {
-            if (s.nextAppointmentPatientName != null && !s.nextAppointmentPatientName.isEmpty()) {
+            if (s.nextAppointmentPatientName != null
+                    && !s.nextAppointmentPatientName.isEmpty()) {
                 textNextPatient.setText(s.nextAppointmentPatientName);
             } else {
                 textNextPatient.setText("");
             }
-        }
-    }
-
-    /**
-     * Formats the next appointment start ISO string into a doctor-friendly label:
-     * - If empty -> "No upcoming appointment"
-     * - If today  -> "Today · HH:mm"
-     * - Else      -> "EEE, d MMM · HH:mm"
-     */
-    @NonNull
-    private String formatNextAppointmentTime(@Nullable String nextStartIso) {
-        if (nextStartIso == null || nextStartIso.trim().isEmpty()) {
-            return getString(R.string.home_next_appointment_none);
-        }
-
-        // Try to reuse AppointmentUiHelper.parseDate for consistency with the rest of the app
-        Date date = AppointmentUiHelper.parseDate(nextStartIso);
-        if (date == null) {
-            // Fallback: show raw string if parsing fails
-            return nextStartIso;
-        }
-
-        Calendar nowCal = Calendar.getInstance();
-        Calendar targetCal = Calendar.getInstance();
-        targetCal.setTime(date);
-
-        boolean sameDay =
-                nowCal.get(Calendar.YEAR) == targetCal.get(Calendar.YEAR)
-                        && nowCal.get(Calendar.DAY_OF_YEAR) == targetCal.get(Calendar.DAY_OF_YEAR);
-
-        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        String timePart = timeFormat.format(date);
-
-        if (sameDay) {
-            // Example: "Today · 09:30"
-            return getString(R.string.home_next_appointment_today_label, timePart);
-        } else {
-            // Example: "Fri, 28 Nov · 09:30"
-            SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, d MMM", Locale.getDefault());
-            String datePart = dateFormat.format(date);
-            return datePart + " · " + timePart;
         }
     }
 
