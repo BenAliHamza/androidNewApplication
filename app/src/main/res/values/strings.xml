@@ -825,7 +825,11 @@
 
     <string name="home_next_appointment_today">Today • %1$s</string>
     <string name="home_next_appointment_date_time">%1$s • %2$s</string>
-
+    <string name="notifications_default_title">Notification</string>
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_empty">No notifications yet.</string>
+    <string name="notifications_error_generic">Failed to load notifications.</string>
+    <string name="notifications_error_mark_read">Failed to update notification status.</string>
 
     <!-- If you haven't added this earlier for the "in past" restriction -->
 

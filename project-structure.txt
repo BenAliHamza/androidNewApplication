@@ -37,6 +37,7 @@
 ./app/src/main/res/drawable/bg_avatar_circle.xml
 ./app/src/main/res/drawable/logo.png
 ./app/src/main/res/drawable/ic_menu_24.xml
+./app/src/main/res/drawable/bg_notification_unread_dot.xml
 ./app/src/main/res/drawable/bg_status_chip.xml
 ./app/src/main/res/drawable/ic_launcher_background.xml
 ./app/src/main/res/drawable/bg_home_highlight.xml
@@ -56,6 +57,7 @@
 ./app/src/main/res/layout/fragment_doctor_appointments.xml
 ./app/src/main/res/layout/item_doctor_search_result.xml
 ./app/src/main/res/layout/fragment_home_gate.xml
+./app/src/main/res/layout/bottom_sheet_doctor_appointment_detail.xml
 ./app/src/main/res/layout/fragment_patient_medications.xml
 ./app/src/main/res/layout/fragment_doctor_public_profile.xml
 ./app/src/main/res/layout/fragment_edit_patient_profile.xml
@@ -76,9 +78,11 @@
 ./app/src/main/res/layout/bottom_sheet_book_appointment.xml
 ./app/src/main/res/layout/fragment_home_patient.xml
 ./app/src/main/res/layout/activity_doctor_practice_setup.xml
+./app/src/main/res/layout/item_notification.xml
 ./app/src/main/res/layout/fragment_user_base_info.xml
 ./app/src/main/res/layout/activity_profile.xml
 ./app/src/main/res/layout/fragment_profile.xml
+./app/src/main/res/layout/fragment_notifications.xml
 ./app/src/main/res/layout/fragment_doctor_schedule_edit.xml
 ./app/src/main/res/layout/fragment_doctor_office.xml
 ./app/src/main/res/layout/activity_main.xml
@@ -130,6 +134,8 @@
 ./app/src/main/java/tn/esprit/data/auth
 ./app/src/main/java/tn/esprit/data/auth/AuthRepository.java
 ./app/src/main/java/tn/esprit/data/auth/AuthLocalDataSource.java
+./app/src/main/java/tn/esprit/data/notification
+./app/src/main/java/tn/esprit/data/notification/NotificationRepository.java
 ./app/src/main/java/tn/esprit/data/doctor
 ./app/src/main/java/tn/esprit/data/doctor/DoctorStatsRepository.java
 ./app/src/main/java/tn/esprit/data/doctor/DoctorDirectoryRepository.java
@@ -146,6 +152,8 @@
 ./app/src/main/java/tn/esprit/data/remote/appointment/DoctorScheduleApiService.java
 ./app/src/main/java/tn/esprit/data/remote/indicator
 ./app/src/main/java/tn/esprit/data/remote/indicator/IndicatorApiService.java
+./app/src/main/java/tn/esprit/data/remote/notification
+./app/src/main/java/tn/esprit/data/remote/notification/NotificationApiService.java
 ./app/src/main/java/tn/esprit/data/remote/doctor
 ./app/src/main/java/tn/esprit/data/remote/doctor/SpecialtyApiService.java
 ./app/src/main/java/tn/esprit/data/remote/doctor/DoctorApiService.java
@@ -176,6 +184,10 @@
 ./app/src/main/java/tn/esprit/domain/indicator/IndicatorType.java
 ./app/src/main/java/tn/esprit/domain/auth
 ./app/src/main/java/tn/esprit/domain/auth/AuthTokens.java
+./app/src/main/java/tn/esprit/domain/notification
+./app/src/main/java/tn/esprit/domain/notification/NotificationItem.java
+./app/src/main/java/tn/esprit/domain/notification/NotificationDto.java
+./app/src/main/java/tn/esprit/domain/notification/Notification.java
 ./app/src/main/java/tn/esprit/domain/doctor
 ./app/src/main/java/tn/esprit/domain/doctor/DoctorSearchResult.java
 ./app/src/main/java/tn/esprit/domain/doctor/DoctorPublicProfile.java
@@ -230,6 +242,7 @@
 ./app/src/main/java/tn/esprit/presentation/appointment/PatientAppointmentAdapter.java
 ./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentsViewModel.java
 ./app/src/main/java/tn/esprit/presentation/appointment/DoctorHomeViewModel.java
+./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentDetailBottomSheet.java
 ./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentAdapter.java
 ./app/src/main/java/tn/esprit/presentation/indicator
 ./app/src/main/java/tn/esprit/presentation/indicator/PatientIndicatorAdapter.java
@@ -237,6 +250,11 @@
 ./app/src/main/java/tn/esprit/presentation/auth/LoginActivity.java
 ./app/src/main/java/tn/esprit/presentation/auth/SignupActivity.java
 ./app/src/main/java/tn/esprit/presentation/auth/AuthGateActivity.java
+./app/src/main/java/tn/esprit/presentation/notification
+./app/src/main/java/tn/esprit/presentation/notification/NotificationsViewModel.java
+./app/src/main/java/tn/esprit/presentation/notification/NotificationListFragment.java
+./app/src/main/java/tn/esprit/presentation/notification/NotificationAdapter.java
+./app/src/main/java/tn/esprit/presentation/notification/NotificationListViewModel.java
 ./app/src/main/java/tn/esprit/presentation/profile
 ./app/src/main/java/tn/esprit/presentation/profile/UserBaseInfoEditFragment.java
 ./app/src/main/java/tn/esprit/presentation/profile/UserBaseInfoFragment.java

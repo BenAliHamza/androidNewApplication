@@ -7,6 +7,7 @@
     android:background="@color/color_drawer_header_bg"
     android:gravity="center_vertical">
 
+    <!-- Avatar -->
     <ImageView
         android:id="@+id/drawer_avatar"
         android:layout_width="@dimen/drawer_header_avatar_size"
@@ -16,35 +17,48 @@
         android:scaleType="centerInside"
         android:src="@drawable/logo" />
 
+    <!-- Text block -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/drawer_header_spacing_horizontal"
+        android:layout_weight="1"
         android:orientation="vertical"
-        android:layout_weight="1">
+        android:gravity="center_vertical">
 
+        <!-- Name -->
         <TextView
             android:id="@+id/drawer_user_name"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             style="@style/TextAppearance.Docs.DrawerTitle"
-            android:text="@string/home_drawer_user_name_placeholder" />
+            android:text="@string/home_drawer_user_name_placeholder"
+            android:textColor="@color/color_drawer_header_on_bg"
+            android:maxLines="1"
+            android:ellipsize="end" />
 
-        <!-- New: role line -->
+        <!-- Role -->
         <TextView
             android:id="@+id/drawer_user_role"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             style="@style/TextAppearance.Docs.DrawerSubtitle"
-            android:text="@string/home_drawer_user_role_placeholder" />
+            android:text="@string/home_drawer_user_role_placeholder"
+            android:textColor="@color/color_drawer_header_on_bg_secondary"
+            android:maxLines="1"
+            android:ellipsize="end" />
 
+        <!-- Email -->
         <TextView
             android:id="@+id/drawer_user_email"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             style="@style/TextAppearance.Docs.DrawerSubtitle"
-            android:text="@string/home_drawer_email_placeholder" />
+            android:text="@string/home_drawer_email_placeholder"
+            android:textColor="@color/color_drawer_header_on_bg_secondary"
+            android:maxLines="1"
+            android:ellipsize="end" />
     </LinearLayout>
 
 </LinearLayout>

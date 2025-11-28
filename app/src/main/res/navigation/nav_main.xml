@@ -169,4 +169,10 @@
         android:name="tn.esprit.presentation.home.DoctorScheduleEditFragment"
         android:label="@string/doctor_office_edit_title" />
 
+    <!-- NEW: Notifications list screen -->
+    <fragment
+        android:id="@+id/notificationsFragment"
+        android:name="tn.esprit.presentation.notification.NotificationListFragment"
+        android:label="Notifications" />
+
 </navigation>

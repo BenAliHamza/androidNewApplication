@@ -3,6 +3,7 @@ package tn.esprit;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -17,6 +18,7 @@ import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 
@@ -25,6 +27,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 
 import tn.esprit.data.auth.AuthLocalDataSource;
+import tn.esprit.data.notification.NotificationSocketManager;
 import tn.esprit.data.profile.ProfileRepository;
 import tn.esprit.domain.doctor.DoctorProfile;
 import tn.esprit.domain.patient.PatientProfile;
@@ -32,6 +35,7 @@ import tn.esprit.domain.user.User;
 import tn.esprit.presentation.auth.AuthGateActivity;
 import tn.esprit.presentation.home.HomeUiHelper;
 import tn.esprit.presentation.medication.MedicationNotificationHelper;
+import tn.esprit.presentation.notification.NotificationsViewModel;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -57,6 +61,10 @@ public class MainActivity extends AppCompatActivity {
     private AuthLocalDataSource authLocalDataSource;
     private ProfileRepository profileRepository;
     private NavController navController;
+
+    // Notifications ViewModel (activity-scoped)
+    @Nullable
+    private NotificationsViewModel notificationsViewModel;
 
     // Keep last known role so bottom nav "Home" knows where to go
     @Nullable
@@ -89,9 +97,24 @@ public class MainActivity extends AppCompatActivity {
             navController = navHostFragment.getNavController();
         }
 
-        // NEW: notifications – channel + permission
+        // Notifications – ensure channel + permission for system notifications (reused from medications)
         MedicationNotificationHelper.ensureNotificationChannel(this);
         MedicationNotificationHelper.requestNotificationPermissionIfNeeded(this);
+
+        // Activity-scoped NotificationsViewModel (for drawer badge + screen)
+        notificationsViewModel = new ViewModelProvider(this)
+                .get(NotificationsViewModel.class);
+        setupNotificationsUnreadBadge();
+
+        // NEW: hook WebSocket -> ViewModel (refresh on push)
+        NotificationSocketManager
+                .getInstance(getApplicationContext())
+                .setListener(item -> {
+                    if (notificationsViewModel != null) {
+                        // Simplest & safest: reload from backend when a push arrives
+                        notificationsViewModel.loadNotifications();
+                    }
+                });
 
         // Drawer header
         if (navigationView != null) {
@@ -111,6 +134,11 @@ public class MainActivity extends AppCompatActivity {
                     }
                 } else if (id == R.id.menu_settings) {
                     // Settings placeholder
+                } else if (id == R.id.menu_notifications) {
+                    // Open notifications list
+                    if (navController != null) {
+                        navController.navigate(R.id.notificationsFragment);
+                    }
                 } else if (id == R.id.menu_logout) {
                     performLogout();
                 }
@@ -144,8 +172,17 @@ public class MainActivity extends AppCompatActivity {
         // Set up bottom nav listener ONCE
         setupBottomNavNavigation();
 
-        // Load profile and adapt header + bottom nav + home destination
+        // Load profile and adapt header + bottom nav + home destination + WS
         loadUserAndApplyRole();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Avoid leaking activity via listener
+        NotificationSocketManager
+                .getInstance(getApplicationContext())
+                .setListener(null);
     }
 
     private void applyWindowInsets() {
@@ -192,6 +229,13 @@ public class MainActivity extends AppCompatActivity {
                 applyHeaderForUser(user, role);
                 applyBottomNavForRole(role);
                 navigateToHomeForRole(role);
+
+                // Start notifications WebSocket for this user
+                if (user != null && user.getId() != null && user.getId() > 0L) {
+                    NotificationSocketManager
+                            .getInstance(getApplicationContext())
+                            .connect(user.getId());
+                }
             }
 
             @Override
@@ -203,6 +247,11 @@ public class MainActivity extends AppCompatActivity {
                 applyHeaderForUser(null, null);
                 applyBottomNavForRole(null);
                 navigateToHomeForRole(null);
+
+                // Also stop WebSocket if any
+                NotificationSocketManager
+                        .getInstance(getApplicationContext())
+                        .disconnect();
             }
         });
     }
@@ -234,7 +283,7 @@ public class MainActivity extends AppCompatActivity {
                 email = user.getEmail();
             }
 
-            // New: profile image URL from backend
+            // Profile image URL from backend
             imageUrl = user.getProfileImage();
         }
 
@@ -486,6 +535,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void performLogout() {
+        // Stop WebSocket first
+        NotificationSocketManager
+                .getInstance(getApplicationContext())
+                .disconnect();
+
         if (authLocalDataSource != null) {
             authLocalDataSource.clearTokens();
         }
@@ -495,4 +549,48 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
         finish();
     }
+
+    // -------------------------------------------------------------------------
+    // Notifications helpers (drawer badge)
+    // -------------------------------------------------------------------------
+
+    private void setupNotificationsUnreadBadge() {
+        if (notificationsViewModel == null) return;
+
+        notificationsViewModel.getUnreadCount().observe(this, this::updateDrawerNotificationsTitle);
+
+        // Initial load
+        notificationsViewModel.loadNotifications();
+    }
+
+    private void updateDrawerNotificationsTitle(@Nullable Integer unreadCount) {
+        if (navigationView == null) return;
+        MenuItem item = navigationView.getMenu().findItem(R.id.menu_notifications);
+        if (item == null) return;
+
+        int count = unreadCount != null ? unreadCount : 0;
+        if (count > 0) {
+            item.setTitle("Notifications (" + count + ")");
+        } else {
+            item.setTitle("Notifications");
+        }
+    }
+    public void openAppointmentsForCurrentRole() {
+        if (navController == null) return;
+
+        int targetDestId;
+        if (lastKnownRole != null && "PATIENT".equalsIgnoreCase(lastKnownRole)) {
+            targetDestId = R.id.patientAppointmentsFragment;
+        } else {
+            targetDestId = R.id.doctorAppointmentsFragment;
+        }
+
+        if (navController.getCurrentDestination() != null
+                && navController.getCurrentDestination().getId() == targetDestId) {
+            return; // already there
+        }
+
+        navController.navigate(targetDestId);
+    }
+
 }

@@ -1,1459 +1,337 @@
-===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/AppointmentUiHelper.java =====
-package tn.esprit.presentation.appointment;
+===== FILE: ./app/src/main/java/tn/esprit/domain/appointment/AppointmentStatus.java =====
+package tn.esprit.domain.appointment;
 
-import android.content.Context;
+public enum AppointmentStatus {
+    PENDING,
+    ACCEPTED,
+    REJECTED,
+    COMPLETED
+}
 
-import androidx.annotation.NonNull;
+
+===== FILE: ./app/src/main/java/tn/esprit/domain/appointment/DailySchedule.java =====
+package tn.esprit.domain.appointment;
+
 import androidx.annotation.Nullable;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
-
-import tn.esprit.R;
-import tn.esprit.domain.appointment.Appointment;
 
 /**
- * Small UI helper for appointments (status labels, date helpers, etc.).
+ * One day in the weekly calendar.
+ * Matches backend JSON:
+ * { "date": "2025-11-27", "slots": [ { "time": "08:00", "available": true }, ... ] }
  */
-public final class AppointmentUiHelper {
+public class DailySchedule {
 
-    private AppointmentUiHelper() {
-        // no instances
-    }
+    private String date;            // "yyyy-MM-dd"
+    private List<Slot> slots;       // may be null/empty
 
-    // ------------------------------------------------------------------------
-    // Status helpers
-    // ------------------------------------------------------------------------
-
-    /**
-     * Maps backend status string (PENDING / ACCEPTED / REJECTED / COMPLETED)
-     * to a human-readable localized label.
-     */
-
-    @NonNull
-    public static String getStatusLabel(@NonNull Context context,
-                                        @Nullable String statusRaw) {
-        if (statusRaw == null) {
-            return context.getString(R.string.appointment_status_unknown);
-        }
-
-        switch (statusRaw.toUpperCase(Locale.getDefault())) {
-            case "PENDING":
-                return context.getString(R.string.appointment_status_pending);
-            case "ACCEPTED":
-                return context.getString(R.string.appointment_status_accepted);
-            case "REJECTED":
-                return context.getString(R.string.appointment_status_rejected);
-            case "COMPLETED":
-                return context.getString(R.string.appointment_status_completed);
-            default:
-                return context.getString(R.string.appointment_status_unknown);
-        }
-    }
-
-    /**
-     * Returns "Status: X" using appointment_status_prefix.
-     */
-    @NonNull
-    public static String getStatusWithPrefix(@NonNull Context context,
-                                             @Nullable String statusRaw) {
-        String label = getStatusLabel(context, statusRaw);
-        return context.getString(R.string.appointment_status_prefix, label);
-    }
-
-    // ------------------------------------------------------------------------
-    // Date helpers
-    // ------------------------------------------------------------------------
-
-    /**
-     * Returns today's date prefix in ISO-8601 date format (yyyy-MM-dd).
-     *
-     * Used by DoctorAppointmentsViewModel:
-     *   startAt != null && startAt.startsWith(getTodayDatePrefix())
-     */
-    @NonNull
-    public static String getTodayDatePrefix() {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-        return sdf.format(new Date());
-    }
-
-    /**
-     * Safely extracts the "yyyy-MM-dd" prefix from an ISO-8601 date-time string.
-     * Returns null if the input is null/too short.
-     *
-     * Used by DoctorAppointmentsViewModel to split appointments into
-     * today / upcoming / past using lexicographic comparison.
-     */
     @Nullable
-    public static String safeDatePrefix(@Nullable String isoDateTime) {
-        if (isoDateTime == null) return null;
-        String trimmed = isoDateTime.trim();
-        if (trimmed.length() < 10) return null;
-        // Expect "yyyy-MM-dd..." -> first 10 chars
-        return trimmed.substring(0, 10);
+    public String getDate() {
+        return date;
     }
 
-    /**
-     * Parse ISO datetime string into Date using common backend patterns.
-     *
-     * Patterns tried:
-     *  - yyyy-MM-dd'T'HH:mm:ss
-     *  - yyyy-MM-dd'T'HH:mm:ss.SSS
-     */
+    public void setDate(@Nullable String date) {
+        this.date = date;
+    }
+
     @Nullable
-    public static Date parseDate(@Nullable String iso) {
-        if (iso == null || iso.trim().isEmpty()) return null;
-
-        String[] patterns = new String[]{
-                "yyyy-MM-dd'T'HH:mm:ss",
-                "yyyy-MM-dd'T'HH:mm:ss.SSS"
-        };
-
-        for (String pattern : patterns) {
-            try {
-                SimpleDateFormat parser = new SimpleDateFormat(pattern, Locale.getDefault());
-                return parser.parse(iso);
-            } catch (ParseException ignore) {
-            }
-        }
-        return null;
+    public List<Slot> getSlots() {
+        return slots;
     }
 
-    /**
-     * Sort a list of appointments by startAt (ISO string, lexicographically).
-     *
-     * Returns a new list (does not mutate the input). Null -> empty list.
-     */
-    @NonNull
-    public static List<Appointment> sortByStart(@Nullable List<Appointment> list) {
-        if (list == null) return Collections.emptyList();
-        List<Appointment> copy = new ArrayList<>(list);
-
-        // ISO-8601 date strings are lexicographically sortable.
-        Collections.sort(copy, new Comparator<Appointment>() {
-            @Override
-            public int compare(Appointment o1, Appointment o2) {
-                String d1 = (o1 != null && o1.getStartAt() != null) ? o1.getStartAt() : "";
-                String d2 = (o2 != null && o2.getStartAt() != null) ? o2.getStartAt() : "";
-                return d1.compareTo(d2);
-            }
-        });
-
-        return copy;
-    }
-
-    /**
-     * Builds a human-readable date/time range from start/end ISO-8601 strings.
-     *
-     * Format example:
-     *   "Mon, 4 Mar  •  09:00 – 09:30"
-     * or (if end is missing)
-     *   "Mon, 4 Mar  •  09:00"
-     *
-     * Used by DoctorAppointmentAdapter.
-     */
-    @NonNull
-    public static String buildDateTimeDisplay(@Nullable String startIso,
-                                              @Nullable String endIso,
-                                              @NonNull Context context) {
-        if (startIso == null || startIso.trim().isEmpty()) {
-            return "";
-        }
-
-        SimpleDateFormat parser =
-                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-        SimpleDateFormat formatterDate =
-                new SimpleDateFormat("EEE, d MMM", Locale.getDefault());
-        SimpleDateFormat formatterTime =
-                new SimpleDateFormat("HH:mm", Locale.getDefault());
-
-        try {
-            Date start = parser.parse(startIso);
-            if (start == null) {
-                return startIso;
-            }
-            String datePart = formatterDate.format(start);
-            String startTime = formatterTime.format(start);
-
-            if (endIso != null && !endIso.trim().isEmpty()) {
-                Date end = parser.parse(endIso);
-                if (end != null) {
-                    String endTime = formatterTime.format(end);
-                    return datePart + "  •  " + startTime + " – " + endTime;
-                }
-            }
-
-            return datePart + "  •  " + startTime;
-        } catch (ParseException e) {
-            // Fallback: just show the raw ISO string if parsing fails
-            return startIso;
-        }
+    public void setSlots(@Nullable List<Slot> slots) {
+        this.slots = slots;
     }
 }
 
 
-===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/PatientAppointmentsViewModel.java =====
-package tn.esprit.presentation.appointment;
+===== FILE: ./app/src/main/java/tn/esprit/domain/appointment/Appointment.java =====
+package tn.esprit.domain.appointment;
 
-import android.app.Application;
+public class Appointment {
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.lifecycle.AndroidViewModel;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
+    private Long id;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
+    private Long doctorId;
+    private Long doctorUserId;
+    private String doctorFirstName;
+    private String doctorLastName;
 
-import tn.esprit.R;
-import tn.esprit.data.appointment.AppointmentRepository;
-import tn.esprit.domain.appointment.Appointment;
+    private Long patientId;
+    private Long patientUserId;
+    private String patientFirstName;
+    private String patientLastName;
 
-/**
- * ViewModel for the patient "My appointments" screen.
- */
-public class PatientAppointmentsViewModel extends AndroidViewModel {
+    private String startAt;
+    private String endAt;
 
-    private final AppointmentRepository repository;
+    private String status;
 
-    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
-    private final MutableLiveData<List<Appointment>> appointments = new MutableLiveData<>(Collections.emptyList());
-    private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
-    private final MutableLiveData<String> actionMessage = new MutableLiveData<>();
+    private String reason;
+    private Boolean teleconsultation;
 
-    public PatientAppointmentsViewModel(@NonNull Application application) {
-        super(application);
-        repository = new AppointmentRepository(application.getApplicationContext());
+    public Appointment() {}
+
+    public Long getId() {
+        return id;
     }
 
-    public LiveData<Boolean> getLoading() {
-        return loading;
+    public Long getDoctorId() {
+        return doctorId;
     }
 
-    public LiveData<List<Appointment>> getAppointments() {
-        return appointments;
+    public Long getDoctorUserId() {
+        return doctorUserId;
     }
 
-    public LiveData<String> getErrorMessage() {
-        return errorMessage;
+    public String getDoctorFirstName() {
+        return doctorFirstName;
     }
 
-    public LiveData<String> getActionMessage() {
-        return actionMessage;
+    public String getDoctorLastName() {
+        return doctorLastName;
     }
 
-    public void clearError() {
-        errorMessage.setValue(null);
+    public Long getPatientId() {
+        return patientId;
     }
 
-    /**
-     * Clear both error and action messages.
-     */
-    public void clearMessages() {
-        errorMessage.setValue(null);
-        actionMessage.setValue(null);
+    public Long getPatientUserId() {
+        return patientUserId;
     }
 
-    /**
-     * Load current patient's appointments (optionally in a date range).
-     * For now we pass null range -> backend decides.
-     */
-    public void loadAppointments() {
-        loading.setValue(true);
-
-        repository.getMyAppointments(
-                null,
-                null,
-                new AppointmentRepository.LoadAppointmentsCallback() {
-                    @Override
-                    public void onSuccess(@NonNull List<Appointment> list) {
-                        loading.postValue(false);
-                        appointments.postValue(sortByStart(list));
-                    }
-
-                    @Override
-                    public void onError(@Nullable Throwable throwable,
-                                        @Nullable Integer httpCode,
-                                        @Nullable String errorBody) {
-                        loading.postValue(false);
-                        String msg = getApplication().getString(R.string.patient_appointments_error_generic);
-                        errorMessage.postValue(msg);
-                    }
-                }
-        );
+    public String getPatientFirstName() {
+        return patientFirstName;
     }
 
-    /**
-     * Patient cancels an appointment.
-     * - Only allowed for future appointments (not in the past).
-     */
-    public void cancelAppointment(@NonNull Appointment appointment) {
-        Long id = appointment.getId();
-        if (id == null || id <= 0L) {
-            return;
-        }
-
-        if (isInPast(appointment)) {
-            actionMessage.setValue("You cannot cancel a past appointment.");
-            return;
-        }
-
-        loading.setValue(true);
-
-        repository.cancelAppointment(id, new AppointmentRepository.CancelAppointmentCallback() {
-            @Override
-            public void onSuccess() {
-                loading.postValue(false);
-                actionMessage.postValue("Appointment cancelled.");
-                // Reload list so UI stays in sync
-                loadAppointments();
-            }
-
-            @Override
-            public void onError(@Nullable Throwable throwable,
-                                @Nullable Integer httpCode,
-                                @Nullable String errorBody) {
-                loading.postValue(false);
-                actionMessage.postValue("Failed to cancel appointment.");
-            }
-        });
+    public String getPatientLastName() {
+        return patientLastName;
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
-    private List<Appointment> sortByStart(List<Appointment> list) {
-        if (list == null) return Collections.emptyList();
-        List<Appointment> copy = new ArrayList<>(list);
-        // ISO-8601 date strings are lexicographically sortable
-        Collections.sort(copy, new Comparator<Appointment>() {
-            @Override
-            public int compare(Appointment o1, Appointment o2) {
-                String d1 = o1 != null && o1.getStartAt() != null ? o1.getStartAt() : "";
-                String d2 = o2 != null && o2.getStartAt() != null ? o2.getStartAt() : "";
-                return d1.compareTo(d2);
-            }
-        });
-        return copy;
+    public String getStartAt() {
+        return startAt;
     }
 
-    private boolean isInPast(@NonNull Appointment appointment) {
-        Date start = parseDate(appointment.getStartAt());
-        if (start == null) return false;
-        Date now = new Date();
-        return start.before(now);
+    public String getEndAt() {
+        return endAt;
     }
 
-    @Nullable
-    private Date parseDate(@Nullable String iso) {
-        if (iso == null || iso.trim().isEmpty()) return null;
+    public String getStatus() {
+        return status;
+    }
 
-        String[] patterns = new String[]{
-                "yyyy-MM-dd'T'HH:mm:ss",
-                "yyyy-MM-dd'T'HH:mm:ss.SSS"
-        };
+    public String getReason() {
+        return reason;
+    }
 
-        for (String pattern : patterns) {
-            try {
-                SimpleDateFormat parser = new SimpleDateFormat(pattern, Locale.getDefault());
-                return parser.parse(iso);
-            } catch (ParseException ignore) {
-            }
-        }
-        return null;
+    public Boolean getTeleconsultation() {
+        return teleconsultation;
     }
 }
 
 
-===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/PatientAppointmentsFragment.java =====
-package tn.esprit.presentation.appointment;
+===== FILE: ./app/src/main/java/tn/esprit/domain/appointment/AppointmentStatusUpdateRequest.java =====
+package tn.esprit.domain.appointment;
 
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-import android.widget.Toast;
+public class AppointmentStatusUpdateRequest {
+    private String status;
 
-import androidx.annotation.NonNull;
+    public AppointmentStatusUpdateRequest() {}
+
+    public AppointmentStatusUpdateRequest(String status) {
+        this.status = status;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/domain/appointment/WeeklyCalendarResponse.java =====
+package tn.esprit.domain.appointment;
+
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
-import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
-import tn.esprit.R;
-import tn.esprit.domain.appointment.Appointment;
+import java.util.List;
 
 /**
- * Patient "My appointments" screen.
+ * Weekly calendar wrapper.
+ * JSON: { "days": [ { "date": "...", "slots": [...] }, ... ] }
+ */
+public class WeeklyCalendarResponse {
+
+    private List<DailySchedule> days;
+
+    @Nullable
+    public List<DailySchedule> getDays() {
+        return days;
+    }
+
+    public void setDays(@Nullable List<DailySchedule> days) {
+        this.days = days;
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/domain/appointment/AppointmentCreateRequest.java =====
+package tn.esprit.domain.appointment;
+
+/**
+ * Mirrors backend dto.appointment.AppointmentCreateRequest.
  *
- * (Navigation wiring to bottom bar will be done separately.)
+ * Date/time fields are ISO-8601 strings on the mobile side.
  */
-public class PatientAppointmentsFragment extends Fragment {
+public class AppointmentCreateRequest {
 
-    private PatientAppointmentsViewModel viewModel;
+    private Long doctorId;
+    private String startAt;          // "yyyy-MM-dd'T'HH:mm:ss"
+    private String endAt;            // "yyyy-MM-dd'T'HH:mm:ss"
+    private String reason;
+    private Boolean teleconsultation;
 
-    private ProgressBar progressBar;
-    private RecyclerView recyclerView;
-    private TextView emptyText;
+    public AppointmentCreateRequest() {
+    }
 
-    private PatientAppointmentAdapter adapter;
+    public Long getDoctorId() {
+        return doctorId;
+    }
+
+    public void setDoctorId(Long doctorId) {
+        this.doctorId = doctorId;
+    }
+
+    public String getStartAt() {
+        return startAt;
+    }
+
+    public void setStartAt(String startAt) {
+        this.startAt = startAt;
+    }
+
+    public String getEndAt() {
+        return endAt;
+    }
+
+    public void setEndAt(String endAt) {
+        this.endAt = endAt;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public void setReason(String reason) {
+        this.reason = reason;
+    }
+
+    public Boolean getTeleconsultation() {
+        return teleconsultation;
+    }
+
+    public void setTeleconsultation(Boolean teleconsultation) {
+        this.teleconsultation = teleconsultation;
+    }
+}
+
+
+===== FILE: ./app/src/main/java/tn/esprit/domain/appointment/Slot.java =====
+package tn.esprit.domain.appointment;
+
+import androidx.annotation.Nullable;
+
+public class Slot {
+
+    // Must match JSON: { "time": "08:30", "available": true }
+    private String time;
+    private boolean available;
 
     @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_patient_appointments, container, false);
+    public String getTime() {
+        return time;
     }
 
-    @Override
-    public void onViewCreated(@NonNull View view,
-                              @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
-        progressBar = view.findViewById(R.id.patient_appointments_progress);
-        recyclerView = view.findViewById(R.id.recycler_patient_appointments);
-        emptyText = view.findViewById(R.id.text_patient_appointments_empty);
-
-        adapter = new PatientAppointmentAdapter(new PatientAppointmentAdapter.OnAppointmentClickListener() {
-            @Override
-            public void onAppointmentClicked(@NonNull Appointment appointment) {
-                if (!isAdded()) return;
-
-                // Confirm cancellation
-                new AlertDialog.Builder(requireContext())
-                        .setTitle("Cancel appointment")
-                        .setMessage("Do you want to cancel this appointment?")
-                        .setNegativeButton("Keep", null)
-                        .setPositiveButton("Cancel appointment", (dialog, which) -> {
-                            if (viewModel != null) {
-                                viewModel.cancelAppointment(appointment);
-                            }
-                        })
-                        .show();
-            }
-        });
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        recyclerView.setAdapter(adapter);
-
-        viewModel = new ViewModelProvider(this)
-                .get(PatientAppointmentsViewModel.class);
-
-        observeViewModel();
-
-        // Initial load
-        viewModel.loadAppointments();
+    public void setTime(@Nullable String time) {
+        this.time = time;
     }
 
-    private void observeViewModel() {
-        viewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
-            if (loading == null) return;
-            progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
-        });
+    public boolean isAvailable() {
+        return available;
+    }
 
-        viewModel.getAppointments().observe(getViewLifecycleOwner(), list -> {
-            if (list == null || list.isEmpty()) {
-                emptyText.setVisibility(View.VISIBLE);
-                recyclerView.setVisibility(View.GONE);
-            } else {
-                emptyText.setVisibility(View.GONE);
-                recyclerView.setVisibility(View.VISIBLE);
-            }
-            adapter.submitList(list);
-        });
-
-        viewModel.getErrorMessage().observe(getViewLifecycleOwner(), msg -> {
-            if (msg == null || msg.trim().isEmpty()) return;
-            if (isAdded()) {
-                Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
-            }
-            viewModel.clearMessages();
-        });
-
-        viewModel.getActionMessage().observe(getViewLifecycleOwner(), msg -> {
-            if (msg == null || msg.trim().isEmpty()) return;
-            if (isAdded()) {
-                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
-            }
-            viewModel.clearMessages();
-        });
+    public void setAvailable(boolean available) {
+        this.available = available;
     }
 }
 
 
-===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentsFragment.java =====
-package tn.esprit.presentation.appointment;
-
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-import android.widget.Toast;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.navigation.NavController;
-import androidx.navigation.fragment.NavHostFragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
-import com.google.android.material.tabs.TabLayout;
-
-import java.util.List;
-
-import tn.esprit.R;
-import tn.esprit.domain.appointment.Appointment;
-
-public class DoctorAppointmentsFragment extends Fragment {
-
-    private static final String KEY_CURRENT_SECTION = "doctor_appointments_current_section";
-
-    private DoctorAppointmentsViewModel viewModel;
-
-    private TabLayout tabs;
-    private RecyclerView recycler;
-    private ProgressBar progressBar;
-    private TextView textEmpty;
-
-    private DoctorAppointmentAdapter adapter;
-
-    private enum Section {
-        TODAY,
-        UPCOMING,
-        PAST
-    }
-
-    private Section currentSection = Section.TODAY;
-
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_doctor_appointments, container, false);
-    }
-
-    @Override
-    public void onViewCreated(@NonNull View view,
-                              @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
-        tabs = view.findViewById(R.id.tabs_doctor_appointments);
-        recycler = view.findViewById(R.id.recycler_doctor_appointments);
-        progressBar = view.findViewById(R.id.doctor_appointments_progress);
-        textEmpty = view.findViewById(R.id.text_doctor_appointments_empty);
-
-        adapter = new DoctorAppointmentAdapter(
-                new DoctorAppointmentAdapter.OnAppointmentActionListener() {
-                    @Override
-                    public void onAccept(@NonNull Appointment appointment) {
-                        if (viewModel != null) viewModel.acceptAppointment(appointment);
-                    }
-
-                    @Override
-                    public void onReject(@NonNull Appointment appointment) {
-                        if (viewModel != null) viewModel.rejectAppointment(appointment);
-                    }
-                },
-                this::openPatientProfileForAppointment
-        );
-
-        recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
-        recycler.setAdapter(adapter);
-
-        viewModel = new ViewModelProvider(this).get(DoctorAppointmentsViewModel.class);
-
-        if (savedInstanceState != null) {
-            try {
-                currentSection = Section.valueOf(
-                        savedInstanceState.getString(KEY_CURRENT_SECTION, "TODAY")
-                );
-            } catch (Exception ignore) {
-                currentSection = Section.TODAY;
-            }
-        }
-
-        setupTabs();
-        observeViewModel();
-
-        viewModel.loadAppointments();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        if (viewModel != null) viewModel.loadAppointments();
-    }
-
-    @Override
-    public void onSaveInstanceState(@NonNull Bundle outState) {
-        outState.putString(KEY_CURRENT_SECTION, currentSection.name());
-        super.onSaveInstanceState(outState);
-    }
-
-    private void setupTabs() {
-        tabs.removeAllTabs();
-
-        addTab(Section.TODAY, getString(R.string.doctor_appointments_tab_today));
-        addTab(Section.UPCOMING, getString(R.string.doctor_appointments_tab_upcoming));
-        addTab(Section.PAST, getString(R.string.doctor_appointments_tab_past));
-
-        TabLayout.Tab tab = tabs.getTabAt(currentSection.ordinal());
-        if (tab != null) tab.select();
-
-        tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-            @Override
-            public void onTabSelected(TabLayout.Tab selectedTab) {
-                Section sec = (Section) selectedTab.getTag();
-                if (sec != null) {
-                    currentSection = sec;
-                    updateListForCurrentSection();
-                }
-            }
-
-            @Override public void onTabUnselected(TabLayout.Tab tab) {}
-            @Override public void onTabReselected(TabLayout.Tab tab) {
-                Section sec = (Section) tab.getTag();
-                if (sec != null) {
-                    currentSection = sec;
-                    updateListForCurrentSection();
-                }
-            }
-        });
-    }
-
-    private void addTab(Section section, String label) {
-        TabLayout.Tab tab = tabs.newTab();
-        tab.setText(label);
-        tab.setTag(section);
-        tabs.addTab(tab, section == currentSection);
-    }
-
-    private void observeViewModel() {
-
-        viewModel.getLoading().observe(getViewLifecycleOwner(), loading ->
-                progressBar.setVisibility(Boolean.TRUE.equals(loading) ? View.VISIBLE : View.GONE)
-        );
-
-        viewModel.getTodayAppointments().observe(getViewLifecycleOwner(), list -> {
-            if (currentSection == Section.TODAY) showAppointments(list);
-        });
-
-        viewModel.getUpcomingAppointments().observe(getViewLifecycleOwner(), list -> {
-            if (currentSection == Section.UPCOMING) showAppointments(list);
-        });
-
-        viewModel.getPastAppointments().observe(getViewLifecycleOwner(), list -> {
-            if (currentSection == Section.PAST) showAppointments(list);
-        });
-
-        viewModel.getErrorMessage().observe(getViewLifecycleOwner(), msg -> {
-            if (msg != null && !msg.trim().isEmpty()) {
-                Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
-                viewModel.clearMessages();
-            }
-        });
-
-        viewModel.getActionMessage().observe(getViewLifecycleOwner(), msg -> {
-            if (msg != null && !msg.trim().isEmpty()) {
-                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
-                viewModel.clearMessages();
-            }
-        });
-    }
-
-    private void updateListForCurrentSection() {
-        switch (currentSection) {
-            case TODAY:
-                showAppointments(viewModel.getTodayAppointments().getValue());
-                break;
-            case UPCOMING:
-                showAppointments(viewModel.getUpcomingAppointments().getValue());
-                break;
-            case PAST:
-                showAppointments(viewModel.getPastAppointments().getValue());
-                break;
-        }
-    }
-
-    private void showAppointments(@Nullable List<Appointment> list) {
-        if (list == null || list.isEmpty()) {
-            textEmpty.setVisibility(View.VISIBLE);
-            recycler.setVisibility(View.GONE);
-            adapter.submitList(null);
-        } else {
-            textEmpty.setVisibility(View.GONE);
-            recycler.setVisibility(View.VISIBLE);
-            adapter.submitList(list);
-        }
-    }
-
-    private void openPatientProfileForAppointment(@NonNull Appointment appointment) {
-        Long patientUserId = appointment.getPatientUserId();
-        if (patientUserId == null || patientUserId <= 0L) return;
-
-        Bundle args = new Bundle();
-        args.putLong("patientId", patientUserId);
-
-        NavController navController = NavHostFragment.findNavController(this);
-        navController.navigate(R.id.patientPublicProfileFragment, args);
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/PatientAppointmentAdapter.java =====
-package tn.esprit.presentation.appointment;
-
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.recyclerview.widget.DiffUtil;
-import androidx.recyclerview.widget.ListAdapter;
-import androidx.recyclerview.widget.RecyclerView;
-
-import com.google.android.material.card.MaterialCardView;
-
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-
-import tn.esprit.R;
-import tn.esprit.domain.appointment.Appointment;
+===== FILE: ./app/src/main/java/tn/esprit/domain/appointment/DoctorSchedule.java =====
+package tn.esprit.domain.appointment;
 
 /**
- * Adapter for displaying patient's appointments.
- */
-public class PatientAppointmentAdapter extends ListAdapter<Appointment, PatientAppointmentAdapter.AppointmentViewHolder> {
-
-    public interface OnAppointmentClickListener {
-        void onAppointmentClicked(@NonNull Appointment appointment);
-    }
-
-    private final OnAppointmentClickListener listener;
-
-    private static final DiffUtil.ItemCallback<Appointment> DIFF_CALLBACK =
-            new DiffUtil.ItemCallback<Appointment>() {
-                @Override
-                public boolean areItemsTheSame(@NonNull Appointment oldItem, @NonNull Appointment newItem) {
-                    if (oldItem.getId() == null || newItem.getId() == null) {
-                        return oldItem == newItem;
-                    }
-                    return oldItem.getId().equals(newItem.getId());
-                }
-
-                @Override
-                public boolean areContentsTheSame(@NonNull Appointment oldItem, @NonNull Appointment newItem) {
-                    String s1 = oldItem.getStartAt();
-                    String s2 = newItem.getStartAt();
-                    String e1 = oldItem.getEndAt();
-                    String e2 = newItem.getEndAt();
-                    String st1 = oldItem.getStatus();
-                    String st2 = newItem.getStatus();
-                    return safeEquals(s1, s2)
-                            && safeEquals(e1, e2)
-                            && safeEquals(st1, st2);
-                }
-
-                private boolean safeEquals(@Nullable Object a, @Nullable Object b) {
-                    if (a == b) return true;
-                    if (a == null || b == null) return false;
-                    return a.equals(b);
-                }
-            };
-
-    public PatientAppointmentAdapter(@NonNull OnAppointmentClickListener listener) {
-        super(DIFF_CALLBACK);
-        this.listener = listener;
-    }
-
-    @NonNull
-    @Override
-    public AppointmentViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_patient_appointment, parent, false);
-        return new AppointmentViewHolder(view);
-    }
-
-    @Override
-    public void onBindViewHolder(@NonNull AppointmentViewHolder holder, int position) {
-        Appointment appointment = getItem(position);
-        holder.bind(appointment, listener);
-    }
-
-    static class AppointmentViewHolder extends RecyclerView.ViewHolder {
-
-        private final MaterialCardView cardRoot;
-        private final TextView textDoctorName;
-        private final TextView textDateTime;
-        private final TextView textStatusChip;
-        private final TextView textTele;
-        private final TextView textReason;
-
-        private final SimpleDateFormat parser =
-                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-        private final SimpleDateFormat formatterDate =
-                new SimpleDateFormat("EEE, d MMM", Locale.getDefault());
-        private final SimpleDateFormat formatterTime =
-                new SimpleDateFormat("HH:mm", Locale.getDefault());
-
-        AppointmentViewHolder(@NonNull View itemView) {
-            super(itemView);
-            cardRoot = itemView.findViewById(R.id.card_appointment_root);
-            textDoctorName = itemView.findViewById(R.id.text_doctor_name);
-            textDateTime = itemView.findViewById(R.id.text_date_time);
-            textStatusChip = itemView.findViewById(R.id.text_status_chip);
-            textTele = itemView.findViewById(R.id.text_teleconsultation);
-            textReason = itemView.findViewById(R.id.text_reason);
-        }
-
-        void bind(@NonNull Appointment appointment,
-                  @NonNull OnAppointmentClickListener listener) {
-
-            String first = appointment.getDoctorFirstName();
-            String last = appointment.getDoctorLastName();
-            String name;
-            if (first == null && last == null) {
-                name = itemView.getContext().getString(R.string.profile_role_doctor);
-            } else {
-                StringBuilder b = new StringBuilder();
-                if (first != null) b.append(first.trim());
-                if (last != null) {
-                    if (b.length() > 0) b.append(" ");
-                    b.append(last.trim());
-                }
-                name = b.toString();
-            }
-            textDoctorName.setText(name);
-
-            String dateTime = buildDateTimeDisplay(appointment.getStartAt(), appointment.getEndAt());
-            textDateTime.setText(dateTime);
-
-            // Status chip
-            String status = appointment.getStatus();
-            bindStatus(status);
-
-            // Teleconsultation label
-            Boolean tele = appointment.getTeleconsultation();
-            if (tele != null && tele) {
-                textTele.setVisibility(View.VISIBLE);
-                textTele.setText(R.string.appointment_teleconsultation_label);
-            } else {
-                textTele.setVisibility(View.GONE);
-            }
-
-            // Reason
-            String reason = appointment.getReason();
-            if (reason != null && !reason.trim().isEmpty()) {
-                textReason.setVisibility(View.VISIBLE);
-                textReason.setText(reason.trim());
-            } else {
-                textReason.setVisibility(View.GONE);
-            }
-
-            cardRoot.setOnClickListener(v -> listener.onAppointmentClicked(appointment));
-        }
-
-        private String buildDateTimeDisplay(@Nullable String startIso, @Nullable String endIso) {
-            if (startIso == null || startIso.trim().isEmpty()) {
-                return "";
-            }
-            try {
-                Date start = parser.parse(startIso);
-                if (start == null) {
-                    return startIso;
-                }
-                String datePart = formatterDate.format(start);
-                String startTime = formatterTime.format(start);
-
-                if (endIso != null && !endIso.trim().isEmpty()) {
-                    Date end = parser.parse(endIso);
-                    if (end != null) {
-                        String endTime = formatterTime.format(end);
-                        return datePart + "  •  " + startTime + " – " + endTime;
-                    }
-                }
-
-                return datePart + "  •  " + startTime;
-            } catch (ParseException e) {
-                return startIso;
-            }
-        }
-
-        private void bindStatus(@Nullable String statusRaw) {
-            String label;
-            if (statusRaw == null) {
-                label = itemView.getContext().getString(R.string.appointment_status_unknown);
-            } else {
-                String s = statusRaw.toUpperCase(Locale.getDefault());
-                switch (s) {
-                    case "PENDING":
-                        label = itemView.getContext().getString(R.string.appointment_status_pending);
-                        break;
-                    case "ACCEPTED":
-                        label = itemView.getContext().getString(R.string.appointment_status_accepted);
-                        break;
-                    case "REJECTED":
-                        label = itemView.getContext().getString(R.string.appointment_status_rejected);
-                        break;
-                    case "COMPLETED":
-                        label = itemView.getContext().getString(R.string.appointment_status_completed);
-                        break;
-                    default:
-                        label = itemView.getContext().getString(R.string.appointment_status_unknown);
-                        break;
-                }
-            }
-            textStatusChip.setText(label);
-        }
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentsViewModel.java =====
-package tn.esprit.presentation.appointment;
-
-import android.app.Application;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.lifecycle.AndroidViewModel;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-
-import tn.esprit.R;
-import tn.esprit.data.appointment.AppointmentRepository;
-import tn.esprit.domain.appointment.Appointment;
-import tn.esprit.domain.appointment.AppointmentStatusUpdateRequest;
-
-public class DoctorAppointmentsViewModel extends AndroidViewModel {
-
-    private final AppointmentRepository repository;
-
-    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
-    private final MutableLiveData<List<Appointment>> todayAppointments =
-            new MutableLiveData<>(Collections.emptyList());
-    private final MutableLiveData<List<Appointment>> upcomingAppointments =
-            new MutableLiveData<>(Collections.emptyList());
-    private final MutableLiveData<List<Appointment>> pastAppointments =
-            new MutableLiveData<>(Collections.emptyList());
-    private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
-    private final MutableLiveData<String> actionMessage = new MutableLiveData<>();
-
-    public DoctorAppointmentsViewModel(@NonNull Application application) {
-        super(application);
-        repository = new AppointmentRepository(application.getApplicationContext());
-    }
-
-    public LiveData<Boolean> getLoading() { return loading; }
-    public LiveData<List<Appointment>> getTodayAppointments() { return todayAppointments; }
-    public LiveData<List<Appointment>> getUpcomingAppointments() { return upcomingAppointments; }
-    public LiveData<List<Appointment>> getPastAppointments() { return pastAppointments; }
-    public LiveData<String> getErrorMessage() { return errorMessage; }
-    public LiveData<String> getActionMessage() { return actionMessage; }
-
-    public void clearMessages() {
-        errorMessage.setValue(null);
-        actionMessage.setValue(null);
-    }
-
-    // -------------------------------------------------------------------------
-    // Load appointments
-    // -------------------------------------------------------------------------
-
-    public void loadAppointments() {
-        loading.setValue(true);
-
-        repository.getDoctorAppointments(
-                null,
-                null,
-                new AppointmentRepository.LoadAppointmentsCallback() {
-                    @Override
-                    public void onSuccess(@NonNull List<Appointment> list) {
-                        loading.postValue(false);
-                        splitIntoSections(list);
-                    }
-
-                    @Override
-                    public void onError(@Nullable Throwable throwable,
-                                        @Nullable Integer httpCode,
-                                        @Nullable String errorBody) {
-                        loading.postValue(false);
-                        String msg = getApplication().getString(
-                                R.string.doctor_appointments_error_generic
-                        );
-                        errorMessage.postValue(msg);
-                    }
-                }
-        );
-    }
-
-    private void splitIntoSections(@NonNull List<Appointment> list) {
-        if (list.isEmpty()) {
-            todayAppointments.postValue(Collections.emptyList());
-            upcomingAppointments.postValue(Collections.emptyList());
-            pastAppointments.postValue(Collections.emptyList());
-            return;
-        }
-
-        String todayDate = AppointmentUiHelper.getTodayDatePrefix(); // yyyy-MM-dd
-
-        List<Appointment> today = new ArrayList<>();
-        List<Appointment> upcoming = new ArrayList<>();
-        List<Appointment> past = new ArrayList<>();
-
-        for (Appointment a : list) {
-            if (a == null) continue;
-
-            String datePart = AppointmentUiHelper.safeDatePrefix(a.getStartAt());
-            if (datePart == null) {
-                upcoming.add(a);
-                continue;
-            }
-
-            int cmp = datePart.compareTo(todayDate);
-
-            if (cmp == 0) today.add(a);
-            else if (cmp < 0) past.add(a);
-            else upcoming.add(a);
-        }
-
-        todayAppointments.postValue(AppointmentUiHelper.sortByStart(today));
-        upcomingAppointments.postValue(AppointmentUiHelper.sortByStart(upcoming));
-        pastAppointments.postValue(AppointmentUiHelper.sortByStart(past));
-    }
-
-    // -------------------------------------------------------------------------
-    // Accept / reject
-    // -------------------------------------------------------------------------
-
-    public void acceptAppointment(@NonNull Appointment appointment) {
-        changeStatus(
-                appointment,
-                "ACCEPTED",
-                getApplication().getString(R.string.doctor_appointments_action_accept_success),
-                getApplication().getString(R.string.doctor_appointments_action_accept_error)
-        );
-    }
-
-    public void rejectAppointment(@NonNull Appointment appointment) {
-        changeStatus(
-                appointment,
-                "REJECTED",
-                getApplication().getString(R.string.doctor_appointments_action_reject_success),
-                getApplication().getString(R.string.doctor_appointments_action_reject_error)
-        );
-    }
-
-    private void changeStatus(
-            @NonNull Appointment appointment,
-            @NonNull String newStatus,
-            @NonNull String successMessage,
-            @NonNull String errorMessageText
-    ) {
-        Long id = appointment.getId();
-        if (id == null || id <= 0L) return;
-
-        String currentStatusRaw = appointment.getStatus();
-        String currentStatus = currentStatusRaw != null
-                ? currentStatusRaw.toUpperCase(Locale.getDefault())
-                : "";
-
-        if (!"PENDING".equals(currentStatus)) {
-            actionMessage.setValue(
-                    getApplication().getString(R.string.doctor_appointments_action_not_pending)
-            );
-            return;
-        }
-
-        loading.setValue(true);
-
-        AppointmentStatusUpdateRequest request = new AppointmentStatusUpdateRequest();
-        request.setStatus(newStatus);
-
-        repository.updateAppointmentStatus(
-                id,
-                request,
-                new AppointmentRepository.UpdateStatusCallback() {
-                    @Override
-                    public void onSuccess(@NonNull Appointment updated) {
-                        loading.postValue(false);
-                        actionMessage.postValue(successMessage);
-                        loadAppointments(); // <--- we keep your logic
-                    }
-
-                    @Override
-                    public void onError(
-                            @Nullable Throwable throwable,
-                            @Nullable Integer httpCode,
-                            @Nullable String errorBody
-                    ) {
-                        loading.postValue(false);
-                        actionMessage.postValue(errorMessageText);
-                    }
-                }
-        );
-    }
-
-    private boolean isInPast(@NonNull Appointment appointment) {
-        Date start = AppointmentUiHelper.parseDate(appointment.getStartAt());
-        if (start == null) return false;
-        Date now = new Date();
-        return start.before(now);
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/DoctorHomeViewModel.java =====
-package tn.esprit.presentation.appointment;
-
-import android.app.Application;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.lifecycle.AndroidViewModel;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
-
-import tn.esprit.R;
-import tn.esprit.data.appointment.AppointmentRepository;
-import tn.esprit.domain.doctor.DoctorHomeStats;
-
-public class DoctorHomeViewModel extends AndroidViewModel {
-
-    private final AppointmentRepository repository;
-
-    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
-    private final MutableLiveData<DoctorHomeStats> stats = new MutableLiveData<>();
-    private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
-
-    public DoctorHomeViewModel(@NonNull Application app) {
-        super(app);
-        repository = new AppointmentRepository(app.getApplicationContext());
-    }
-
-    public LiveData<Boolean> getLoading() {
-        return loading;
-    }
-
-    public LiveData<DoctorHomeStats> getStats() {
-        return stats;
-    }
-
-    public LiveData<String> getErrorMessage() {
-        return errorMessage;
-    }
-
-    public void clearError() {
-        errorMessage.setValue(null);
-    }
-
-    public void loadStats() {
-        loading.setValue(true);
-        errorMessage.setValue(null);
-
-        repository.getDoctorHomeStats(new AppointmentRepository.HomeStatsCallback() {
-            @Override
-            public void onSuccess(@NonNull DoctorHomeStats result) {
-                stats.postValue(result);
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(@Nullable Throwable throwable,
-                                @Nullable Integer httpCode,
-                                @Nullable String errorBody) {
-                loading.postValue(false);
-                String msg = getApplication().getString(
-                        R.string.doctor_appointments_error_generic
-                );
-                errorMessage.postValue(msg);
-            }
-        });
-    }
-}
-
-
-===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentAdapter.java =====
-package tn.esprit.presentation.appointment;
-
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.recyclerview.widget.DiffUtil;
-import androidx.recyclerview.widget.ListAdapter;
-import androidx.recyclerview.widget.RecyclerView;
-
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.card.MaterialCardView;
-
-import java.util.Locale;
-
-import tn.esprit.R;
-import tn.esprit.domain.appointment.Appointment;
-
-/**
- * Adapter for displaying DOCTOR's appointments.
+ * Mirrors backend dto.appointment.DoctorScheduleDto.
  *
- * - Shows patient name, time range, status, tele flag, reason.
- * - If status == PENDING -> shows Accept / Reject buttons.
- * - Card click opens patient profile.
+ * Fields:
+ *  - id
+ *  - dayOfWeek: "MONDAY", "TUESDAY", ...
+ *  - startTime: "HH:mm"
+ *  - endTime: "HH:mm"
+ *  - active: whether this slot is used.
  */
-public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorAppointmentAdapter.AppointmentViewHolder> {
+public class DoctorSchedule {
 
-    private static final String TAG = "DoctorApptAdapter";
+    private Long id;
+    private String dayOfWeek;
+    private String startTime;
+    private String endTime;
+    private Boolean active;
 
-    public interface OnAppointmentActionListener {
-        void onAccept(@NonNull Appointment appointment);
-
-        void onReject(@NonNull Appointment appointment);
+    public DoctorSchedule() {
     }
 
-    public interface OnAppointmentClickListener {
-        void onAppointmentClick(@NonNull Appointment appointment);
+    public Long getId() {
+        return id;
     }
 
-    private final OnAppointmentActionListener actionListener;
-    private final OnAppointmentClickListener clickListener;
-
-    private static final DiffUtil.ItemCallback<Appointment> DIFF_CALLBACK =
-            new DiffUtil.ItemCallback<Appointment>() {
-                @Override
-                public boolean areItemsTheSame(@NonNull Appointment oldItem,
-                                               @NonNull Appointment newItem) {
-                    if (oldItem.getId() == null || newItem.getId() == null) {
-                        return oldItem == newItem;
-                    }
-                    return oldItem.getId().equals(newItem.getId());
-                }
-
-                @Override
-                public boolean areContentsTheSame(@NonNull Appointment oldItem,
-                                                  @NonNull Appointment newItem) {
-                    String s1 = oldItem.getStartAt();
-                    String s2 = newItem.getStartAt();
-                    String e1 = oldItem.getEndAt();
-                    String e2 = newItem.getEndAt();
-                    String st1 = oldItem.getStatus();
-                    String st2 = newItem.getStatus();
-                    return safeEquals(s1, s2)
-                            && safeEquals(e1, e2)
-                            && safeEquals(st1, st2);
-                }
-
-                private boolean safeEquals(@Nullable Object a, @Nullable Object b) {
-                    if (a == b) return true;
-                    if (a == null || b == null) return false;
-                    return a.equals(b);
-                }
-            };
-
-    public DoctorAppointmentAdapter(@NonNull OnAppointmentActionListener actionListener,
-                                    @NonNull OnAppointmentClickListener clickListener) {
-        super(DIFF_CALLBACK);
-        this.actionListener = actionListener;
-        this.clickListener = clickListener;
+    public void setId(Long id) {
+        this.id = id;
     }
 
-    @NonNull
-    @Override
-    public AppointmentViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_doctor_appointment, parent, false);
-        return new AppointmentViewHolder(view);
+    public String getDayOfWeek() {
+        return dayOfWeek;
     }
 
-    @Override
-    public void onBindViewHolder(@NonNull AppointmentViewHolder holder, int position) {
-        Appointment appointment = getItem(position);
-        holder.bind(appointment, actionListener, clickListener);
+    public void setDayOfWeek(String dayOfWeek) {
+        this.dayOfWeek = dayOfWeek;
     }
 
-    static class AppointmentViewHolder extends RecyclerView.ViewHolder {
+    public String getStartTime() {
+        return startTime;
+    }
 
-        private final MaterialCardView cardRoot;
-        private final TextView textPatientName;
-        private final TextView textDateTime;
-        private final TextView textStatusChip;
-        private final TextView textTele;
-        private final TextView textReason;
-        private final MaterialButton buttonAccept;
-        private final MaterialButton buttonReject;
-        private final View layoutActions; // parent layout for buttons
+    public void setStartTime(String startTime) {
+        this.startTime = startTime;
+    }
 
-        AppointmentViewHolder(@NonNull View itemView) {
-            super(itemView);
-            cardRoot = itemView.findViewById(R.id.card_appointment_root);
-            textPatientName = itemView.findViewById(R.id.text_patient_name);
-            textDateTime = itemView.findViewById(R.id.text_date_time);
-            textStatusChip = itemView.findViewById(R.id.text_status_chip);
-            textTele = itemView.findViewById(R.id.text_teleconsultation);
-            textReason = itemView.findViewById(R.id.text_reason);
-            buttonAccept = itemView.findViewById(R.id.button_accept);
-            buttonReject = itemView.findViewById(R.id.button_reject);
-            layoutActions = itemView.findViewById(R.id.layout_actions);
-        }
+    public String getEndTime() {
+        return endTime;
+    }
 
-        void bind(@NonNull Appointment appointment,
-                  @NonNull OnAppointmentActionListener actionListener,
-                  @NonNull OnAppointmentClickListener clickListener) {
+    public void setEndTime(String endTime) {
+        this.endTime = endTime;
+    }
 
-            // Patient name
-            String first = appointment.getPatientFirstName();
-            String last = appointment.getPatientLastName();
-            String name;
-            if ((first == null || first.trim().isEmpty())
-                    && (last == null || last.trim().isEmpty())) {
-                name = itemView.getContext().getString(R.string.profile_role_patient);
-            } else {
-                StringBuilder b = new StringBuilder();
-                if (first != null && !first.trim().isEmpty()) {
-                    b.append(first.trim());
-                }
-                if (last != null && !last.trim().isEmpty()) {
-                    if (b.length() > 0) b.append(" ");
-                    b.append(last.trim());
-                }
-                name = b.toString();
-            }
-            textPatientName.setText(name);
+    public Boolean getActive() {
+        return active;
+    }
 
-            // Date/time
-            String dateTime = AppointmentUiHelper.buildDateTimeDisplay(
-                    appointment.getStartAt(),
-                    appointment.getEndAt(),
-                    itemView.getContext()
-            );
-            textDateTime.setText(dateTime);
-
-            // Status chip
-            bindStatus(appointment.getStatus());
-
-            // Teleconsultation label
-            Boolean tele = appointment.getTeleconsultation();
-            if (tele != null && tele) {
-                textTele.setVisibility(View.VISIBLE);
-                textTele.setText(R.string.appointment_teleconsultation_label);
-            } else {
-                textTele.setVisibility(View.GONE);
-            }
-
-            // Reason
-            String reason = appointment.getReason();
-            if (reason != null && !reason.trim().isEmpty()) {
-                textReason.setVisibility(View.VISIBLE);
-                textReason.setText(reason.trim());
-            } else {
-                textReason.setVisibility(View.GONE);
-            }
-
-            // Accept / Reject visibility & click
-            String statusRaw = appointment.getStatus();
-            String status = statusRaw != null
-                    ? statusRaw.toUpperCase(Locale.getDefault())
-                    : "";
-
-            boolean isPending = "PENDING".equals(status);
-
-            Log.d(TAG, "bind: id=" + appointment.getId()
-                    + " statusRaw=" + statusRaw
-                    + " status=" + status
-                    + " isPending=" + isPending);
-
-            if (isPending) {
-                // show parent + buttons
-                if (layoutActions != null) {
-                    layoutActions.setVisibility(View.VISIBLE);
-                }
-                buttonAccept.setVisibility(View.VISIBLE);
-                buttonReject.setVisibility(View.VISIBLE);
-
-                buttonAccept.setOnClickListener(v -> {
-                    Log.d(TAG, "Accept clicked for id=" + appointment.getId());
-                    actionListener.onAccept(appointment);
-                });
-                buttonReject.setOnClickListener(v -> {
-                    Log.d(TAG, "Reject clicked for id=" + appointment.getId());
-                    actionListener.onReject(appointment);
-                });
-            } else {
-                // hide parent + buttons
-                if (layoutActions != null) {
-                    layoutActions.setVisibility(View.GONE);
-                }
-                buttonAccept.setVisibility(View.GONE);
-                buttonReject.setVisibility(View.GONE);
-                buttonAccept.setOnClickListener(null);
-                buttonReject.setOnClickListener(null);
-            }
-
-            // Card click -> open patient profile
-            cardRoot.setOnClickListener(v -> clickListener.onAppointmentClick(appointment));
-        }
-
-        private void bindStatus(@Nullable String statusRaw) {
-            String label;
-            if (statusRaw == null) {
-                label = itemView.getContext().getString(R.string.appointment_status_unknown);
-            } else {
-                String s = statusRaw.toUpperCase(Locale.getDefault());
-                switch (s) {
-                    case "PENDING":
-                        label = itemView.getContext().getString(R.string.appointment_status_pending);
-                        break;
-                    case "ACCEPTED":
-                        label = itemView.getContext().getString(R.string.appointment_status_accepted);
-                        break;
-                    case "REJECTED":
-                        label = itemView.getContext().getString(R.string.appointment_status_rejected);
-                        break;
-                    case "COMPLETED":
-                        label = itemView.getContext().getString(R.string.appointment_status_completed);
-                        break;
-                    default:
-                        label = itemView.getContext().getString(R.string.appointment_status_unknown);
-                        break;
-                }
-            }
-            textStatusChip.setText(label);
-        }
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 }
 

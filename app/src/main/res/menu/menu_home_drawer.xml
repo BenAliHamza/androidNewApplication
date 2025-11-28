@@ -9,6 +9,11 @@
         <item
             android:id="@+id/menu_settings"
             android:title="@string/home_drawer_settings" />
+
+        <!-- NEW: Notifications entry -->
+        <item
+            android:id="@+id/menu_notifications"
+            android:title="Notifications" />
     </group>
 
     <item
