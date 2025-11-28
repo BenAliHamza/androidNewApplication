@@ -24,7 +24,7 @@ import tn.esprit.domain.appointment.Appointment;
  * Adapter for displaying DOCTOR's appointments.
  *
  * - Shows patient name, time range, status, tele flag, reason.
- * - If status == PENDING -> shows Accept / Reject buttons.
+ * - If status == PENDING and appointment is in the future -> shows Accept / Reject buttons.
  * - Card click opens patient profile.
  */
 public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorAppointmentAdapter.AppointmentViewHolder> {
@@ -146,7 +146,7 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
             }
             textPatientName.setText(name);
 
-            // Date/time
+            // Date/time – use shared helper for consistent formatting
             String dateTime = AppointmentUiHelper.buildDateTimeDisplay(
                     appointment.getStartAt(),
                     appointment.getEndAt(),
@@ -175,21 +175,32 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
                 textReason.setVisibility(View.GONE);
             }
 
-            // Accept / Reject visibility & click
+            // Determine status + whether appointment is in the past
             String statusRaw = appointment.getStatus();
             String status = statusRaw != null
                     ? statusRaw.toUpperCase(Locale.getDefault())
                     : "";
-
             boolean isPending = "PENDING".equals(status);
+
+            // ✅ FIX: pass the ISO string, not the Appointment object
+            boolean isPast = AppointmentUiHelper.isInPast(appointment.getStartAt());
 
             Log.d(TAG, "bind: id=" + appointment.getId()
                     + " statusRaw=" + statusRaw
                     + " status=" + status
-                    + " isPending=" + isPending);
+                    + " isPending=" + isPending
+                    + " isPast=" + isPast);
 
-            if (isPending) {
-                // show parent + buttons
+            // Slightly dim past appointments visually
+            if (isPast) {
+                cardRoot.setAlpha(0.7f);
+            } else {
+                cardRoot.setAlpha(1f);
+            }
+
+            // Accept / Reject visibility & click:
+            // only for PENDING + not in past
+            if (isPending && !isPast) {
                 if (layoutActions != null) {
                     layoutActions.setVisibility(View.VISIBLE);
                 }
@@ -205,7 +216,6 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
                     actionListener.onReject(appointment);
                 });
             } else {
-                // hide parent + buttons
                 if (layoutActions != null) {
                     layoutActions.setVisibility(View.GONE);
                 }

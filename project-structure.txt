@@ -37,6 +37,7 @@
 ./app/src/main/res/drawable/bg_avatar_circle.xml
 ./app/src/main/res/drawable/logo.png
 ./app/src/main/res/drawable/ic_menu_24.xml
+./app/src/main/res/drawable/bg_status_chip.xml
 ./app/src/main/res/drawable/ic_launcher_background.xml
 ./app/src/main/res/drawable/bg_home_highlight.xml
 ./app/src/main/res/mipmap-xxxhdpi
@@ -162,6 +163,7 @@
 ./app/src/main/java/tn/esprit/data/remote/medication/PrescriptionApiService.java
 ./app/src/main/java/tn/esprit/domain
 ./app/src/main/java/tn/esprit/domain/appointment
+./app/src/main/java/tn/esprit/domain/appointment/AppointmentStatus.java
 ./app/src/main/java/tn/esprit/domain/appointment/DailySchedule.java
 ./app/src/main/java/tn/esprit/domain/appointment/Appointment.java
 ./app/src/main/java/tn/esprit/domain/appointment/AppointmentStatusUpdateRequest.java

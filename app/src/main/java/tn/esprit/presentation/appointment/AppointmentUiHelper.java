@@ -34,7 +34,6 @@ public final class AppointmentUiHelper {
      * Maps backend status string (PENDING / ACCEPTED / REJECTED / COMPLETED)
      * to a human-readable localized label.
      */
-
     @NonNull
     public static String getStatusLabel(@NonNull Context context,
                                         @Nullable String statusRaw) {
@@ -72,9 +71,6 @@ public final class AppointmentUiHelper {
 
     /**
      * Returns today's date prefix in ISO-8601 date format (yyyy-MM-dd).
-     *
-     * Used by DoctorAppointmentsViewModel:
-     *   startAt != null && startAt.startsWith(getTodayDatePrefix())
      */
     @NonNull
     public static String getTodayDatePrefix() {
@@ -85,9 +81,6 @@ public final class AppointmentUiHelper {
     /**
      * Safely extracts the "yyyy-MM-dd" prefix from an ISO-8601 date-time string.
      * Returns null if the input is null/too short.
-     *
-     * Used by DoctorAppointmentsViewModel to split appointments into
-     * today / upcoming / past using lexicographic comparison.
      */
     @Nullable
     public static String safeDatePrefix(@Nullable String isoDateTime) {
@@ -125,6 +118,16 @@ public final class AppointmentUiHelper {
     }
 
     /**
+     * Returns true if given ISO start date-time is strictly in the past.
+     */
+    public static boolean isInPast(@Nullable String startIso) {
+        Date start = parseDate(startIso);
+        if (start == null) return false;
+        Date now = new Date();
+        return start.before(now);
+    }
+
+    /**
      * Sort a list of appointments by startAt (ISO string, lexicographically).
      *
      * Returns a new list (does not mutate the input). Null -> empty list.
@@ -154,8 +157,6 @@ public final class AppointmentUiHelper {
      *   "Mon, 4 Mar  •  09:00 – 09:30"
      * or (if end is missing)
      *   "Mon, 4 Mar  •  09:00"
-     *
-     * Used by DoctorAppointmentAdapter.
      */
     @NonNull
     public static String buildDateTimeDisplay(@Nullable String startIso,
@@ -192,6 +193,37 @@ public final class AppointmentUiHelper {
         } catch (ParseException e) {
             // Fallback: just show the raw ISO string if parsing fails
             return startIso;
+        }
+    }
+
+    /**
+     * Formats a date ISO string ("yyyy-MM-dd" or full datetime) into "EEE, d MMM".
+     * Example: "2025-11-27" -> "Thu, 27 Nov".
+     */
+    @NonNull
+    public static String formatIsoDateToPretty(@NonNull String dateIso) {
+        String trimmed = dateIso.trim();
+        if (trimmed.isEmpty()) return "";
+
+        // Normalize to "yyyy-MM-dd"
+        String normalized;
+        if (trimmed.length() >= 10) {
+            normalized = trimmed.substring(0, 10);
+        } else {
+            normalized = trimmed;
+        }
+
+        SimpleDateFormat parser =
+                new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        SimpleDateFormat formatter =
+                new SimpleDateFormat("EEE, d MMM", Locale.getDefault());
+
+        try {
+            Date d = parser.parse(normalized);
+            if (d == null) return normalized;
+            return formatter.format(d);
+        } catch (ParseException e) {
+            return normalized;
         }
     }
 }

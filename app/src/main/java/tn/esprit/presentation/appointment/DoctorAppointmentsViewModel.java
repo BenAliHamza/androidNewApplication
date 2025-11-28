@@ -10,7 +10,6 @@ import androidx.lifecycle.MutableLiveData;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -24,14 +23,28 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
     private final AppointmentRepository repository;
 
     private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
+
+    // Sectioned lists
     private final MutableLiveData<List<Appointment>> todayAppointments =
             new MutableLiveData<>(Collections.emptyList());
     private final MutableLiveData<List<Appointment>> upcomingAppointments =
             new MutableLiveData<>(Collections.emptyList());
     private final MutableLiveData<List<Appointment>> pastAppointments =
             new MutableLiveData<>(Collections.emptyList());
+
+    // Filtered-by-date list
+    private final MutableLiveData<Boolean> filteredMode =
+            new MutableLiveData<>(false);
+    private final MutableLiveData<String> selectedDateIso =
+            new MutableLiveData<>();
+    private final MutableLiveData<List<Appointment>> filteredAppointments =
+            new MutableLiveData<>(Collections.emptyList());
+
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
     private final MutableLiveData<String> actionMessage = new MutableLiveData<>();
+
+    // Keep full list in memory to allow client-side date filtering
+    private List<Appointment> allAppointments = new ArrayList<>();
 
     public DoctorAppointmentsViewModel(@NonNull Application application) {
         super(application);
@@ -42,6 +55,11 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
     public LiveData<List<Appointment>> getTodayAppointments() { return todayAppointments; }
     public LiveData<List<Appointment>> getUpcomingAppointments() { return upcomingAppointments; }
     public LiveData<List<Appointment>> getPastAppointments() { return pastAppointments; }
+
+    public LiveData<Boolean> getFilteredMode() { return filteredMode; }
+    public LiveData<String> getSelectedDateIso() { return selectedDateIso; }
+    public LiveData<List<Appointment>> getFilteredAppointments() { return filteredAppointments; }
+
     public LiveData<String> getErrorMessage() { return errorMessage; }
     public LiveData<String> getActionMessage() { return actionMessage; }
 
@@ -64,7 +82,15 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
                     @Override
                     public void onSuccess(@NonNull List<Appointment> list) {
                         loading.postValue(false);
+
+                        allAppointments = new ArrayList<>(list);
                         splitIntoSections(list);
+
+                        Boolean isFiltered = filteredMode.getValue();
+                        String dateIso = selectedDateIso.getValue();
+                        if (Boolean.TRUE.equals(isFiltered) && dateIso != null) {
+                            applyDateFilter(dateIso);
+                        }
                     }
 
                     @Override
@@ -117,6 +143,40 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
     }
 
     // -------------------------------------------------------------------------
+    // Date filter
+    // -------------------------------------------------------------------------
+
+    public void filterByDate(@NonNull String dateIso) {
+        selectedDateIso.setValue(dateIso);
+        filteredMode.setValue(true);
+        applyDateFilter(dateIso);
+    }
+
+    public void clearDateFilter() {
+        selectedDateIso.setValue(null);
+        filteredMode.setValue(false);
+        filteredAppointments.setValue(Collections.emptyList());
+    }
+
+    private void applyDateFilter(@NonNull String dateIso) {
+        if (allAppointments == null || allAppointments.isEmpty()) {
+            filteredAppointments.postValue(Collections.emptyList());
+            return;
+        }
+
+        List<Appointment> filtered = new ArrayList<>();
+        for (Appointment a : allAppointments) {
+            if (a == null) continue;
+            String datePart = AppointmentUiHelper.safeDatePrefix(a.getStartAt());
+            if (dateIso.equals(datePart)) {
+                filtered.add(a);
+            }
+        }
+
+        filteredAppointments.postValue(AppointmentUiHelper.sortByStart(filtered));
+    }
+
+    // -------------------------------------------------------------------------
     // Accept / reject
     // -------------------------------------------------------------------------
 
@@ -159,6 +219,14 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
             return;
         }
 
+        // Disallow accepting/rejecting past appointments
+        if (AppointmentUiHelper.isInPast(appointment.getStartAt())) {
+            actionMessage.setValue(
+                    getApplication().getString(R.string.doctor_appointments_action_in_past)
+            );
+            return;
+        }
+
         loading.setValue(true);
 
         AppointmentStatusUpdateRequest request = new AppointmentStatusUpdateRequest();
@@ -172,7 +240,7 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
                     public void onSuccess(@NonNull Appointment updated) {
                         loading.postValue(false);
                         actionMessage.postValue(successMessage);
-                        loadAppointments(); // <--- we keep your logic
+                        loadAppointments();
                     }
 
                     @Override
@@ -186,12 +254,5 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
                     }
                 }
         );
-    }
-
-    private boolean isInPast(@NonNull Appointment appointment) {
-        Date start = AppointmentUiHelper.parseDate(appointment.getStartAt());
-        if (start == null) return false;
-        Date now = new Date();
-        return start.before(now);
     }
 }

@@ -15,8 +15,15 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
+
 import tn.esprit.R;
 import tn.esprit.domain.doctor.DoctorHomeStats;
+import tn.esprit.presentation.appointment.AppointmentUiHelper;
 import tn.esprit.presentation.appointment.DoctorHomeViewModel;
 
 public class HomeFragment extends Fragment {
@@ -164,11 +171,7 @@ public class HomeFragment extends Fragment {
         }
 
         if (textNextTime != null) {
-            if (s.nextAppointmentStart != null && !s.nextAppointmentStart.isEmpty()) {
-                textNextTime.setText(s.nextAppointmentStart);
-            } else {
-                textNextTime.setText(getString(R.string.home_next_appointment_none));
-            }
+            textNextTime.setText(formatNextAppointmentTime(s.nextAppointmentStart));
         }
 
         if (textNextPatient != null) {
@@ -177,6 +180,47 @@ public class HomeFragment extends Fragment {
             } else {
                 textNextPatient.setText("");
             }
+        }
+    }
+
+    /**
+     * Formats the next appointment start ISO string into a doctor-friendly label:
+     * - If empty -> "No upcoming appointment"
+     * - If today  -> "Today · HH:mm"
+     * - Else      -> "EEE, d MMM · HH:mm"
+     */
+    @NonNull
+    private String formatNextAppointmentTime(@Nullable String nextStartIso) {
+        if (nextStartIso == null || nextStartIso.trim().isEmpty()) {
+            return getString(R.string.home_next_appointment_none);
+        }
+
+        // Try to reuse AppointmentUiHelper.parseDate for consistency with the rest of the app
+        Date date = AppointmentUiHelper.parseDate(nextStartIso);
+        if (date == null) {
+            // Fallback: show raw string if parsing fails
+            return nextStartIso;
+        }
+
+        Calendar nowCal = Calendar.getInstance();
+        Calendar targetCal = Calendar.getInstance();
+        targetCal.setTime(date);
+
+        boolean sameDay =
+                nowCal.get(Calendar.YEAR) == targetCal.get(Calendar.YEAR)
+                        && nowCal.get(Calendar.DAY_OF_YEAR) == targetCal.get(Calendar.DAY_OF_YEAR);
+
+        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        String timePart = timeFormat.format(date);
+
+        if (sameDay) {
+            // Example: "Today · 09:30"
+            return getString(R.string.home_next_appointment_today_label, timePart);
+        } else {
+            // Example: "Fri, 28 Nov · 09:30"
+            SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, d MMM", Locale.getDefault());
+            String datePart = dateFormat.format(date);
+            return datePart + " · " + timePart;
         }
     }
 

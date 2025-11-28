@@ -793,8 +793,53 @@
 
     <string name="doctor_appointments_action_accept_success">Appointment accepted</string>
     <string name="doctor_appointments_action_reject_success">Appointment rejected</string>
+    <string name="doctor_appointments_overview_title_today">Today · %1$s</string>
+    <string name="doctor_appointments_pick_day">Pick a day</string>
+    <string name="doctor_appointments_date_picker_title">Select a day</string>
+    <!-- Doctor appointments overview header -->
+    <string name="doctor_appointments_overview_title_selected">Appointments · %1$s</string>
+    <string name="doctor_appointments_overview_title_upcoming">Upcoming appointments</string>
+    <string name="doctor_appointments_overview_title_past">Past appointments</string>
 
     <string name="doctor_appointments_action_error">Error updating appointment</string>
+    <string name="doctor_appointments_overview_today">Today · %1$s</string>
+    <string name="doctor_appointments_overview_upcoming">Upcoming appointments</string>
+    <string name="doctor_appointments_overview_past">Past appointments</string>
+    <!-- Doctor appointments: select specific day -->
+    <string name="doctor_appointments_date_filter_label_default">Jump to specific day</string>
+    <string name="doctor_appointments_date_filter_label_active">Clear date filter</string>
+    <string name="doctor_appointments_date_filter_picker_title">Select a day</string>
+    <!-- Doctor appointments: date filter & overview -->
+    <string name="doctor_appointments_pick_date">Choose date</string>
+
+    <string name="doctor_appointments_overview_counts">Today: %1$d · Upcoming: %2$d · Past: %3$d</string>
+    <string name="doctor_appointments_overview_hint">
+    Tap the date above to choose a day
+</string>
+    <string name="doctor_appointments_filter_clear">
+    Clear
+</string>
+
+
+
+
+
+
+    <!-- If you haven't added this earlier for the "in past" restriction -->
+
+    <!-- Doctor appointments: selected-day header -->
+    <string name="doctor_appointments_overview_selected">Selected · %1$s</string>
+    <string name="doctor_appointments_overview_selected_counts">Selected day: %1$d appointment(s)</string>
+    <!-- Doctor appointments: date filtering / overview -->
+    <string name="doctor_appointments_overview_title_default">Today · %1$s</string>
+    <string name="doctor_appointments_clear_filter">Clear date filter</string>
+    <string name="doctor_appointments_overview_filtered_title">Appointments on %1$s</string>
+    <string name="doctor_appointments_overview_filtered_count">Appointments: %1$d</string>
+    <string name="doctor_appointments_overview_filtered_unknown_date">Selected day</string>
+    <string name="doctor_appointments_action_in_past">You can NOT change a past appointment.</string>
+    <string name="doctor_appointments_pick_date_label">Choose date</string>
+    <string name="doctor_appointments_clear_filter_label">Clear</string>
+    <string name="home_next_appointment_today_label">Today · %1$s</string>
 
 </resources>
 

@@ -35,6 +35,7 @@ public final class AppointmentUiHelper {
      * Maps backend status string (PENDING / ACCEPTED / REJECTED / COMPLETED)
      * to a human-readable localized label.
      */
+
     @NonNull
     public static String getStatusLabel(@NonNull Context context,
                                         @Nullable String statusRaw) {
@@ -42,7 +43,7 @@ public final class AppointmentUiHelper {
             return context.getString(R.string.appointment_status_unknown);
         }
 
-        switch (statusRaw) {
+        switch (statusRaw.toUpperCase(Locale.getDefault())) {
             case "PENDING":
                 return context.getString(R.string.appointment_status_pending);
             case "ACCEPTED":
@@ -525,16 +526,6 @@ import java.util.List;
 import tn.esprit.R;
 import tn.esprit.domain.appointment.Appointment;
 
-/**
- * Doctor "My schedule" screen.
- *
- * Tabs:
- *  - Today
- *  - Upcoming
- *  - Past
- *
- * Allows accepting / rejecting pending appointments, and opening patient profile.
- */
 public class DoctorAppointmentsFragment extends Fragment {
 
     private static final String KEY_CURRENT_SECTION = "doctor_appointments_current_section";
@@ -578,16 +569,12 @@ public class DoctorAppointmentsFragment extends Fragment {
                 new DoctorAppointmentAdapter.OnAppointmentActionListener() {
                     @Override
                     public void onAccept(@NonNull Appointment appointment) {
-                        if (viewModel != null) {
-                            viewModel.acceptAppointment(appointment);
-                        }
+                        if (viewModel != null) viewModel.acceptAppointment(appointment);
                     }
 
                     @Override
                     public void onReject(@NonNull Appointment appointment) {
-                        if (viewModel != null) {
-                            viewModel.rejectAppointment(appointment);
-                        }
+                        if (viewModel != null) viewModel.rejectAppointment(appointment);
                     }
                 },
                 this::openPatientProfileForAppointment
@@ -598,128 +585,106 @@ public class DoctorAppointmentsFragment extends Fragment {
 
         viewModel = new ViewModelProvider(this).get(DoctorAppointmentsViewModel.class);
 
-        // Restore current section (tab) if we have saved state
         if (savedInstanceState != null) {
-            String secName = savedInstanceState.getString(KEY_CURRENT_SECTION);
-            if (secName != null) {
-                try {
-                    currentSection = Section.valueOf(secName);
-                } catch (IllegalArgumentException ignore) {
-                    currentSection = Section.TODAY;
-                }
+            try {
+                currentSection = Section.valueOf(
+                        savedInstanceState.getString(KEY_CURRENT_SECTION, "TODAY")
+                );
+            } catch (Exception ignore) {
+                currentSection = Section.TODAY;
             }
         }
 
         setupTabs();
         observeViewModel();
+
+        viewModel.loadAppointments();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (viewModel != null) {
-            viewModel.loadAppointments();
-        }
+        if (viewModel != null) viewModel.loadAppointments();
     }
 
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
-        super.onSaveInstanceState(outState);
         outState.putString(KEY_CURRENT_SECTION, currentSection.name());
+        super.onSaveInstanceState(outState);
     }
 
     private void setupTabs() {
-        if (tabs == null) return;
-
         tabs.removeAllTabs();
 
-        TabLayout.Tab tabToday = tabs.newTab()
-                .setText(R.string.doctor_appointments_tab_today)
-                .setTag(Section.TODAY);
-        tabs.addTab(tabToday, currentSection == Section.TODAY);
+        addTab(Section.TODAY, getString(R.string.doctor_appointments_tab_today));
+        addTab(Section.UPCOMING, getString(R.string.doctor_appointments_tab_upcoming));
+        addTab(Section.PAST, getString(R.string.doctor_appointments_tab_past));
 
-        TabLayout.Tab tabUpcoming = tabs.newTab()
-                .setText(R.string.doctor_appointments_tab_upcoming)
-                .setTag(Section.UPCOMING);
-        tabs.addTab(tabUpcoming, currentSection == Section.UPCOMING);
-
-        TabLayout.Tab tabPast = tabs.newTab()
-                .setText(R.string.doctor_appointments_tab_past)
-                .setTag(Section.PAST);
-        tabs.addTab(tabPast, currentSection == Section.PAST);
+        TabLayout.Tab tab = tabs.getTabAt(currentSection.ordinal());
+        if (tab != null) tab.select();
 
         tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
-            public void onTabSelected(TabLayout.Tab tab) {
-                Object tag = tab.getTag();
-                if (tag instanceof Section) {
-                    currentSection = (Section) tag;
+            public void onTabSelected(TabLayout.Tab selectedTab) {
+                Section sec = (Section) selectedTab.getTag();
+                if (sec != null) {
+                    currentSection = sec;
                     updateListForCurrentSection();
                 }
             }
 
-            @Override
-            public void onTabUnselected(TabLayout.Tab tab) {
-                // no-op
-            }
-
-            @Override
-            public void onTabReselected(TabLayout.Tab tab) {
-                Object tag = tab.getTag();
-                if (tag instanceof Section) {
-                    currentSection = (Section) tag;
+            @Override public void onTabUnselected(TabLayout.Tab tab) {}
+            @Override public void onTabReselected(TabLayout.Tab tab) {
+                Section sec = (Section) tab.getTag();
+                if (sec != null) {
+                    currentSection = sec;
                     updateListForCurrentSection();
                 }
             }
         });
+    }
 
-        // Ensure list matches the restored section
-        updateListForCurrentSection();
+    private void addTab(Section section, String label) {
+        TabLayout.Tab tab = tabs.newTab();
+        tab.setText(label);
+        tab.setTag(section);
+        tabs.addTab(tab, section == currentSection);
     }
 
     private void observeViewModel() {
-        viewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
-            if (loading == null) return;
-            progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
-        });
+
+        viewModel.getLoading().observe(getViewLifecycleOwner(), loading ->
+                progressBar.setVisibility(Boolean.TRUE.equals(loading) ? View.VISIBLE : View.GONE)
+        );
 
         viewModel.getTodayAppointments().observe(getViewLifecycleOwner(), list -> {
-            if (currentSection == Section.TODAY) {
-                showAppointments(list);
-            }
+            if (currentSection == Section.TODAY) showAppointments(list);
         });
 
         viewModel.getUpcomingAppointments().observe(getViewLifecycleOwner(), list -> {
-            if (currentSection == Section.UPCOMING) {
-                showAppointments(list);
-            }
+            if (currentSection == Section.UPCOMING) showAppointments(list);
         });
 
         viewModel.getPastAppointments().observe(getViewLifecycleOwner(), list -> {
-            if (currentSection == Section.PAST) {
-                showAppointments(list);
-            }
+            if (currentSection == Section.PAST) showAppointments(list);
         });
 
         viewModel.getErrorMessage().observe(getViewLifecycleOwner(), msg -> {
-            if (msg == null || msg.trim().isEmpty()) return;
-            if (isAdded()) {
+            if (msg != null && !msg.trim().isEmpty()) {
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+                viewModel.clearMessages();
             }
-            viewModel.clearMessages();
         });
 
         viewModel.getActionMessage().observe(getViewLifecycleOwner(), msg -> {
-            if (msg == null || msg.trim().isEmpty()) return;
-            if (isAdded()) {
+            if (msg != null && !msg.trim().isEmpty()) {
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
+                viewModel.clearMessages();
             }
-            viewModel.clearMessages();
         });
     }
 
     private void updateListForCurrentSection() {
-        if (viewModel == null) return;
         switch (currentSection) {
             case TODAY:
                 showAppointments(viewModel.getTodayAppointments().getValue());
@@ -735,28 +700,21 @@ public class DoctorAppointmentsFragment extends Fragment {
 
     private void showAppointments(@Nullable List<Appointment> list) {
         if (list == null || list.isEmpty()) {
-            adapter.submitList(null);
             textEmpty.setVisibility(View.VISIBLE);
             recycler.setVisibility(View.GONE);
+            adapter.submitList(null);
         } else {
-            adapter.submitList(list);
             textEmpty.setVisibility(View.GONE);
             recycler.setVisibility(View.VISIBLE);
+            adapter.submitList(list);
         }
     }
 
-    /**
-     * Open patient public profile from an appointment.
-     * IMPORTANT: uses patientUserId (not patientId).
-     */
     private void openPatientProfileForAppointment(@NonNull Appointment appointment) {
         Long patientUserId = appointment.getPatientUserId();
-        if (patientUserId == null || patientUserId <= 0L) {
-            return;
-        }
+        if (patientUserId == null || patientUserId <= 0L) return;
 
         Bundle args = new Bundle();
-        // nav_main.xml + PatientPublicProfileFragment expect "patientId" = User.id
         args.putLong("patientId", patientUserId);
 
         NavController navController = NavHostFragment.findNavController(this);
@@ -1000,16 +958,6 @@ import tn.esprit.data.appointment.AppointmentRepository;
 import tn.esprit.domain.appointment.Appointment;
 import tn.esprit.domain.appointment.AppointmentStatusUpdateRequest;
 
-/**
- * ViewModel for doctor "My schedule" / appointments screen.
- *
- * Holds three lists:
- *  - todayAppointments
- *  - upcomingAppointments
- *  - pastAppointments
- *
- * Also exposes loading + error/action messages.
- */
 public class DoctorAppointmentsViewModel extends AndroidViewModel {
 
     private final AppointmentRepository repository;
@@ -1029,33 +977,12 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
         repository = new AppointmentRepository(application.getApplicationContext());
     }
 
-    // -------------------------------------------------------------------------
-    // LiveData getters
-    // -------------------------------------------------------------------------
-
-    public LiveData<Boolean> getLoading() {
-        return loading;
-    }
-
-    public LiveData<List<Appointment>> getTodayAppointments() {
-        return todayAppointments;
-    }
-
-    public LiveData<List<Appointment>> getUpcomingAppointments() {
-        return upcomingAppointments;
-    }
-
-    public LiveData<List<Appointment>> getPastAppointments() {
-        return pastAppointments;
-    }
-
-    public LiveData<String> getErrorMessage() {
-        return errorMessage;
-    }
-
-    public LiveData<String> getActionMessage() {
-        return actionMessage;
-    }
+    public LiveData<Boolean> getLoading() { return loading; }
+    public LiveData<List<Appointment>> getTodayAppointments() { return todayAppointments; }
+    public LiveData<List<Appointment>> getUpcomingAppointments() { return upcomingAppointments; }
+    public LiveData<List<Appointment>> getPastAppointments() { return pastAppointments; }
+    public LiveData<String> getErrorMessage() { return errorMessage; }
+    public LiveData<String> getActionMessage() { return actionMessage; }
 
     public void clearMessages() {
         errorMessage.setValue(null);
@@ -1063,13 +990,9 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
     }
 
     // -------------------------------------------------------------------------
-    // Loading appointments
+    // Load appointments
     // -------------------------------------------------------------------------
 
-    /**
-     * Load all appointments for current doctor.
-     * For now we don't pass date range; backend returns relevant range.
-     */
     public void loadAppointments() {
         loading.setValue(true);
 
@@ -1088,8 +1011,9 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
                                         @Nullable Integer httpCode,
                                         @Nullable String errorBody) {
                         loading.postValue(false);
-                        String msg = getApplication()
-                                .getString(R.string.doctor_appointments_error_generic);
+                        String msg = getApplication().getString(
+                                R.string.doctor_appointments_error_generic
+                        );
                         errorMessage.postValue(msg);
                     }
                 }
@@ -1112,23 +1036,18 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
 
         for (Appointment a : list) {
             if (a == null) continue;
-            String start = a.getStartAt();
-            String datePart = AppointmentUiHelper.safeDatePrefix(start);
 
+            String datePart = AppointmentUiHelper.safeDatePrefix(a.getStartAt());
             if (datePart == null) {
-                // Unknown -> treat as upcoming
                 upcoming.add(a);
                 continue;
             }
 
             int cmp = datePart.compareTo(todayDate);
-            if (cmp == 0) {
-                today.add(a);
-            } else if (cmp < 0) {
-                past.add(a);
-            } else {
-                upcoming.add(a);
-            }
+
+            if (cmp == 0) today.add(a);
+            else if (cmp < 0) past.add(a);
+            else upcoming.add(a);
         }
 
         todayAppointments.postValue(AppointmentUiHelper.sortByStart(today));
@@ -1141,35 +1060,41 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
     // -------------------------------------------------------------------------
 
     public void acceptAppointment(@NonNull Appointment appointment) {
-        changeStatus(appointment, "ACCEPTED",
+        changeStatus(
+                appointment,
+                "ACCEPTED",
                 getApplication().getString(R.string.doctor_appointments_action_accept_success),
-                getApplication().getString(R.string.doctor_appointments_action_accept_error));
+                getApplication().getString(R.string.doctor_appointments_action_accept_error)
+        );
     }
 
     public void rejectAppointment(@NonNull Appointment appointment) {
-        changeStatus(appointment, "REJECTED",
+        changeStatus(
+                appointment,
+                "REJECTED",
                 getApplication().getString(R.string.doctor_appointments_action_reject_success),
-                getApplication().getString(R.string.doctor_appointments_action_reject_error));
+                getApplication().getString(R.string.doctor_appointments_action_reject_error)
+        );
     }
 
-    private void changeStatus(@NonNull Appointment appointment,
-                              @NonNull String newStatus,
-                              @NonNull String successMessage,
-                              @NonNull String errorMessageText) {
+    private void changeStatus(
+            @NonNull Appointment appointment,
+            @NonNull String newStatus,
+            @NonNull String successMessage,
+            @NonNull String errorMessageText
+    ) {
         Long id = appointment.getId();
-        if (id == null || id <= 0L) {
-            return;
-        }
+        if (id == null || id <= 0L) return;
 
         String currentStatusRaw = appointment.getStatus();
         String currentStatus = currentStatusRaw != null
                 ? currentStatusRaw.toUpperCase(Locale.getDefault())
                 : "";
 
-        // Only allow status change from PENDING in this v1
         if (!"PENDING".equals(currentStatus)) {
-            actionMessage.setValue(getApplication()
-                    .getString(R.string.doctor_appointments_action_not_pending));
+            actionMessage.setValue(
+                    getApplication().getString(R.string.doctor_appointments_action_not_pending)
+            );
             return;
         }
 
@@ -1186,14 +1111,15 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
                     public void onSuccess(@NonNull Appointment updated) {
                         loading.postValue(false);
                         actionMessage.postValue(successMessage);
-                        // Reload lists to ensure all tabs are in sync
-                        loadAppointments();
+                        loadAppointments(); // <--- we keep your logic
                     }
 
                     @Override
-                    public void onError(@Nullable Throwable throwable,
-                                        @Nullable Integer httpCode,
-                                        @Nullable String errorBody) {
+                    public void onError(
+                            @Nullable Throwable throwable,
+                            @Nullable Integer httpCode,
+                            @Nullable String errorBody
+                    ) {
                         loading.postValue(false);
                         actionMessage.postValue(errorMessageText);
                     }
@@ -1201,11 +1127,6 @@ public class DoctorAppointmentsViewModel extends AndroidViewModel {
         );
     }
 
-    // -------------------------------------------------------------------------
-    // (Optional) helper if we ever need "is in past" logic here
-    // -------------------------------------------------------------------------
-
-    @SuppressWarnings("unused")
     private boolean isInPast(@NonNull Appointment appointment) {
         Date start = AppointmentUiHelper.parseDate(appointment.getStartAt());
         if (start == null) return false;
@@ -1288,6 +1209,7 @@ public class DoctorHomeViewModel extends AndroidViewModel {
 ===== FILE: ./app/src/main/java/tn/esprit/presentation/appointment/DoctorAppointmentAdapter.java =====
 package tn.esprit.presentation.appointment;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -1315,6 +1237,8 @@ import tn.esprit.domain.appointment.Appointment;
  * - Card click opens patient profile.
  */
 public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorAppointmentAdapter.AppointmentViewHolder> {
+
+    private static final String TAG = "DoctorApptAdapter";
 
     public interface OnAppointmentActionListener {
         void onAccept(@NonNull Appointment appointment);
@@ -1392,6 +1316,7 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
         private final TextView textReason;
         private final MaterialButton buttonAccept;
         private final MaterialButton buttonReject;
+        private final View layoutActions; // parent layout for buttons
 
         AppointmentViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -1403,6 +1328,7 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
             textReason = itemView.findViewById(R.id.text_reason);
             buttonAccept = itemView.findViewById(R.id.button_accept);
             buttonReject = itemView.findViewById(R.id.button_reject);
+            layoutActions = itemView.findViewById(R.id.layout_actions);
         }
 
         void bind(@NonNull Appointment appointment,
@@ -1466,13 +1392,32 @@ public class DoctorAppointmentAdapter extends ListAdapter<Appointment, DoctorApp
 
             boolean isPending = "PENDING".equals(status);
 
+            Log.d(TAG, "bind: id=" + appointment.getId()
+                    + " statusRaw=" + statusRaw
+                    + " status=" + status
+                    + " isPending=" + isPending);
+
             if (isPending) {
+                // show parent + buttons
+                if (layoutActions != null) {
+                    layoutActions.setVisibility(View.VISIBLE);
+                }
                 buttonAccept.setVisibility(View.VISIBLE);
                 buttonReject.setVisibility(View.VISIBLE);
 
-                buttonAccept.setOnClickListener(v -> actionListener.onAccept(appointment));
-                buttonReject.setOnClickListener(v -> actionListener.onReject(appointment));
+                buttonAccept.setOnClickListener(v -> {
+                    Log.d(TAG, "Accept clicked for id=" + appointment.getId());
+                    actionListener.onAccept(appointment);
+                });
+                buttonReject.setOnClickListener(v -> {
+                    Log.d(TAG, "Reject clicked for id=" + appointment.getId());
+                    actionListener.onReject(appointment);
+                });
             } else {
+                // hide parent + buttons
+                if (layoutActions != null) {
+                    layoutActions.setVisibility(View.GONE);
+                }
                 buttonAccept.setVisibility(View.GONE);
                 buttonReject.setVisibility(View.GONE);
                 buttonAccept.setOnClickListener(null);
