@@ -76,8 +76,8 @@
                                 android:background="@drawable/bg_profile_role_pill"
                                 android:padding="4dp"
                                 android:src="@android:drawable/ic_menu_camera"
-                                android:tint="@color/color_profile_role_text"
-                                android:contentDescription="@string/profile_change_photo" />
+                                android:contentDescription="@string/profile_change_photo"
+                                app:tint="@color/color_profile_role_text" />
                         </FrameLayout>
 
                         <!-- Name, role pill, contact line -->

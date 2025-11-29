@@ -610,17 +610,11 @@ public class EditPatientProfileFragment extends Fragment {
     private void showDatePicker() {
         if (!isAdded()) return;
 
-        int year;
-        int month;
-        int day;
+        // Default initial date = 2000-01-01 (much closer for most users than 1950s)
+        Calendar initialCal = Calendar.getInstance();
+        initialCal.set(2000, Calendar.JANUARY, 1);
 
-        // Fallback: 30 years ago from today
-        Calendar fallback = Calendar.getInstance();
-        fallback.add(Calendar.YEAR, -30);
-        year = fallback.get(Calendar.YEAR);
-        month = fallback.get(Calendar.MONTH);
-        day = fallback.get(Calendar.DAY_OF_MONTH);
-
+        // Try current text first
         String dobText = null;
         if (inputDob != null && inputDob.getText() != null) {
             dobText = inputDob.getText().toString().trim();
@@ -630,24 +624,32 @@ public class EditPatientProfileFragment extends Fragment {
             try {
                 String[] parts = dobText.substring(0, 10).split("-");
                 if (parts.length == 3) {
-                    year = Integer.parseInt(parts[0]);
-                    month = Integer.parseInt(parts[1]) - 1;
-                    day = Integer.parseInt(parts[2]);
+                    int y = Integer.parseInt(parts[0]);
+                    int m = Integer.parseInt(parts[1]) - 1;
+                    int d = Integer.parseInt(parts[2]);
+                    initialCal.set(y, m, d);
                 }
             } catch (Exception ignored) {
             }
         } else if (currentPatientProfile != null &&
                 !TextUtils.isEmpty(currentPatientProfile.getDateOfBirth())) {
             try {
-                String[] parts = currentPatientProfile.getDateOfBirth().substring(0, 10).split("-");
+                String[] parts = currentPatientProfile.getDateOfBirth()
+                        .substring(0, 10)
+                        .split("-");
                 if (parts.length == 3) {
-                    year = Integer.parseInt(parts[0]);
-                    month = Integer.parseInt(parts[1]) - 1;
-                    day = Integer.parseInt(parts[2]);
+                    int y = Integer.parseInt(parts[0]);
+                    int m = Integer.parseInt(parts[1]) - 1;
+                    int d = Integer.parseInt(parts[2]);
+                    initialCal.set(y, m, d);
                 }
             } catch (Exception ignored) {
             }
         }
+
+        int year = initialCal.get(Calendar.YEAR);
+        int month = initialCal.get(Calendar.MONTH);
+        int day = initialCal.get(Calendar.DAY_OF_MONTH);
 
         DatePickerDialog dialog = new DatePickerDialog(
                 requireContext(),
@@ -661,6 +663,14 @@ public class EditPatientProfileFragment extends Fragment {
                 month,
                 day
         );
+
+        // Apply same logical bounds as validation: max today, min 120 years ago
+        Calendar max = Calendar.getInstance();
+        Calendar min = Calendar.getInstance();
+        min.add(Calendar.YEAR, -120);
+
+        dialog.getDatePicker().setMaxDate(max.getTimeInMillis());
+        dialog.getDatePicker().setMinDate(min.getTimeInMillis());
 
         dialog.show();
     }
