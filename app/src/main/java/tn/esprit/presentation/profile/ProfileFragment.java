@@ -381,10 +381,14 @@ public class ProfileFragment extends Fragment {
                             getString(R.string.profile_patient_blood_type_format, blood)
                     );
                 } else {
-                    textPatientBloodType.setText("");
+                    textPatientBloodType.setText(
+                            getString(R.string.profile_patient_blood_type_not_set)
+                    );
                 }
             } catch (Exception ignored) {
-                textPatientBloodType.setText("");
+                textPatientBloodType.setText(
+                        getString(R.string.profile_patient_blood_type_not_set)
+                );
             }
         }
 

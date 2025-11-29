@@ -2,6 +2,7 @@ package tn.esprit.presentation.profile;
 
 import android.app.Activity;
 import android.app.DatePickerDialog;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -12,8 +13,10 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.Toast;
 
+import androidx.annotation.ArrayRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
@@ -40,6 +43,9 @@ public class EditPatientProfileFragment extends Fragment {
     private TextInputLayout layoutDob;
     private TextInputLayout layoutHeight;
     private TextInputLayout layoutWeight;
+    private TextInputLayout layoutGender;
+    private TextInputLayout layoutBloodType;
+    private TextInputLayout layoutMaritalStatus;
 
     private TextInputEditText inputDob;
     private TextInputEditText inputGender;
@@ -87,6 +93,9 @@ public class EditPatientProfileFragment extends Fragment {
         layoutDob = view.findViewById(R.id.layout_dob);
         layoutHeight = view.findViewById(R.id.layout_height_cm);
         layoutWeight = view.findViewById(R.id.layout_weight_kg);
+        layoutGender = view.findViewById(R.id.layout_gender);
+        layoutBloodType = view.findViewById(R.id.layout_blood_type);
+        layoutMaritalStatus = view.findViewById(R.id.layout_marital_status);
 
         inputDob = view.findViewById(R.id.input_dob);
         inputGender = view.findViewById(R.id.input_gender);
@@ -126,10 +135,63 @@ public class EditPatientProfileFragment extends Fragment {
         }
 
         attachClearErrorTextWatchers();
+        setupPickers();
 
         loadProfileForEdit();
     }
 
+    // ------------------------------------------------------------
+    // Picker dialogs for gender / blood type / marital status
+    // using existing arrays: profile_genders, profile_blood_types, profile_marital_statuses
+    // ------------------------------------------------------------
+    private void setupPickers() {
+        if (!isAdded()) return;
+
+        setupPickerForField(inputGender, R.array.profile_genders);
+        setupPickerForField(inputBloodType, R.array.profile_blood_types);
+        setupPickerForField(inputMaritalStatus, R.array.profile_marital_statuses);
+    }
+
+    private void setupPickerForField(@Nullable TextInputEditText editText,
+                                     @ArrayRes int arrayResId) {
+        if (editText == null) return;
+
+        // Prevent keyboard input → tap only
+        editText.setFocusable(false);
+        editText.setFocusableInTouchMode(false);
+        editText.setClickable(true);
+
+        editText.setOnClickListener(v -> showOptionsDialog(editText, arrayResId));
+    }
+
+    private void showOptionsDialog(@NonNull TextInputEditText target,
+                                   @ArrayRes int arrayResId) {
+        if (!isAdded()) return;
+
+        String[] items;
+        try {
+            items = requireContext().getResources().getStringArray(arrayResId);
+        } catch (Resources.NotFoundException e) {
+            // Fail-safe: do nothing if array missing
+            return;
+        }
+
+        String title = target.getHint() != null ? target.getHint().toString()
+                : getString(R.string.profile_patient_edit_title);
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle(title)
+                .setItems(items, (dialog, which) -> {
+                    if (which >= 0 && which < items.length) {
+                        target.setText(items[which]);
+                    }
+                })
+                .show();
+    }
+
+    // ------------------------------------------------------------
+    // Watchers to clear errors
+    // ------------------------------------------------------------
     private void attachClearErrorTextWatchers() {
         if (inputDob != null && layoutDob != null) {
             inputDob.addTextChangedListener(new SimpleClearErrorWatcher(layoutDob));
@@ -139,6 +201,15 @@ public class EditPatientProfileFragment extends Fragment {
         }
         if (inputWeightKg != null && layoutWeight != null) {
             inputWeightKg.addTextChangedListener(new SimpleClearErrorWatcher(layoutWeight));
+        }
+        if (inputGender != null && layoutGender != null) {
+            inputGender.addTextChangedListener(new SimpleClearErrorWatcher(layoutGender));
+        }
+        if (inputBloodType != null && layoutBloodType != null) {
+            inputBloodType.addTextChangedListener(new SimpleClearErrorWatcher(layoutBloodType));
+        }
+        if (inputMaritalStatus != null && layoutMaritalStatus != null) {
+            inputMaritalStatus.addTextChangedListener(new SimpleClearErrorWatcher(layoutMaritalStatus));
         }
     }
 
@@ -174,6 +245,9 @@ public class EditPatientProfileFragment extends Fragment {
         }
     }
 
+    // ------------------------------------------------------------
+    // Load existing profile
+    // ------------------------------------------------------------
     private void loadProfileForEdit() {
         showLoading(true);
         profileRepository.loadProfile(new ProfileRepository.ProfileCallback() {
@@ -279,6 +353,9 @@ public class EditPatientProfileFragment extends Fragment {
         });
     }
 
+    // ------------------------------------------------------------
+    // Save
+    // ------------------------------------------------------------
     private void savePatientProfile() {
         if (currentUser == null) {
             Toast.makeText(requireContext(),
@@ -328,6 +405,9 @@ public class EditPatientProfileFragment extends Fragment {
         });
     }
 
+    // ------------------------------------------------------------
+    // Validation
+    // ------------------------------------------------------------
     private boolean validateAndFillRequest(PatientProfileUpdateRequestDto request) {
         boolean hasError = false;
 
@@ -335,6 +415,9 @@ public class EditPatientProfileFragment extends Fragment {
         if (layoutDob != null) layoutDob.setError(null);
         if (layoutHeight != null) layoutHeight.setError(null);
         if (layoutWeight != null) layoutWeight.setError(null);
+        if (layoutGender != null) layoutGender.setError(null);
+        if (layoutBloodType != null) layoutBloodType.setError(null);
+        if (layoutMaritalStatus != null) layoutMaritalStatus.setError(null);
 
         // DOB
         String dob = inputDob != null ? trimOrNull(inputDob.getText()) : null;
@@ -349,13 +432,33 @@ public class EditPatientProfileFragment extends Fragment {
             }
         }
 
-        // Gender / blood type / address / etc. are free text, no strict rules
-        if (inputGender != null) {
-            request.setGender(trimOrNull(inputGender.getText()));
+        // Gender: optional but if filled must be from array
+        String gender = inputGender != null ? trimOrNull(inputGender.getText()) : null;
+        if (!TextUtils.isEmpty(gender)) {
+            if (!isInStringArray(gender, R.array.profile_genders)) {
+                if (layoutGender != null) {
+                    layoutGender.setError(getString(R.string.profile_error_invalid_gender));
+                }
+                hasError = true;
+            } else {
+                request.setGender(gender);
+            }
         }
-        if (inputBloodType != null) {
-            request.setBloodType(trimOrNull(inputBloodType.getText()));
+
+        // Blood type: optional but if filled must be valid blood group
+        String blood = inputBloodType != null ? trimOrNull(inputBloodType.getText()) : null;
+        if (!TextUtils.isEmpty(blood)) {
+            if (!isInStringArray(blood, R.array.profile_blood_types)) {
+                if (layoutBloodType != null) {
+                    layoutBloodType.setError(getString(R.string.profile_error_invalid_blood_type));
+                }
+                hasError = true;
+            } else {
+                request.setBloodType(blood);
+            }
         }
+
+        // Address / city / country
         if (inputAddress != null) {
             request.setAddress(trimOrNull(inputAddress.getText()));
         }
@@ -365,9 +468,23 @@ public class EditPatientProfileFragment extends Fragment {
         if (inputCountry != null) {
             request.setCountry(trimOrNull(inputCountry.getText()));
         }
-        if (inputMaritalStatus != null) {
-            request.setMaritalStatus(trimOrNull(inputMaritalStatus.getText()));
+
+        // Marital status: optional but if filled must be from array
+        String marital = inputMaritalStatus != null ? trimOrNull(inputMaritalStatus.getText()) : null;
+        if (!TextUtils.isEmpty(marital)) {
+            if (!isInStringArray(marital, R.array.profile_marital_statuses)) {
+                if (layoutMaritalStatus != null) {
+                    layoutMaritalStatus.setError(
+                            getString(R.string.profile_error_invalid_marital_status)
+                    );
+                }
+                hasError = true;
+            } else {
+                request.setMaritalStatus(marital);
+            }
         }
+
+        // Notes
         if (inputNotes != null) {
             request.setNotes(trimOrNull(inputNotes.getText()));
         }
@@ -428,6 +545,29 @@ public class EditPatientProfileFragment extends Fragment {
         }
 
         return !hasError;
+    }
+
+    private boolean isInStringArray(@NonNull String value, @ArrayRes int arrayResId) {
+        if (!isAdded()) return true; // fail-safe, don't block save
+        try {
+            Resources res = requireContext().getResources();
+            String[] items = res.getStringArray(arrayResId);
+            String normalized = normalize(value);
+            for (String item : items) {
+                if (normalized.equals(normalize(item))) {
+                    return true;
+                }
+            }
+        } catch (Resources.NotFoundException ignored) {
+            // If array is missing we don't hard-fail, just accept value.
+            return true;
+        }
+        return false;
+    }
+
+    private String normalize(String s) {
+        if (s == null) return "";
+        return s.trim().toLowerCase(Locale.ROOT);
     }
 
     private boolean isValidPastDate(@NonNull String isoDate) {

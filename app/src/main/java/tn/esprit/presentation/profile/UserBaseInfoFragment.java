@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -30,6 +31,7 @@ public class UserBaseInfoFragment extends Fragment {
     private TextView textPhone;
     private TextView textPhoneLabel;
     private TextView textRole;
+    private ProgressBar progressBar;
 
     private ProfileRepository profileRepository;
 
@@ -64,6 +66,7 @@ public class UserBaseInfoFragment extends Fragment {
         textPhoneLabel = view.findViewById(R.id.text_base_phone_label);
         textRole = view.findViewById(R.id.text_base_role);
         Button buttonEdit = view.findViewById(R.id.button_edit_base_info);
+        progressBar = view.findViewById(R.id.user_base_info_progress);
 
         if (buttonBack != null) {
             buttonBack.setOnClickListener(v ->
@@ -85,13 +88,22 @@ public class UserBaseInfoFragment extends Fragment {
         loadBaseInfo();
     }
 
+    private void setLoading(boolean loading) {
+        if (progressBar != null) {
+            progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+        }
+    }
+
     private void loadBaseInfo() {
+        setLoading(true);
         profileRepository.loadProfile(new ProfileRepository.ProfileCallback() {
             @Override
             public void onSuccess(User user,
                                   DoctorProfile doctorProfile,
                                   PatientProfile patientProfile) {
                 if (!isAdded()) return;
+
+                setLoading(false);
 
                 if (user == null) {
                     Toast.makeText(requireContext(),
@@ -153,6 +165,7 @@ public class UserBaseInfoFragment extends Fragment {
             @Override
             public void onError(Throwable throwable, Integer httpCode, String errorBody) {
                 if (!isAdded()) return;
+                setLoading(false);
                 Toast.makeText(requireContext(),
                         R.string.profile_error_loading,
                         Toast.LENGTH_SHORT).show();

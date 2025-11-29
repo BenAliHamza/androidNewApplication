@@ -886,12 +886,38 @@
     <string name="history_filter_indicators">Indicators</string>
     <string name="history_filter_profile">Profile</string>
     <string name="history_filter_other">Other</string>
+    <!-- Validation for base user info -->
+    <string name="profile_error_invalid_phone">Please enter a valid phone number.</string>
 
+    <!-- Patient profile sections -->
+    <string name="profile_section_personal_info">Personal information</string>
+    <string name="profile_section_contact">Contact details</string>
+    <string name="profile_section_lifestyle">Lifestyle &amp; notes</string>
+
+    <!-- Patient profile helpers -->
+    <string name="profile_gender_helper">Optional. Choose how you identify.</string>
+    <string name="profile_blood_type_helper">If you do not know it, you can leave this empty.</string>
+    <string name="profile_marital_helper">Optional. This helps your doctor understand your context.</string>
 
     <!-- Bottom sheet details -->
     <string name="history_detail_title">Activity details</string>
     <string name="history_detail_details_label">Extra details</string>
     <string name="history_detail_close">Close</string>
+    <string name="profile_patient_blood_type_not_set">
+    Blood type not set
+</string>
+    <string name="profile_error_invalid_gender">
+    Please select a valid gender.
+</string>
+
+    <string name="profile_error_invalid_blood_type">
+    Please select a valid blood type.
+</string>
+
+    <string name="profile_error_invalid_marital_status">
+    Please select a valid marital status.
+</string>
+
 
 </resources>
 

@@ -42,6 +42,7 @@
             </LinearLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_firstname"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
@@ -49,10 +50,12 @@
                     android:id="@+id/input_firstname"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/user_base_edit_firstname_hint" />
+                    android:hint="@string/user_base_edit_firstname_hint"
+                    android:inputType="textCapWords" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_lastname"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp">
@@ -61,10 +64,12 @@
                     android:id="@+id/input_lastname"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/user_base_edit_lastname_hint" />
+                    android:hint="@string/user_base_edit_lastname_hint"
+                    android:inputType="textCapWords" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_email"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp">
@@ -73,10 +78,12 @@
                     android:id="@+id/input_email"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/user_base_edit_email_hint" />
+                    android:hint="@string/user_base_edit_email_hint"
+                    android:inputType="textEmailAddress" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_phone"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp">
@@ -85,7 +92,8 @@
                     android:id="@+id/input_phone"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/user_base_edit_phone_hint" />
+                    android:hint="@string/user_base_edit_phone_hint"
+                    android:inputType="phone" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <LinearLayout
@@ -113,10 +121,19 @@
         </LinearLayout>
     </ScrollView>
 
-    <View
+    <!-- Loading overlay with centered spinner -->
+    <FrameLayout
         android:id="@+id/base_edit_loading_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="#80000000"
-        android:visibility="gone" />
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <ProgressBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center" />
+    </FrameLayout>
 </FrameLayout>
