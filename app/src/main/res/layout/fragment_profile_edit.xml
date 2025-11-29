@@ -10,7 +10,8 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="16dp">
+        android:padding="16dp"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -58,11 +59,21 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- SECTION: Base user info (read-only) -->
+            <TextView
+                android:id="@+id/text_section_base_info"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/profile_edit_section_base_info"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                android:textStyle="bold" />
+
             <!-- Full name (READ-ONLY: base user info) -->
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp">
+                android:layout_marginTop="8dp"
+                app:helperText="@string/profile_edit_name_helper">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_name"
@@ -80,7 +91,8 @@
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp">
+                android:layout_marginTop="8dp"
+                app:helperText="@string/profile_edit_phone_helper">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_phone"
@@ -94,11 +106,23 @@
                     android:clickable="false" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- SECTION: Practice location -->
+            <TextView
+                android:id="@+id/text_section_practice_location"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/profile_edit_section_practice_location"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                android:textStyle="bold" />
+
             <!-- Clinic / address -->
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_clinic"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp">
+                android:layout_marginTop="8dp"
+                app:helperText="@string/profile_edit_clinic_helper">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_clinic"
@@ -108,12 +132,13 @@
                     android:inputType="textPostalAddress" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- City (picker) -->
+            <!-- City (validated against Tunisia cities list) -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_city"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp">
+                android:layout_marginTop="8dp"
+                app:helperText="@string/profile_edit_city_helper_tn">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_city"
@@ -123,8 +148,9 @@
                     android:inputType="textCapWords" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Country -->
+            <!-- Country (kept free text but defaulted to Tunisia in code) -->
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_country"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp">
@@ -137,8 +163,19 @@
                     android:inputType="textCapWords" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- SECTION: Professional info -->
+            <TextView
+                android:id="@+id/text_section_professional"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/profile_edit_section_professional"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                android:textStyle="bold" />
+
             <!-- Medical registration number -->
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_reg_number"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp">
@@ -153,9 +190,11 @@
 
             <!-- Consultation fee -->
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_fee"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp">
+                android:layout_marginTop="8dp"
+                app:helperText="@string/profile_edit_fee_helper">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_fee"
@@ -167,9 +206,11 @@
 
             <!-- Bio -->
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_bio"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp">
+                android:layout_marginTop="8dp"
+                app:helperText="@string/profile_edit_bio_helper">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_bio"

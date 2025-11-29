@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/user_base_info_edit_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -7,7 +8,8 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="16dp">
+        android:padding="16dp"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -41,10 +43,18 @@
                     android:textStyle="bold" />
             </LinearLayout>
 
+            <TextView
+                android:id="@+id/text_base_info_edit_subtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/user_base_info_edit_subtitle"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
+
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_firstname"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_firstname"
@@ -72,7 +82,8 @@
                 android:id="@+id/layout_email"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp">
+                android:layout_marginTop="8dp"
+                app:helperText="@string/user_base_info_email_helper">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_email"
@@ -86,7 +97,8 @@
                 android:id="@+id/layout_phone"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp">
+                android:layout_marginTop="8dp"
+                app:helperText="@string/user_base_info_phone_helper">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_phone"

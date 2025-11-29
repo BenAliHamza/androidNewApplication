@@ -139,19 +139,11 @@ public class EditPatientProfileFragment extends Fragment {
         attachClearErrorTextWatchers();
         setupPickers();
 
-        // Country is Tunisia-based; keep it non-editable and we will default if empty.
-        if (inputCountry != null) {
-            inputCountry.setFocusable(false);
-            inputCountry.setFocusableInTouchMode(false);
-            inputCountry.setClickable(false);
-        }
-
         loadProfileForEdit();
     }
 
     // ------------------------------------------------------------
     // Picker dialogs for gender / blood type / marital status / city
-    // using arrays: profile_genders, profile_blood_types, profile_marital_statuses, profile_tunisia_cities
     // ------------------------------------------------------------
     private void setupPickers() {
         if (!isAdded()) return;
@@ -322,11 +314,7 @@ public class EditPatientProfileFragment extends Fragment {
                     }
                     if (inputCountry != null) {
                         try {
-                            String country = patientProfile.getCountry();
-                            if (TextUtils.isEmpty(country)) {
-                                country = getString(R.string.profile_country_tunisia);
-                            }
-                            inputCountry.setText(country);
+                            inputCountry.setText(patientProfile.getCountry());
                         } catch (Exception ignored) {
                         }
                     }
@@ -355,11 +343,6 @@ public class EditPatientProfileFragment extends Fragment {
                             checkAlcohol.setChecked(alcohol != null && alcohol);
                         } catch (Exception ignored) {
                         }
-                    }
-                } else {
-                    // No patient profile yet: default country to Tunisia for convenience
-                    if (inputCountry != null) {
-                        inputCountry.setText(getString(R.string.profile_country_tunisia));
                     }
                 }
             }
@@ -432,7 +415,6 @@ public class EditPatientProfileFragment extends Fragment {
     // ------------------------------------------------------------
     private boolean validateAndFillRequest(PatientProfileUpdateRequestDto request) {
         boolean hasError = false;
-        TextInputEditText firstErrorField = null;
 
         // Clear old errors
         if (layoutDob != null) layoutDob.setError(null);
@@ -450,9 +432,6 @@ public class EditPatientProfileFragment extends Fragment {
                 if (layoutDob != null) {
                     layoutDob.setError(getString(R.string.profile_error_invalid_dob));
                 }
-                if (firstErrorField == null && inputDob != null) {
-                    firstErrorField = inputDob;
-                }
                 hasError = true;
             } else {
                 request.setDateOfBirth(dob);
@@ -465,9 +444,6 @@ public class EditPatientProfileFragment extends Fragment {
             if (!isInStringArray(gender, R.array.profile_genders)) {
                 if (layoutGender != null) {
                     layoutGender.setError(getString(R.string.profile_error_invalid_gender));
-                }
-                if (firstErrorField == null && inputGender != null) {
-                    firstErrorField = inputGender;
                 }
                 hasError = true;
             } else {
@@ -482,46 +458,36 @@ public class EditPatientProfileFragment extends Fragment {
                 if (layoutBloodType != null) {
                     layoutBloodType.setError(getString(R.string.profile_error_invalid_blood_type));
                 }
-                if (firstErrorField == null && inputBloodType != null) {
-                    firstErrorField = inputBloodType;
-                }
                 hasError = true;
             } else {
                 request.setBloodType(blood);
             }
         }
 
-        // Address / city / country
+        // Address
         if (inputAddress != null) {
             request.setAddress(trimOrNull(inputAddress.getText()));
         }
 
-        // City: optional but if filled must be a known Tunisian city
+        // City: optional but if filled must be from Tunisia list
         String city = inputCity != null ? trimOrNull(inputCity.getText()) : null;
         if (!TextUtils.isEmpty(city)) {
             if (!isInStringArray(city, R.array.profile_tunisia_cities)) {
                 if (layoutCity != null) {
                     layoutCity.setError(getString(R.string.profile_error_invalid_city));
                 }
-                if (firstErrorField == null && inputCity != null) {
-                    firstErrorField = inputCity;
-                }
                 hasError = true;
             } else {
                 request.setCity(city);
             }
-        } else {
-            request.setCity(null);
         }
 
-        // Country: default to Tunisia if empty
-        if (inputCountry != null) {
-            String countryValue = trimOrNull(inputCountry.getText());
-            if (TextUtils.isEmpty(countryValue)) {
-                countryValue = getString(R.string.profile_country_tunisia);
-            }
-            request.setCountry(countryValue);
+        // Country: default to Tunisia if blank
+        String country = inputCountry != null ? trimOrNull(inputCountry.getText()) : null;
+        if (TextUtils.isEmpty(country)) {
+            country = getString(R.string.profile_country_tunisia);
         }
+        request.setCountry(country);
 
         // Marital status: optional but if filled must be from array
         String marital = inputMaritalStatus != null ? trimOrNull(inputMaritalStatus.getText()) : null;
@@ -531,9 +497,6 @@ public class EditPatientProfileFragment extends Fragment {
                     layoutMaritalStatus.setError(
                             getString(R.string.profile_error_invalid_marital_status)
                     );
-                }
-                if (firstErrorField == null && inputMaritalStatus != null) {
-                    firstErrorField = inputMaritalStatus;
                 }
                 hasError = true;
             } else {
@@ -546,19 +509,15 @@ public class EditPatientProfileFragment extends Fragment {
             request.setNotes(trimOrNull(inputNotes.getText()));
         }
 
-        // Height
+        // Height (realistic human range in cm: 80–230)
         if (inputHeightCm != null) {
             String hText = trimOrNull(inputHeightCm.getText());
             if (!TextUtils.isEmpty(hText)) {
                 try {
                     int h = Integer.parseInt(hText);
-                    // More realistic human range in cm
                     if (h < 80 || h > 230) {
                         if (layoutHeight != null) {
                             layoutHeight.setError(getString(R.string.profile_error_invalid_height));
-                        }
-                        if (firstErrorField == null && inputHeightCm != null) {
-                            firstErrorField = inputHeightCm;
                         }
                         hasError = true;
                     } else {
@@ -568,27 +527,20 @@ public class EditPatientProfileFragment extends Fragment {
                     if (layoutHeight != null) {
                         layoutHeight.setError(getString(R.string.profile_error_invalid_height));
                     }
-                    if (firstErrorField == null && inputHeightCm != null) {
-                        firstErrorField = inputHeightCm;
-                    }
                     hasError = true;
                 }
             }
         }
 
-        // Weight
+        // Weight (realistic human range in kg: 20–250)
         if (inputWeightKg != null) {
             String wText = trimOrNull(inputWeightKg.getText());
             if (!TextUtils.isEmpty(wText)) {
                 try {
                     int w = Integer.parseInt(wText);
-                    // More realistic human range in kg
                     if (w < 20 || w > 250) {
                         if (layoutWeight != null) {
                             layoutWeight.setError(getString(R.string.profile_error_invalid_weight));
-                        }
-                        if (firstErrorField == null && inputWeightKg != null) {
-                            firstErrorField = inputWeightKg;
                         }
                         hasError = true;
                     } else {
@@ -597,9 +549,6 @@ public class EditPatientProfileFragment extends Fragment {
                 } catch (NumberFormatException e) {
                     if (layoutWeight != null) {
                         layoutWeight.setError(getString(R.string.profile_error_invalid_weight));
-                    }
-                    if (firstErrorField == null && inputWeightKg != null) {
-                        firstErrorField = inputWeightKg;
                     }
                     hasError = true;
                 }
@@ -611,10 +560,6 @@ public class EditPatientProfileFragment extends Fragment {
         }
         if (checkAlcohol != null) {
             request.setAlcoholUse(checkAlcohol.isChecked());
-        }
-
-        if (hasError && firstErrorField != null) {
-            firstErrorField.requestFocus();
         }
 
         return !hasError;
@@ -644,25 +589,19 @@ public class EditPatientProfileFragment extends Fragment {
     }
 
     private boolean isValidPastDate(@NonNull String isoDate) {
-        // Expected format: yyyy-MM-dd
+        // Expected format: yyyy-MM-dd, not in the future
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
         sdf.setLenient(false);
         try {
-            long parsedTime = sdf.parse(isoDate).getTime();
+            long time = sdf.parse(isoDate).getTime();
             long now = System.currentTimeMillis();
 
-            // Disallow future dates
-            if (parsedTime > now) {
-                return false;
-            }
-
-            // Disallow ages older than 120 years (very generous)
+            // At most 120 years in the past
             Calendar cal = Calendar.getInstance();
-            cal.setTimeInMillis(now);
             cal.add(Calendar.YEAR, -120);
-            long oldestAllowed = cal.getTimeInMillis();
+            long min = cal.getTimeInMillis();
 
-            return parsedTime >= oldestAllowed;
+            return time <= now && time >= min;
         } catch (ParseException e) {
             return false;
         }

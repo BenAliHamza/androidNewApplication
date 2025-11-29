@@ -36,6 +36,15 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
+                <!-- SECTION: Personal info -->
+                <TextView
+                    android:id="@+id/text_section_personal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profile_patient_section_personal"
+                    android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                    android:textStyle="bold" />
+
                 <!-- DOB -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layout_dob"
@@ -86,6 +95,16 @@
                         android:inputType="text" />
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <!-- SECTION: Vitals -->
+                <TextView
+                    android:id="@+id/text_section_vitals"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="@string/profile_patient_section_vitals"
+                    android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                    android:textStyle="bold" />
+
                 <!-- Height -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layout_height_cm"
@@ -118,6 +137,16 @@
                         android:inputType="number" />
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <!-- SECTION: Address -->
+                <TextView
+                    android:id="@+id/text_section_address"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="@string/profile_patient_section_address"
+                    android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                    android:textStyle="bold" />
+
                 <!-- Address -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layout_address"
@@ -133,12 +162,13 @@
                         android:inputType="textPostalAddress" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- City (picker) -->
+                <!-- City (picker over Tunisia cities) -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layout_city"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp">
+                    android:layout_marginTop="8dp"
+                    app:helperText="@string/profile_city_helper_tn">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_city"
@@ -148,7 +178,7 @@
                         android:inputType="textCapWords" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Country (read only, defaults to Tunisia in code) -->
+                <!-- Country (defaulted to Tunisia in code) -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layout_country"
                     android:layout_width="match_parent"
@@ -160,11 +190,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="@string/onboarding_patient_country_hint"
-                        android:inputType="textCapWords"
-                        android:enabled="false"
-                        android:focusable="false"
-                        android:focusableInTouchMode="false"
-                        android:clickable="false" />
+                        android:inputType="textCapWords" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <!-- Marital status -->
@@ -181,6 +207,16 @@
                         android:hint="@string/onboarding_patient_marital_hint"
                         android:inputType="textCapWords" />
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- SECTION: Notes & lifestyle -->
+                <TextView
+                    android:id="@+id/text_section_lifestyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="@string/profile_patient_section_lifestyle"
+                    android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                    android:textStyle="bold" />
 
                 <!-- Notes -->
                 <com.google.android.material.textfield.TextInputLayout

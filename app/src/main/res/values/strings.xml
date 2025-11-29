@@ -937,13 +937,40 @@
     <string name="profile_patient_marital_not_set">Marital status not set</string>
     <string name="profile_doctor_complete_profile">Complete my doctor profile</string>
     <string name="profile_patient_complete_profile">Complete my health profile</string>
-    <string name="profile_country_tunisia">Tunisia</string>
+    <!-- profile_country_tunisia already added above -->
 
     <!-- City validation (used in doctor + patient edit screens) -->
-    <string name="profile_error_invalid_city">Please choose a city from the list.</string>
+    <string name="profile_edit_section_base_info">Base information</string>
+    <string name="profile_edit_section_practice_location">Practice location</string>
+    <string name="profile_edit_section_professional">Professional details</string>
+    <string name="profile_edit_name_helper">Edit name &amp; email from base info.</string>
+    <string name="profile_edit_phone_helper">Phone number comes from your base info.</string>
+    <string name="profile_edit_clinic_helper">Clinic name, building, floor (optional).</string>
+    <string name="profile_edit_city_helper_tn">Choose a city in Tunisia.</string>
+    <string name="profile_edit_bio_helper">Short professional summary, visible to patients.</string>
+    <string name="profile_edit_fee_helper">Typical range: 30–150 TND.</string>
+    <string name="profile_error_invalid_city">Please choose a valid city from the list.</string>
+    <string name="profile_country_tunisia">Tunisia</string>
+    <string name="profile_patient_section_personal">Personal information</string>
+    <string name="profile_patient_section_vitals">Vitals</string>
+    <string name="profile_patient_section_address">Address</string>
+    <string name="profile_patient_section_lifestyle">Lifestyle</string>
+    <string name="profile_city_helper_tn">Choose your city in Tunisia.</string>
 
     <!-- Base user info: first name required -->
     <string name="profile_error_firstname_required">First name is required.</string>
+    <string name="user_base_info_edit_subtitle">
+    Update your basic account information used across the app.
+</string>
+
+    <string name="user_base_info_email_helper">
+    This email is used for login and important notifications.
+</string>
+
+    <string name="user_base_info_phone_helper">
+    Optional but recommended for appointment reminders.
+</string>
+
 </resources>
 
 

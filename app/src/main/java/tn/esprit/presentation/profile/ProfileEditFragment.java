@@ -10,9 +10,9 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
+import androidx.annotation.ArrayRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
@@ -34,6 +34,9 @@ import tn.esprit.domain.user.User;
 
 public class ProfileEditFragment extends Fragment {
 
+    private TextInputLayout layoutCity;
+    private TextInputLayout layoutFee;
+
     private TextInputEditText inputName;
     private TextInputEditText inputPhone;
     private TextInputEditText inputClinic;
@@ -44,7 +47,6 @@ public class ProfileEditFragment extends Fragment {
     private TextInputEditText inputBio;
     private SwitchMaterial switchAcceptsNew;
     private SwitchMaterial switchTeleconsult;
-    private TextInputLayout layoutCity;
     private View loadingOverlay;
 
     private ProfileRepository profileRepository;
@@ -75,6 +77,10 @@ public class ProfileEditFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         ImageButton buttonBack = view.findViewById(R.id.button_back);
+
+        layoutCity = view.findViewById(R.id.layout_city);
+        layoutFee = view.findViewById(R.id.layout_fee);
+
         inputName = view.findViewById(R.id.input_name);
         inputPhone = view.findViewById(R.id.input_phone);
         inputClinic = view.findViewById(R.id.input_clinic);
@@ -89,7 +95,6 @@ public class ProfileEditFragment extends Fragment {
         MaterialButton buttonCancel = view.findViewById(R.id.button_cancel);
         MaterialButton buttonBaseInfo = view.findViewById(R.id.button_base_info);
         loadingOverlay = view.findViewById(R.id.edit_loading_overlay);
-        layoutCity = view.findViewById(R.id.layout_city);
 
         if (buttonBack != null) {
             buttonBack.setOnClickListener(v ->
@@ -120,9 +125,6 @@ public class ProfileEditFragment extends Fragment {
             inputPhone.setFocusable(false);
             inputPhone.setFocusableInTouchMode(false);
         }
-
-        // City is chosen from a controlled list of Tunisian cities
-        setupCityPicker();
 
         loadProfileForEdit();
     }
@@ -175,11 +177,7 @@ public class ProfileEditFragment extends Fragment {
                     }
                     if (inputCountry != null) {
                         try {
-                            String country = doctorProfile.getCountry();
-                            if (TextUtils.isEmpty(country)) {
-                                country = getString(R.string.profile_country_tunisia);
-                            }
-                            inputCountry.setText(country);
+                            inputCountry.setText(doctorProfile.getCountry());
                         } catch (Exception ignored) {
                         }
                     }
@@ -216,11 +214,6 @@ public class ProfileEditFragment extends Fragment {
                         } catch (Exception ignored) {
                         }
                     }
-                } else {
-                    // No doctor profile yet: default country to Tunisia
-                    if (inputCountry != null) {
-                        inputCountry.setText(getString(R.string.profile_country_tunisia));
-                    }
                 }
             }
 
@@ -233,43 +226,6 @@ public class ProfileEditFragment extends Fragment {
                         Toast.LENGTH_SHORT).show();
             }
         });
-    }
-
-    private void setupCityPicker() {
-        if (inputCity == null) return;
-
-        inputCity.setFocusable(false);
-        inputCity.setFocusableInTouchMode(false);
-        inputCity.setClickable(true);
-
-        inputCity.setOnClickListener(v -> showCityDialog());
-    }
-
-    private void showCityDialog() {
-        if (!isAdded() || inputCity == null) return;
-
-        String[] cities;
-        try {
-            cities = requireContext().getResources().getStringArray(R.array.profile_tunisia_cities);
-        } catch (Resources.NotFoundException e) {
-            return;
-        }
-
-        String title = inputCity.getHint() != null
-                ? inputCity.getHint().toString()
-                : getString(R.string.profile_edit_city_hint);
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle(title)
-                .setItems(cities, (dialog, which) -> {
-                    if (which >= 0 && which < cities.length) {
-                        inputCity.setText(cities[which]);
-                        if (layoutCity != null) {
-                            layoutCity.setError(null);
-                        }
-                    }
-                })
-                .show();
     }
 
     private void saveDoctorProfile() {
@@ -287,65 +243,68 @@ public class ProfileEditFragment extends Fragment {
             return;
         }
 
+        // Clear previous errors
+        if (layoutCity != null) layoutCity.setError(null);
+        if (layoutFee != null) layoutFee.setError(null);
+
         DoctorProfileUpdateRequestDto request = new DoctorProfileUpdateRequestDto();
 
-        // We only edit clinic, city, country, reg number, fee, bio, flags here.
+        // Practice location
         if (inputClinic != null) {
             request.setClinicAddress(trimOrNull(inputClinic.getText()));
         }
 
-        // City: optional but if filled must be in Tunisia city list
-        String city = null;
-        if (inputCity != null) {
-            city = trimOrNull(inputCity.getText());
-            if (!TextUtils.isEmpty(city)) {
-                if (!isCityInTunisiaList(city)) {
-                    if (layoutCity != null) {
-                        layoutCity.setError(getString(R.string.profile_error_invalid_city));
-                    }
-                    if (inputCity != null) {
-                        inputCity.requestFocus();
-                    }
-                    return;
+        // City: optional but if filled must be from Tunisia cities list
+        String city = inputCity != null ? trimOrNull(inputCity.getText()) : null;
+        if (!TextUtils.isEmpty(city)) {
+            if (!isInStringArray(city, R.array.profile_tunisia_cities)) {
+                if (layoutCity != null) {
+                    layoutCity.setError(getString(R.string.profile_error_invalid_city));
+                    layoutCity.requestFocus();
                 }
+                return;
+            } else {
+                request.setCity(city);
             }
         }
-        request.setCity(city);
 
-        // Country: default to Tunisia if empty
-        if (inputCountry != null) {
-            String country = trimOrNull(inputCountry.getText());
-            if (TextUtils.isEmpty(country)) {
-                country = getString(R.string.profile_country_tunisia);
-            }
-            request.setCountry(country);
+        // Country: default to "Tunisia" if empty
+        String country = inputCountry != null ? trimOrNull(inputCountry.getText()) : null;
+        if (TextUtils.isEmpty(country)) {
+            country = getString(R.string.profile_country_tunisia);
         }
+        request.setCountry(country);
 
+        // Registration number
         if (inputRegNumber != null) {
             request.setMedicalRegistrationNumber(trimOrNull(inputRegNumber.getText()));
         }
+
+        // Bio
         if (inputBio != null) {
             request.setBio(trimOrNull(inputBio.getText()));
         }
 
+        // Fee with realistic validation (e.g. > 0 and <= 1000)
         if (inputFee != null) {
             String feeText = trimOrNull(inputFee.getText());
             if (!TextUtils.isEmpty(feeText)) {
                 try {
                     BigDecimal fee = new BigDecimal(feeText);
-                    // simple safety range: > 0 and <= 1000 TND
                     if (fee.compareTo(BigDecimal.ZERO) <= 0 ||
                             fee.compareTo(new BigDecimal("1000")) > 0) {
-                        Toast.makeText(requireContext(),
-                                R.string.profile_error_invalid_fee,
-                                Toast.LENGTH_SHORT).show();
+                        if (layoutFee != null) {
+                            layoutFee.setError(getString(R.string.profile_error_invalid_fee));
+                            layoutFee.requestFocus();
+                        }
                         return;
                     }
                     request.setConsultationFee(fee);
                 } catch (NumberFormatException e) {
-                    Toast.makeText(requireContext(),
-                            R.string.profile_error_invalid_fee,
-                            Toast.LENGTH_SHORT).show();
+                    if (layoutFee != null) {
+                        layoutFee.setError(getString(R.string.profile_error_invalid_fee));
+                        layoutFee.requestFocus();
+                    }
                     return;
                 }
             }
@@ -410,31 +369,33 @@ public class ProfileEditFragment extends Fragment {
         });
     }
 
-    private boolean isCityInTunisiaList(@NonNull String city) {
-        if (!isAdded()) return true; // fail-safe
-        try {
-            String[] cities = requireContext()
-                    .getResources()
-                    .getStringArray(R.array.profile_tunisia_cities);
-            String normalized = city.trim().toLowerCase(Locale.ROOT);
-            for (String item : cities) {
-                if (item != null &&
-                        normalized.equals(item.trim().toLowerCase(Locale.ROOT))) {
-                    return true;
-                }
-            }
-            // Not found in list
-            return false;
-        } catch (Resources.NotFoundException e) {
-            // If array missing, do not block saving
-            return true;
-        }
-    }
-
     @Nullable
     private String trimOrNull(@Nullable CharSequence cs) {
         if (cs == null) return null;
         String s = cs.toString().trim();
         return s.isEmpty() ? null : s;
+    }
+
+    private boolean isInStringArray(@NonNull String value, @ArrayRes int arrayResId) {
+        if (!isAdded()) return true; // fail-safe
+        try {
+            Resources res = requireContext().getResources();
+            String[] items = res.getStringArray(arrayResId);
+            String normalized = normalize(value);
+            for (String item : items) {
+                if (normalized.equals(normalize(item))) {
+                    return true;
+                }
+            }
+        } catch (Resources.NotFoundException ignored) {
+            // If array is missing we don't block saving
+            return true;
+        }
+        return false;
+    }
+
+    private String normalize(String s) {
+        if (s == null) return "";
+        return s.trim().toLowerCase(Locale.ROOT);
     }
 }
