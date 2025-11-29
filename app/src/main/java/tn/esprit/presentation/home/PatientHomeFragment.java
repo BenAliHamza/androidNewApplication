@@ -1,5 +1,6 @@
 package tn.esprit.presentation.home;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -8,6 +9,8 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -96,6 +99,19 @@ public class PatientHomeFragment extends Fragment implements DoctorSearchResultA
     private void setupSearchInput() {
         if (inputSearch == null) return;
 
+        // Make keyboard "Search" action explicit and trigger immediate search.
+        inputSearch.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        inputSearch.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                CharSequence text = v.getText();
+                String query = text != null ? text.toString() : "";
+                viewModel.searchDoctors(query);
+                hideKeyboard(v);
+                return true;
+            }
+            return false;
+        });
+
         inputSearch.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s,
@@ -170,7 +186,7 @@ public class PatientHomeFragment extends Fragment implements DoctorSearchResultA
 
         boolean hasResults = list != null && !list.isEmpty();
 
-        if (trimmed.length() < 3) {
+        if (trimmed.length() < 2) {
             // Idle state: encourage user to start typing
             textEmpty.setText(R.string.home_patient_search_empty_idle);
             textEmpty.setVisibility(View.VISIBLE);
@@ -217,6 +233,15 @@ public class PatientHomeFragment extends Fragment implements DoctorSearchResultA
         super.onDestroyView();
         if (pendingSearchRunnable != null) {
             handler.removeCallbacks(pendingSearchRunnable);
+        }
+    }
+
+    private void hideKeyboard(@NonNull View view) {
+        Context context = view.getContext();
+        InputMethodManager imm =
+                (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
     }
 }

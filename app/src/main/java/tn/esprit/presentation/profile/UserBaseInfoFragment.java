@@ -20,12 +20,15 @@ import tn.esprit.data.profile.ProfileRepository;
 import tn.esprit.domain.doctor.DoctorProfile;
 import tn.esprit.domain.patient.PatientProfile;
 import tn.esprit.domain.user.User;
+import tn.esprit.presentation.home.HomeUiHelper;
 
 public class UserBaseInfoFragment extends Fragment {
 
     private TextView textFullname;
     private TextView textEmail;
+    private TextView textEmailLabel;
     private TextView textPhone;
+    private TextView textPhoneLabel;
     private TextView textRole;
 
     private ProfileRepository profileRepository;
@@ -56,7 +59,9 @@ public class UserBaseInfoFragment extends Fragment {
         ImageButton buttonBack = view.findViewById(R.id.button_back_base_info);
         textFullname = view.findViewById(R.id.text_base_fullname);
         textEmail = view.findViewById(R.id.text_base_email);
+        textEmailLabel = view.findViewById(R.id.text_base_email_label);
         textPhone = view.findViewById(R.id.text_base_phone);
+        textPhoneLabel = view.findViewById(R.id.text_base_phone_label);
         textRole = view.findViewById(R.id.text_base_role);
         Button buttonEdit = view.findViewById(R.id.button_edit_base_info);
 
@@ -77,7 +82,6 @@ public class UserBaseInfoFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Reload in case user updated base info and navigated back.
         loadBaseInfo();
     }
 
@@ -97,8 +101,8 @@ public class UserBaseInfoFragment extends Fragment {
                 }
 
                 String displayName = null;
-                String first = user.getFirstname() != null ? user.getFirstname() : "";
-                String last = user.getLastname() != null ? user.getLastname() : "";
+                String first = user.getFirstname() != null ? user.getFirstname().trim() : "";
+                String last = user.getLastname() != null ? user.getLastname().trim() : "";
                 String combined = (first + " " + last).trim();
                 if (!combined.isEmpty()) {
                     displayName = combined;
@@ -106,20 +110,43 @@ public class UserBaseInfoFragment extends Fragment {
                     displayName = user.getEmail();
                 }
 
-                // IMPORTANT: no hard-coded fallback name.
                 if (TextUtils.isEmpty(displayName)) {
                     displayName = "";
                 }
 
-                if (textFullname != null) textFullname.setText(displayName);
+                if (textFullname != null) {
+                    textFullname.setText(displayName);
+                }
+
+                // Email
+                String email = user.getEmail();
+                boolean hasEmail = !TextUtils.isEmpty(email);
                 if (textEmail != null) {
-                    textEmail.setText(user.getEmail() != null ? user.getEmail() : "");
+                    textEmail.setText(hasEmail ? email : "");
                 }
+                if (textEmailLabel != null) {
+                    textEmailLabel.setVisibility(hasEmail ? View.VISIBLE : View.GONE);
+                }
+
+                // Phone
+                String phone = user.getPhone();
+                boolean hasPhone = !TextUtils.isEmpty(phone);
                 if (textPhone != null) {
-                    textPhone.setText(user.getPhone() != null ? user.getPhone() : "");
+                    textPhone.setText(hasPhone ? phone : "");
                 }
+                if (textPhoneLabel != null) {
+                    textPhoneLabel.setVisibility(hasPhone ? View.VISIBLE : View.GONE);
+                }
+
+                // Role label (Doctor / Patient / etc.)
                 if (textRole != null) {
-                    textRole.setText(user.getRole() != null ? user.getRole() : "");
+                    String roleLabel = "";
+                    String role = user.getRole();
+                    if (!TextUtils.isEmpty(role)) {
+                        int resId = HomeUiHelper.resolveRoleLabelResId(role);
+                        roleLabel = getString(resId);
+                    }
+                    textRole.setText(roleLabel);
                 }
             }
 

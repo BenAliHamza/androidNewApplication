@@ -28,7 +28,8 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:padding="16dp">
+            android:padding="16dp"
+            android:fillViewport="true">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -37,20 +38,27 @@
 
                 <!-- DOB -->
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_dob"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp">
+                    android:layout_marginTop="8dp"
+                    app:helperText="@string/profile_dob_helper">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_dob"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="@string/onboarding_patient_dob_hint"
-                        android:inputType="text" />
+                        android:inputType="date"
+                        android:focusable="false"
+                        android:focusableInTouchMode="false"
+                        android:clickable="true"
+                        android:cursorVisible="false" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <!-- Gender -->
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_gender"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp">
@@ -65,6 +73,7 @@
 
                 <!-- Blood type -->
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_blood_type"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp">
@@ -79,9 +88,11 @@
 
                 <!-- Height -->
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_height_cm"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp">
+                    android:layout_marginTop="8dp"
+                    app:helperText="@string/profile_height_helper">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_height_cm"
@@ -93,9 +104,11 @@
 
                 <!-- Weight -->
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_weight_kg"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp">
+                    android:layout_marginTop="8dp"
+                    app:helperText="@string/profile_weight_helper">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_weight_kg"
@@ -107,6 +120,7 @@
 
                 <!-- Address -->
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_address"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp">
@@ -121,6 +135,7 @@
 
                 <!-- City -->
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_city"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp">
@@ -135,6 +150,7 @@
 
                 <!-- Country -->
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_country"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp">
@@ -149,6 +165,7 @@
 
                 <!-- Marital status -->
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_marital_status"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp">
@@ -163,9 +180,11 @@
 
                 <!-- Notes -->
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_notes"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp">
+                    android:layout_marginTop="8dp"
+                    app:helperText="@string/profile_notes_helper">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_notes"
@@ -208,7 +227,6 @@
                     android:layout_marginTop="24dp"
                     android:text="@string/onboarding_patient_button_complete" />
 
-                <!-- NEW: Base information button (for common /me info) -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_base_info"
                     android:layout_width="match_parent"
@@ -220,7 +238,7 @@
         </ScrollView>
     </LinearLayout>
 
-    <!-- Loading overlay (toggled by EditPatientProfileFragment via edit_patient_loading_overlay) -->
+    <!-- Loading overlay -->
     <FrameLayout
         android:id="@+id/edit_patient_loading_overlay"
         android:layout_width="match_parent"

@@ -97,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
             navController = navHostFragment.getNavController();
         }
 
-        // Notifications – ensure channel + permission for system notifications (reused from medications)
+        // Notifications – ensure channel + permission
         MedicationNotificationHelper.ensureNotificationChannel(this);
         MedicationNotificationHelper.requestNotificationPermissionIfNeeded(this);
 
@@ -106,12 +106,11 @@ public class MainActivity extends AppCompatActivity {
                 .get(NotificationsViewModel.class);
         setupNotificationsUnreadBadge();
 
-        // NEW: hook WebSocket -> ViewModel (refresh on push)
+        // WebSocket -> ViewModel (refresh on push)
         NotificationSocketManager
                 .getInstance(getApplicationContext())
                 .setListener(item -> {
                     if (notificationsViewModel != null) {
-                        // Simplest & safest: reload from backend when a push arrives
                         notificationsViewModel.loadNotifications();
                     }
                 });
@@ -135,7 +134,6 @@ public class MainActivity extends AppCompatActivity {
                 } else if (id == R.id.menu_settings) {
                     // Settings placeholder
                 } else if (id == R.id.menu_notifications) {
-                    // Open notifications list
                     if (navController != null) {
                         navController.navigate(R.id.notificationsFragment);
                     }
@@ -349,8 +347,6 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Only changes which menu is shown (doctor / patient / generic) and
      * syncs the checked item with the CURRENT destination.
-     *
-     * Critically: it does NOT forcibly navigate to Home.
      */
     private void applyBottomNavForRole(@Nullable String role) {
         if (bottomNavigationView == null) {
@@ -397,7 +393,6 @@ public class MainActivity extends AppCompatActivity {
             int id = item.getItemId();
 
             if (id == R.id.menu_home) {
-                // Decide correct home based on last known role
                 int targetDestId;
                 if (lastKnownRole != null && "PATIENT".equalsIgnoreCase(lastKnownRole)) {
                     targetDestId = R.id.patientHomeFragment;
@@ -407,7 +402,6 @@ public class MainActivity extends AppCompatActivity {
 
                 if (navController.getCurrentDestination() != null
                         && navController.getCurrentDestination().getId() == targetDestId) {
-                    // Already on the right home, do nothing.
                     return true;
                 }
 
@@ -420,7 +414,6 @@ public class MainActivity extends AppCompatActivity {
 
                 if (navController.getCurrentDestination() != null
                         && navController.getCurrentDestination().getId() == targetDestId) {
-                    // Already on My schedule; no-op.
                     return true;
                 }
 
@@ -428,12 +421,11 @@ public class MainActivity extends AppCompatActivity {
                 return true;
 
             } else if (id == R.id.menu_patients) {
-                // Doctor bottom tab: navigate to doctor patients list
+                // Doctor bottom tab: My patients
                 int targetDestId = R.id.doctorPatientsFragment;
 
                 if (navController.getCurrentDestination() != null
                         && navController.getCurrentDestination().getId() == targetDestId) {
-                    // Already on My patients; no-op.
                     return true;
                 }
 
@@ -441,12 +433,11 @@ public class MainActivity extends AppCompatActivity {
                 return true;
 
             } else if (id == R.id.menu_office) {
-                // Doctor bottom tab: navigate to office / schedule
+                // Doctor bottom tab: Office / schedule config
                 int targetDestId = R.id.doctorOfficeFragment;
 
                 if (navController.getCurrentDestination() != null
                         && navController.getCurrentDestination().getId() == targetDestId) {
-                    // Already on Office; no-op.
                     return true;
                 }
 
@@ -465,36 +456,40 @@ public class MainActivity extends AppCompatActivity {
 
                     navController.navigate(targetDestId);
                 } else {
-                    // If somehow visible for non-patient, just ignore
                     Toast.makeText(this, R.string.patient_medications_not_available, Toast.LENGTH_SHORT).show();
                 }
                 return true;
 
             } else if (id == R.id.menu_appointments) {
-                // PATIENT: go to My appointments screen
+                // Patient bottom tab: My appointments
                 if (lastKnownRole != null && "PATIENT".equalsIgnoreCase(lastKnownRole)) {
                     int targetDestId = R.id.patientAppointmentsFragment;
 
                     if (navController.getCurrentDestination() != null
                             && navController.getCurrentDestination().getId() == targetDestId) {
-                        // Already on My appointments
                         return true;
                     }
 
                     navController.navigate(targetDestId);
                 } else {
-                    // For non-patient (or generic menu), keep it as "coming soon"
                     Toast.makeText(this, R.string.home_bottom_appointments_coming_soon, Toast.LENGTH_SHORT).show();
                 }
                 return true;
 
             } else if (id == R.id.menu_history) {
-                // Placeholder: not wired yet
-                Toast.makeText(this, R.string.home_bottom_history_coming_soon, Toast.LENGTH_SHORT).show();
+                // Open history screen
+                int targetDestId = R.id.userHistoryFragment;
+
+                if (navController.getCurrentDestination() != null
+                        && navController.getCurrentDestination().getId() == targetDestId) {
+                    // Already on history
+                    return true;
+                }
+
+                navController.navigate(targetDestId);
                 return true;
             }
 
-            // Default true so the item still shows as selected even if no-op
             return true;
         });
     }
@@ -510,23 +505,21 @@ public class MainActivity extends AppCompatActivity {
                 ? navController.getCurrentDestination().getId()
                 : -1;
 
-        // If already on any home fragment → STOP (prevents infinite loops)
+        // If already on any home fragment → STOP
         if (currentDestId == R.id.homeFragment ||
                 currentDestId == R.id.patientHomeFragment) {
             return;
         }
 
-        // If not on the gate → STOP (no redirection)
+        // If not on the gate → STOP
         if (currentDestId != R.id.homeGateFragment && currentDestId != -1) {
             return;
         }
 
-        // Determine target home
         int targetDestId = (role != null && "PATIENT".equalsIgnoreCase(role))
                 ? R.id.patientHomeFragment
                 : R.id.homeFragment;
 
-        // Prevent double-navigation race from async profile load
         if (currentDestId == targetDestId) {
             return;
         }
@@ -575,6 +568,7 @@ public class MainActivity extends AppCompatActivity {
             item.setTitle("Notifications");
         }
     }
+
     public void openAppointmentsForCurrentRole() {
         if (navController == null) return;
 
@@ -592,5 +586,4 @@ public class MainActivity extends AppCompatActivity {
 
         navController.navigate(targetDestId);
     }
-
 }

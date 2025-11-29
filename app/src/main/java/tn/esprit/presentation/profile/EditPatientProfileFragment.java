@@ -1,8 +1,11 @@
 package tn.esprit.presentation.profile;
 
 import android.app.Activity;
+import android.app.DatePickerDialog;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +20,12 @@ import androidx.navigation.fragment.NavHostFragment;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
 
 import tn.esprit.MainActivity;
 import tn.esprit.R;
@@ -27,6 +36,10 @@ import tn.esprit.domain.patient.PatientProfile;
 import tn.esprit.domain.user.User;
 
 public class EditPatientProfileFragment extends Fragment {
+
+    private TextInputLayout layoutDob;
+    private TextInputLayout layoutHeight;
+    private TextInputLayout layoutWeight;
 
     private TextInputEditText inputDob;
     private TextInputEditText inputGender;
@@ -70,6 +83,11 @@ public class EditPatientProfileFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         MaterialToolbar toolbar = view.findViewById(R.id.toolbar_edit_patient);
+
+        layoutDob = view.findViewById(R.id.layout_dob);
+        layoutHeight = view.findViewById(R.id.layout_height_cm);
+        layoutWeight = view.findViewById(R.id.layout_weight_kg);
+
         inputDob = view.findViewById(R.id.input_dob);
         inputGender = view.findViewById(R.id.input_gender);
         inputBloodType = view.findViewById(R.id.input_blood_type);
@@ -99,7 +117,55 @@ public class EditPatientProfileFragment extends Fragment {
                             .navigate(R.id.action_editPatientProfileFragment_to_userBaseInfoFragment));
         }
 
+        // DOB as date picker
+        if (inputDob != null) {
+            inputDob.setFocusable(false);
+            inputDob.setFocusableInTouchMode(false);
+            inputDob.setClickable(true);
+            inputDob.setOnClickListener(v -> showDatePicker());
+        }
+
+        attachClearErrorTextWatchers();
+
         loadProfileForEdit();
+    }
+
+    private void attachClearErrorTextWatchers() {
+        if (inputDob != null && layoutDob != null) {
+            inputDob.addTextChangedListener(new SimpleClearErrorWatcher(layoutDob));
+        }
+        if (inputHeightCm != null && layoutHeight != null) {
+            inputHeightCm.addTextChangedListener(new SimpleClearErrorWatcher(layoutHeight));
+        }
+        if (inputWeightKg != null && layoutWeight != null) {
+            inputWeightKg.addTextChangedListener(new SimpleClearErrorWatcher(layoutWeight));
+        }
+    }
+
+    private static class SimpleClearErrorWatcher implements TextWatcher {
+
+        private final TextInputLayout layout;
+
+        SimpleClearErrorWatcher(TextInputLayout layout) {
+            this.layout = layout;
+        }
+
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            // no-op
+        }
+
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {
+            if (layout != null && layout.getError() != null) {
+                layout.setError(null);
+            }
+        }
+
+        @Override
+        public void afterTextChanged(Editable s) {
+            // no-op
+        }
     }
 
     private void showLoading(boolean show) {
@@ -124,10 +190,8 @@ public class EditPatientProfileFragment extends Fragment {
                 if (patientProfile != null) {
                     try {
                         if (inputDob != null) {
-                            // Assuming PatientProfile keeps dateOfBirth as a String or a
-                            // type whose toString() is ISO date.
-                            Object dob = patientProfile.getDateOfBirth();
-                            inputDob.setText(dob != null ? dob.toString() : "");
+                            String dob = patientProfile.getDateOfBirth();
+                            inputDob.setText(dob != null ? dob : "");
                         }
                     } catch (Exception ignored) {
                     }
@@ -232,63 +296,8 @@ public class EditPatientProfileFragment extends Fragment {
 
         PatientProfileUpdateRequestDto request = new PatientProfileUpdateRequestDto();
 
-        if (inputDob != null) {
-            request.setDateOfBirth(trimOrNull(inputDob.getText()));
-        }
-        if (inputGender != null) {
-            request.setGender(trimOrNull(inputGender.getText()));
-        }
-        if (inputBloodType != null) {
-            request.setBloodType(trimOrNull(inputBloodType.getText()));
-        }
-        if (inputAddress != null) {
-            request.setAddress(trimOrNull(inputAddress.getText()));
-        }
-        if (inputCity != null) {
-            request.setCity(trimOrNull(inputCity.getText()));
-        }
-        if (inputCountry != null) {
-            request.setCountry(trimOrNull(inputCountry.getText()));
-        }
-        if (inputMaritalStatus != null) {
-            request.setMaritalStatus(trimOrNull(inputMaritalStatus.getText()));
-        }
-        if (inputNotes != null) {
-            request.setNotes(trimOrNull(inputNotes.getText()));
-        }
-
-        if (inputHeightCm != null) {
-            String hText = trimOrNull(inputHeightCm.getText());
-            if (!TextUtils.isEmpty(hText)) {
-                try {
-                    request.setHeightCm(Integer.parseInt(hText));
-                } catch (NumberFormatException e) {
-                    Toast.makeText(requireContext(),
-                            R.string.profile_error_invalid_height,
-                            Toast.LENGTH_SHORT).show();
-                    return;
-                }
-            }
-        }
-        if (inputWeightKg != null) {
-            String wText = trimOrNull(inputWeightKg.getText());
-            if (!TextUtils.isEmpty(wText)) {
-                try {
-                    request.setWeightKg(Integer.parseInt(wText));
-                } catch (NumberFormatException e) {
-                    Toast.makeText(requireContext(),
-                            R.string.profile_error_invalid_weight,
-                            Toast.LENGTH_SHORT).show();
-                    return;
-                }
-            }
-        }
-
-        if (checkSmoker != null) {
-            request.setSmoker(checkSmoker.isChecked());
-        }
-        if (checkAlcohol != null) {
-            request.setAlcoholUse(checkAlcohol.isChecked());
+        if (!validateAndFillRequest(request)) {
+            return; // errors already shown inline
         }
 
         showLoading(true);
@@ -317,6 +326,180 @@ public class EditPatientProfileFragment extends Fragment {
                         Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private boolean validateAndFillRequest(PatientProfileUpdateRequestDto request) {
+        boolean hasError = false;
+
+        // Clear old errors
+        if (layoutDob != null) layoutDob.setError(null);
+        if (layoutHeight != null) layoutHeight.setError(null);
+        if (layoutWeight != null) layoutWeight.setError(null);
+
+        // DOB
+        String dob = inputDob != null ? trimOrNull(inputDob.getText()) : null;
+        if (!TextUtils.isEmpty(dob)) {
+            if (!isValidPastDate(dob)) {
+                if (layoutDob != null) {
+                    layoutDob.setError(getString(R.string.profile_error_invalid_dob));
+                }
+                hasError = true;
+            } else {
+                request.setDateOfBirth(dob);
+            }
+        }
+
+        // Gender / blood type / address / etc. are free text, no strict rules
+        if (inputGender != null) {
+            request.setGender(trimOrNull(inputGender.getText()));
+        }
+        if (inputBloodType != null) {
+            request.setBloodType(trimOrNull(inputBloodType.getText()));
+        }
+        if (inputAddress != null) {
+            request.setAddress(trimOrNull(inputAddress.getText()));
+        }
+        if (inputCity != null) {
+            request.setCity(trimOrNull(inputCity.getText()));
+        }
+        if (inputCountry != null) {
+            request.setCountry(trimOrNull(inputCountry.getText()));
+        }
+        if (inputMaritalStatus != null) {
+            request.setMaritalStatus(trimOrNull(inputMaritalStatus.getText()));
+        }
+        if (inputNotes != null) {
+            request.setNotes(trimOrNull(inputNotes.getText()));
+        }
+
+        // Height
+        if (inputHeightCm != null) {
+            String hText = trimOrNull(inputHeightCm.getText());
+            if (!TextUtils.isEmpty(hText)) {
+                try {
+                    int h = Integer.parseInt(hText);
+                    // Reasonable human range in cm
+                    if (h < 50 || h > 260) {
+                        if (layoutHeight != null) {
+                            layoutHeight.setError(getString(R.string.profile_error_invalid_height));
+                        }
+                        hasError = true;
+                    } else {
+                        request.setHeightCm(h);
+                    }
+                } catch (NumberFormatException e) {
+                    if (layoutHeight != null) {
+                        layoutHeight.setError(getString(R.string.profile_error_invalid_height));
+                    }
+                    hasError = true;
+                }
+            }
+        }
+
+        // Weight
+        if (inputWeightKg != null) {
+            String wText = trimOrNull(inputWeightKg.getText());
+            if (!TextUtils.isEmpty(wText)) {
+                try {
+                    int w = Integer.parseInt(wText);
+                    // Reasonable human range in kg
+                    if (w < 3 || w > 350) {
+                        if (layoutWeight != null) {
+                            layoutWeight.setError(getString(R.string.profile_error_invalid_weight));
+                        }
+                        hasError = true;
+                    } else {
+                        request.setWeightKg(w);
+                    }
+                } catch (NumberFormatException e) {
+                    if (layoutWeight != null) {
+                        layoutWeight.setError(getString(R.string.profile_error_invalid_weight));
+                    }
+                    hasError = true;
+                }
+            }
+        }
+
+        if (checkSmoker != null) {
+            request.setSmoker(checkSmoker.isChecked());
+        }
+        if (checkAlcohol != null) {
+            request.setAlcoholUse(checkAlcohol.isChecked());
+        }
+
+        return !hasError;
+    }
+
+    private boolean isValidPastDate(@NonNull String isoDate) {
+        // Expected format: yyyy-MM-dd
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        sdf.setLenient(false);
+        try {
+            long time = sdf.parse(isoDate).getTime();
+            long now = System.currentTimeMillis();
+            // allow today, disallow future
+            return time <= now;
+        } catch (ParseException e) {
+            return false;
+        }
+    }
+
+    private void showDatePicker() {
+        if (!isAdded()) return;
+
+        int year;
+        int month;
+        int day;
+
+        // Fallback: 30 years ago from today
+        Calendar fallback = Calendar.getInstance();
+        fallback.add(Calendar.YEAR, -30);
+        year = fallback.get(Calendar.YEAR);
+        month = fallback.get(Calendar.MONTH);
+        day = fallback.get(Calendar.DAY_OF_MONTH);
+
+        String dobText = null;
+        if (inputDob != null && inputDob.getText() != null) {
+            dobText = inputDob.getText().toString().trim();
+        }
+
+        if (!TextUtils.isEmpty(dobText) && dobText.length() >= 10) {
+            try {
+                String[] parts = dobText.substring(0, 10).split("-");
+                if (parts.length == 3) {
+                    year = Integer.parseInt(parts[0]);
+                    month = Integer.parseInt(parts[1]) - 1;
+                    day = Integer.parseInt(parts[2]);
+                }
+            } catch (Exception ignored) {
+            }
+        } else if (currentPatientProfile != null &&
+                !TextUtils.isEmpty(currentPatientProfile.getDateOfBirth())) {
+            try {
+                String[] parts = currentPatientProfile.getDateOfBirth().substring(0, 10).split("-");
+                if (parts.length == 3) {
+                    year = Integer.parseInt(parts[0]);
+                    month = Integer.parseInt(parts[1]) - 1;
+                    day = Integer.parseInt(parts[2]);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        DatePickerDialog dialog = new DatePickerDialog(
+                requireContext(),
+                (view, y, m, d) -> {
+                    String formatted = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d);
+                    if (inputDob != null) {
+                        inputDob.setText(formatted);
+                    }
+                },
+                year,
+                month,
+                day
+        );
+
+        dialog.show();
     }
 
     @Nullable

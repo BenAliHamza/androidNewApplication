@@ -3,12 +3,15 @@ package tn.esprit.presentation.home;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.bumptech.glide.Glide;
 
 import tn.esprit.R;
 import tn.esprit.domain.doctor.DoctorSearchResult;
@@ -45,7 +48,10 @@ public class DoctorSearchResultAdapter
                             && safeEquals(oldItem.getLastName(), newItem.getLastName())
                             && safeEquals(oldItem.getSpecialtyName(), newItem.getSpecialtyName())
                             && safeEquals(oldItem.getCity(), newItem.getCity())
-                            && safeEquals(oldItem.getCountry(), newItem.getCountry());
+                            && safeEquals(oldItem.getCountry(), newItem.getCountry())
+                            && safeEquals(oldItem.getProfileImageUrl(), newItem.getProfileImageUrl())
+                            && safeEquals(oldItem.getAcceptingNewPatients(), newItem.getAcceptingNewPatients())
+                            && safeEquals(oldItem.getTeleconsultationEnabled(), newItem.getTeleconsultationEnabled());
                 }
 
                 private boolean safeEquals(Object a, Object b) {
@@ -66,18 +72,26 @@ public class DoctorSearchResultAdapter
     @Override
     public void onBindViewHolder(@NonNull DoctorViewHolder holder, int position) {
         DoctorSearchResult item = getItem(position);
-        holder.bind(item);
+        if (item != null) {
+            holder.bind(item);
+        }
     }
 
     class DoctorViewHolder extends RecyclerView.ViewHolder {
 
+        private final ImageView imageAvatar;
         private final TextView textTitle;
         private final TextView textSubtitle;
+        private final TextView textFlagAccepts;
+        private final TextView textFlagTeleconsult;
 
         DoctorViewHolder(@NonNull View itemView) {
             super(itemView);
+            imageAvatar = itemView.findViewById(R.id.image_doctor_avatar);
             textTitle = itemView.findViewById(R.id.text_doctor_title);
             textSubtitle = itemView.findViewById(R.id.text_doctor_subtitle);
+            textFlagAccepts = itemView.findViewById(R.id.text_doctor_flag_accepts);
+            textFlagTeleconsult = itemView.findViewById(R.id.text_doctor_flag_teleconsult);
 
             itemView.setOnClickListener(v -> {
                 int pos = getBindingAdapterPosition();
@@ -90,6 +104,22 @@ public class DoctorSearchResultAdapter
         }
 
         void bind(@NonNull DoctorSearchResult doctor) {
+            // --- Avatar ---
+            if (imageAvatar != null) {
+                String url = doctor.getProfileImageUrl();
+                if (url != null && !url.trim().isEmpty()) {
+                    Glide.with(itemView)
+                            .load(url)
+                            .placeholder(R.drawable.logo)
+                            .error(R.drawable.logo)
+                            .circleCrop()
+                            .into(imageAvatar);
+                } else {
+                    imageAvatar.setImageResource(R.drawable.logo);
+                }
+            }
+
+            // --- Title / subtitle ---
             String displayName = doctor.getDisplayNameCompact();
             if (displayName == null) {
                 displayName = "";
@@ -123,9 +153,47 @@ public class DoctorSearchResultAdapter
                 if (subtitle.length() > 0) subtitle.append(", ");
                 subtitle.append(doctor.getCountry().trim());
             }
-
             String subtitleText = subtitle.toString();
             textSubtitle.setText(subtitleText);
+
+            // --- Flags (accepting new patients / teleconsultation) ---
+            // Accepting new patients
+            Boolean accepts = doctor.getAcceptingNewPatients();
+            if (textFlagAccepts != null) {
+                if (accepts != null) {
+                    textFlagAccepts.setVisibility(View.VISIBLE);
+                    if (accepts) {
+                        textFlagAccepts.setText(R.string.profile_flag_accepts_new);
+                        textFlagAccepts.setBackgroundResource(R.drawable.bg_doctor_flag_positive);
+                        textFlagAccepts.setTextColor(itemView.getResources().getColor(android.R.color.white));
+                    } else {
+                        textFlagAccepts.setText(R.string.profile_flag_not_accepts_new);
+                        textFlagAccepts.setBackgroundResource(R.drawable.bg_doctor_flag_neutral);
+                        textFlagAccepts.setTextColor(itemView.getResources().getColor(R.color.color_on_background_secondary));
+                    }
+                } else {
+                    textFlagAccepts.setVisibility(View.GONE);
+                }
+            }
+
+            // Teleconsultation
+            Boolean tele = doctor.getTeleconsultationEnabled();
+            if (textFlagTeleconsult != null) {
+                if (tele != null) {
+                    textFlagTeleconsult.setVisibility(View.VISIBLE);
+                    if (tele) {
+                        textFlagTeleconsult.setText(R.string.profile_flag_teleconsultation);
+                        textFlagTeleconsult.setBackgroundResource(R.drawable.bg_doctor_flag_positive);
+                        textFlagTeleconsult.setTextColor(itemView.getResources().getColor(android.R.color.white));
+                    } else {
+                        textFlagTeleconsult.setText(R.string.profile_flag_no_teleconsultation);
+                        textFlagTeleconsult.setBackgroundResource(R.drawable.bg_doctor_flag_neutral);
+                        textFlagTeleconsult.setTextColor(itemView.getResources().getColor(R.color.color_on_background_secondary));
+                    }
+                } else {
+                    textFlagTeleconsult.setVisibility(View.GONE);
+                }
+            }
 
             // Accessibility: announce full title + location
             StringBuilder contentDesc = new StringBuilder();

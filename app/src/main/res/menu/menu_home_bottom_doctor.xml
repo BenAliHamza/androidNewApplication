@@ -4,25 +4,25 @@
     <!-- Home = overall dashboard -->
     <item
         android:id="@+id/menu_home"
-        android:icon="@android:drawable/ic_menu_view"
+        android:icon="@drawable/ic_bottom_home_24"
         android:title="@string/home_bottom_home" />
 
     <!-- Calendar = doctor's schedule / appointments -->
     <item
         android:id="@+id/menu_calendar"
-        android:icon="@android:drawable/ic_menu_today"
+        android:icon="@drawable/ic_bottom_calendar_24"
         android:title="@string/home_bottom_calendar" />
 
     <!-- Patients = manage linked patients -->
     <item
         android:id="@+id/menu_patients"
-        android:icon="@android:drawable/ic_menu_manage"
+        android:icon="@drawable/ic_bottom_people_24"
         android:title="@string/home_bottom_patients" />
 
     <!-- Office = office hours / schedule settings -->
     <item
         android:id="@+id/menu_office"
-        android:icon="@android:drawable/ic_dialog_email"
+        android:icon="@drawable/ic_bottom_calendar_24"
         android:title="@string/home_bottom_office" />
 
 </menu>

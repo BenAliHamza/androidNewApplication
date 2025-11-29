@@ -37,7 +37,6 @@
             android:id="@+id/action_patientHomeFragment_to_doctorPublicProfileFragment"
             app:destination="@id/doctorPublicProfileFragment" />
 
-        <!-- Navigate to patient's indicators screen -->
         <action
             android:id="@+id/action_patientHomeFragment_to_patientIndicatorsFragment"
             app:destination="@id/patientIndicatorsFragment" />
@@ -53,7 +52,6 @@
             android:name="doctorId"
             app:argType="long" />
 
-        <!-- NEW: navigate to patient's "My appointments" after booking -->
         <action
             android:id="@+id/action_doctorPublicProfileFragment_to_patientAppointmentsFragment"
             app:destination="@id/patientAppointmentsFragment" />
@@ -100,12 +98,10 @@
         android:name="tn.esprit.presentation.profile.ProfileFragment"
         android:label="@string/profile_title">
 
-        <!-- From profile to EDIT (doctor) -->
         <action
             android:id="@+id/action_profileFragment_to_profileEditFragment"
             app:destination="@id/profileEditFragment" />
 
-        <!-- From profile to EDIT (patient) -->
         <action
             android:id="@+id/action_profileFragment_to_editPatientProfileFragment"
             app:destination="@id/editPatientProfileFragment" />
@@ -117,7 +113,6 @@
         android:name="tn.esprit.presentation.profile.ProfileEditFragment"
         android:label="@string/profile_edit_title">
 
-        <!-- From doctor edit to base user info display -->
         <action
             android:id="@+id/action_profileEditFragment_to_userBaseInfoFragment"
             app:destination="@id/userBaseInfoFragment" />
@@ -129,7 +124,6 @@
         android:name="tn.esprit.presentation.profile.EditPatientProfileFragment"
         android:label="@string/profile_patient_edit_title">
 
-        <!-- From patient edit to base user info display -->
         <action
             android:id="@+id/action_editPatientProfileFragment_to_userBaseInfoFragment"
             app:destination="@id/userBaseInfoFragment" />
@@ -169,10 +163,16 @@
         android:name="tn.esprit.presentation.home.DoctorScheduleEditFragment"
         android:label="@string/doctor_office_edit_title" />
 
-    <!-- NEW: Notifications list screen -->
+    <!-- Notifications list screen -->
     <fragment
         android:id="@+id/notificationsFragment"
         android:name="tn.esprit.presentation.notification.NotificationListFragment"
         android:label="Notifications" />
+
+    <!-- User history screen -->
+    <fragment
+        android:id="@+id/userHistoryFragment"
+        android:name="tn.esprit.presentation.history.UserHistoryFragment"
+        android:label="@string/history_title" />
 
 </navigation>

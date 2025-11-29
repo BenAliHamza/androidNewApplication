@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layout_home_patient_quick_actions"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- My indicators -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_my_indicators"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/patient_home_my_indicators"
+        android:textAllCaps="false"
+        android:layout_marginTop="4dp" />
+
+    <!-- My medications -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_home_medications"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/home_bottom_medications"
+        android:textAllCaps="false" />
+
+    <!-- My appointments -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_home_appointments"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/home_bottom_appointments"
+        android:textAllCaps="false" />
+
+</LinearLayout>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Outer circle -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M11.99,4C8.13,4 5,7.13 5,10.99H2l3.89,3.89 0.07,0.14L10,10.99H7C7,8.24 9.24,6 11.99,6s4.99,2.24 4.99,4.99 -2.24,4.99 -4.99,4.99c-1.38,0 -2.63,-0.56 -3.54,-1.47l-1.41,1.41C8.56,17.84 10.19,18.5 11.99,18.5 15.85,18.5 19,15.36 19,11.5 19,7.64 15.85,4 11.99,4z" />
+
+    <!-- Clock hands -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M12.5,8H11v4l3.5,2.1 0.75,-1.23L12.5,11.5z" />
+</vector>

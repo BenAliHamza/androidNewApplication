@@ -4,25 +4,25 @@
     <!-- Home = doctor search / main screen -->
     <item
         android:id="@+id/menu_home"
-        android:icon="@android:drawable/ic_menu_view"
+        android:icon="@drawable/ic_bottom_home_24"
         android:title="@string/home_bottom_home" />
 
     <!-- Medications = patient prescriptions -->
     <item
         android:id="@+id/menu_medications"
-        android:icon="@android:drawable/ic_menu_manage"
+        android:icon="@drawable/ic_bottom_pills_24"
         android:title="@string/home_bottom_medications" />
 
     <!-- Appointments = patient appointments -->
     <item
         android:id="@+id/menu_appointments"
-        android:icon="@android:drawable/ic_menu_today"
+        android:icon="@drawable/ic_bottom_calendar_24"
         android:title="@string/home_bottom_appointments" />
 
-    <!-- History = placeholder for future history feature -->
+    <!-- History -->
     <item
         android:id="@+id/menu_history"
-        android:icon="@android:drawable/ic_dialog_email"
+        android:icon="@drawable/ic_bottom_history_24"
         android:title="@string/home_bottom_history" />
 
 </menu>

@@ -820,6 +820,32 @@
     Clear
 </string>
 
+    <string name="profile_dob_helper">Tap to pick your birth date</string>
+    <string name="profile_height_helper">Optional, used to calculate BMI</string>
+    <string name="profile_weight_helper">Optional, used to calculate BMI</string>
+    <string name="profile_notes_helper">Allergies, chronic diseases, medications…</string>
+
+    <string name="profile_email_label">Email</string>
+    <string name="profile_phone_label">Phone</string>
+    <string name="profile_role_label">Role</string>
+    <string name="profile_error_invalid_dob">Please enter a valid date of birth (past date, format yyyy-MM-dd).</string>
+
+    <string name="history_detail_title_fallback">History item</string>
+    <string name="history_details_label">Details</string>
+    <string name="history_details_none">No additional details for this event.</string>
+    <string name="history_details_close">Close</string>
+
+    <string name="history_title">History</string>
+    <string name="history_subtitle">Your recent activity and updates.</string>
+
+    <string name="history_empty_title">No history yet.\nYour activity will appear here.</string>
+
+    <string name="history_error_loading">Unable to load your history. Please try again.</string>
+    <string name="history_default_click_message">No additional details for this item.</string>
+
+    <string name="history_time_today">Today \u00b7 %1$s</string>
+    <string name="history_time_yesterday">Yesterday \u00b7 %1$s</string>
+    <string name="history_time_date_time">%1$s \u00b7 %2$s</string>
 
 
 
@@ -853,6 +879,19 @@
 
     <string name="doctor_appointment_detail_title">Appointment details</string>
     <string name="doctor_appointment_detail_view_profile">View patient profile</string>
+    <!-- User history screen -->
+    <string name="history_filter_all">All</string>
+    <string name="history_filter_appointments">Appointments</string>
+    <string name="history_filter_medications">Medications</string>
+    <string name="history_filter_indicators">Indicators</string>
+    <string name="history_filter_profile">Profile</string>
+    <string name="history_filter_other">Other</string>
+
+
+    <!-- Bottom sheet details -->
+    <string name="history_detail_title">Activity details</string>
+    <string name="history_detail_details_label">Extra details</string>
+    <string name="history_detail_close">Close</string>
 
 </resources>
 

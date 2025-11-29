@@ -8,7 +8,6 @@
     android:background="?attr/colorSurface"
     tools:context="tn.esprit.presentation.profile.ProfileFragment">
 
-    <!-- Progress while loading profile -->
     <ProgressBar
         android:id="@+id/profile_progress"
         style="?android:attr/progressBarStyleLarge"
@@ -17,7 +16,6 @@
         android:layout_gravity="center"
         android:visibility="gone" />
 
-    <!-- Scrollable content -->
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -28,14 +26,12 @@
         android:paddingBottom="16dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <!-- IMPORTANT: only ONE direct child inside NestedScrollView -->
         <LinearLayout
             android:id="@+id/profile_content_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Avatar + basic header (common for DOCTOR & PATIENT) -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_profile_header"
                 android:layout_width="match_parent"
@@ -56,7 +52,7 @@
                         android:id="@+id/image_profile_avatar"
                         android:layout_width="64dp"
                         android:layout_height="64dp"
-                        android:src="@android:drawable/sym_def_app_icon"
+                        android:src="@drawable/logo"
                         android:scaleType="centerCrop"
                         android:contentDescription="@string/profile_title" />
 
@@ -67,23 +63,22 @@
                         android:layout_weight="1"
                         android:orientation="vertical">
 
-                        <!-- Optional header name (not used in Java yet, safe to keep) -->
                         <TextView
                             android:id="@+id/text_profile_header_name"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
                             android:textStyle="bold"
-                            tools:text="Strange Doctor" />
+                            tools:text="Rania Zaibi" />
 
-                        <!-- Optional header role -->
                         <TextView
                             android:id="@+id/text_profile_header_role"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
                             android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
                             android:textColor="?attr/colorOnSurfaceVariant"
-                            tools:text="Doctor" />
+                            tools:text="Patient" />
                     </LinearLayout>
 
                     <com.google.android.material.button.MaterialButton
@@ -97,7 +92,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Doctor section -->
+            <!-- Doctor section unchanged (visible only for doctors) -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/section_doctor"
                 android:layout_width="match_parent"
@@ -178,7 +173,7 @@
                 android:id="@+id/section_patient"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="24dp"
                 android:visibility="gone"
                 app:cardElevation="2dp"
                 app:cardCornerRadius="16dp"
@@ -190,40 +185,45 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
+                    <!-- Blood type / key vital -->
                     <TextView
                         android:id="@+id/text_patient_blood_type"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                        tools:text="Blood type O+" />
+                        android:textStyle="bold"
+                        tools:text="Blood type: O+" />
 
+                    <!-- Height / Weight -->
                     <TextView
                         android:id="@+id/text_patient_height_weight"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="6dp"
                         android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
                         tools:text="180 cm • 75 kg" />
 
+                    <!-- Lifestyle flags -->
                     <TextView
                         android:id="@+id/text_patient_flags"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="10dp"
                         android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
                         tools:text="Non-smoker • No alcohol use" />
 
+                    <!-- Notes / additional info -->
                     <TextView
                         android:id="@+id/text_patient_notes"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
                         android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        android:lineSpacingExtra="3dp"
                         tools:text="Additional notes…" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Common edit button (role decides behaviour in ProfileFragment) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_edit_profile"
                 style="@style/Widget.MaterialComponents.Button"

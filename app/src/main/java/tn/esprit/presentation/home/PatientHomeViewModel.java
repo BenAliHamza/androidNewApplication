@@ -18,8 +18,8 @@ import tn.esprit.domain.doctor.DoctorSearchResult;
 public class PatientHomeViewModel extends AndroidViewModel {
 
     private static final int MAX_RESULTS = 5;
-    // Require a bit more text before hitting backend
-    private static final int MIN_QUERY_LENGTH = 3;
+    // Require at least 2 characters before hitting backend (faster feeling search).
+    private static final int MIN_QUERY_LENGTH = 2;
 
     private final DoctorDirectoryRepository doctorDirectoryRepository;
 
