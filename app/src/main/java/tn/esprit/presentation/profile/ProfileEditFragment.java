@@ -17,6 +17,8 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -48,6 +50,13 @@ public class ProfileEditFragment extends Fragment {
     private SwitchMaterial switchAcceptsNew;
     private SwitchMaterial switchTeleconsult;
     private View loadingOverlay;
+
+    // Fee quick chips
+    private ChipGroup chipGroupFeeQuick;
+    private Chip chipFee30;
+    private Chip chipFee50;
+    private Chip chipFee70;
+    private Chip chipFee100;
 
     private ProfileRepository profileRepository;
     private User currentUser;
@@ -96,6 +105,13 @@ public class ProfileEditFragment extends Fragment {
         MaterialButton buttonBaseInfo = view.findViewById(R.id.button_base_info);
         loadingOverlay = view.findViewById(R.id.edit_loading_overlay);
 
+        // Fee chips
+        chipGroupFeeQuick = view.findViewById(R.id.chipgroup_fee_quick);
+        chipFee30 = view.findViewById(R.id.chip_fee_30);
+        chipFee50 = view.findViewById(R.id.chip_fee_50);
+        chipFee70 = view.findViewById(R.id.chip_fee_70);
+        chipFee100 = view.findViewById(R.id.chip_fee_100);
+
         if (buttonBack != null) {
             buttonBack.setOnClickListener(v ->
                     NavHostFragment.findNavController(this).navigateUp());
@@ -114,7 +130,7 @@ public class ProfileEditFragment extends Fragment {
         }
 
         // Name and phone are base user fields, edited from the "Base info" screen.
-        // Here they are read-only for display only, to avoid fake editable fields.
+        // Here they are read-only for display only.
         if (inputName != null) {
             inputName.setEnabled(false);
             inputName.setFocusable(false);
@@ -126,7 +142,22 @@ public class ProfileEditFragment extends Fragment {
             inputPhone.setFocusableInTouchMode(false);
         }
 
+        setupFeeQuickChips();
         loadProfileForEdit();
+    }
+
+    private void setupFeeQuickChips() {
+        if (inputFee == null) return;
+
+        View.OnClickListener setFee30 = v -> inputFee.setText("30");
+        View.OnClickListener setFee50 = v -> inputFee.setText("50");
+        View.OnClickListener setFee70 = v -> inputFee.setText("70");
+        View.OnClickListener setFee100 = v -> inputFee.setText("100");
+
+        if (chipFee30 != null) chipFee30.setOnClickListener(setFee30);
+        if (chipFee50 != null) chipFee50.setOnClickListener(setFee50);
+        if (chipFee70 != null) chipFee70.setOnClickListener(setFee70);
+        if (chipFee100 != null) chipFee100.setOnClickListener(setFee100);
     }
 
     private void showLoading(boolean show) {

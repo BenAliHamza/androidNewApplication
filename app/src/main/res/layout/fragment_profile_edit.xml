@@ -204,6 +204,39 @@
                     android:inputType="numberDecimal" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Fee quick-select chips -->
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipgroup_fee_quick"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="8dp">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_fee_30"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profile_edit_fee_chip_30" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_fee_50"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profile_edit_fee_chip_50" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_fee_70"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profile_edit_fee_chip_70" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_fee_100"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profile_edit_fee_chip_100" />
+            </com.google.android.material.chip.ChipGroup>
+
             <!-- Bio -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_bio"

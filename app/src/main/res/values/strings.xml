@@ -970,6 +970,10 @@
     <string name="user_base_info_phone_helper">
     Optional but recommended for appointment reminders.
 </string>
+    <string name="profile_edit_fee_chip_30">30 TND</string>
+    <string name="profile_edit_fee_chip_50">50 TND</string>
+    <string name="profile_edit_fee_chip_70">70 TND</string>
+    <string name="profile_edit_fee_chip_100">100 TND</string>
 
 </resources>
 

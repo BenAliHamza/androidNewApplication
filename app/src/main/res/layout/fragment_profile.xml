@@ -235,12 +235,12 @@
                         android:lineSpacingExtra="3dp"
                         tools:text="Short doctor bio goes here…" />
 
-                    <!-- Flags row: accepts new / teleconsultation -->
+                    <!-- Flags: each pill on its own line -->
                     <LinearLayout
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:orientation="horizontal">
+                        android:orientation="vertical">
 
                         <TextView
                             android:id="@+id/text_profile_accepts_new"
@@ -260,7 +260,7 @@
                             android:id="@+id/text_profile_teleconsultation"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
+                            android:layout_marginTop="8dp"
                             android:background="@drawable/bg_profile_flag_positive"
                             android:paddingStart="10dp"
                             android:paddingEnd="10dp"
