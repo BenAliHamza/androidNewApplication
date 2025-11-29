@@ -962,6 +962,7 @@
     <string name="user_base_info_edit_subtitle">
     Update your basic account information used across the app.
 </string>
+    <string name="doctor_public_card_content">Doctor information</string>
 
     <string name="user_base_info_email_helper">
     This email is used for login and important notifications.

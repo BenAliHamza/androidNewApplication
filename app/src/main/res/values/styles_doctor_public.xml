@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Big title used for doctor's name -->
+    <style name="Text.DoctorPublic.SectionTitle" parent="@style/TextAppearance.AppCompat.Title">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Smaller section title (About, Clinic, Acts) -->
+    <style name="Text.DoctorPublic.SectionTitleSmall" parent="@style/TextAppearance.AppCompat.Subhead">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Fee pill text -->
+    <style name="Text.DoctorPublic.FeePill" parent="@style/TextAppearance.AppCompat.Body1">
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+</resources>

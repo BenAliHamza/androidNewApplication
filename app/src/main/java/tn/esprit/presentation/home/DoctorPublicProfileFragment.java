@@ -5,6 +5,7 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AnimationUtils;
 import android.widget.ProgressBar;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -35,7 +36,7 @@ import tn.esprit.domain.doctor.DoctorPublicProfile;
  *  - flags (accepting new patients, teleconsultation)
  *  - fee, bio, clinic info
  *  - list of acts
- *  - CTAs (Book, Message)
+ *  - CTAs (Book)
  */
 public class DoctorPublicProfileFragment extends Fragment {
 
@@ -43,11 +44,9 @@ public class DoctorPublicProfileFragment extends Fragment {
 
     private DoctorDirectoryRepository doctorDirectoryRepository;
 
-    // Keep current profile for CTAs
     @Nullable
     private DoctorPublicProfile currentProfile;
 
-    // Views
     private ProgressBar progressBar;
     private View errorContainer;
     private TextView errorText;
@@ -71,7 +70,6 @@ public class DoctorPublicProfileFragment extends Fragment {
     private TextView textActsEmpty;
 
     private Button buttonBook;
-    private Button buttonMessage;
 
     private DoctorActAdapter actsAdapter;
 
@@ -117,24 +115,17 @@ public class DoctorPublicProfileFragment extends Fragment {
         textActsEmpty = view.findViewById(R.id.text_acts_empty);
 
         buttonBook = view.findViewById(R.id.button_book);
-        buttonMessage = view.findViewById(R.id.button_message);
 
-        // Acts list
         actsAdapter = new DoctorActAdapter();
         if (recyclerActs != null) {
             recyclerActs.setLayoutManager(new LinearLayoutManager(requireContext()));
             recyclerActs.setAdapter(actsAdapter);
         }
 
-        // CTAs
         if (buttonBook != null) {
             buttonBook.setOnClickListener(v -> handleBookClick());
         }
-        if (buttonMessage != null) {
-            buttonMessage.setOnClickListener(v -> handleMessageClick());
-        }
 
-        // Resolve doctorId from arguments
         long doctorId = -1L;
         Bundle args = getArguments();
         if (args != null) {
@@ -142,14 +133,12 @@ public class DoctorPublicProfileFragment extends Fragment {
         }
 
         if (doctorId <= 0L) {
-            // Missing/invalid id → show error state
             showLoading(false);
             showContent(false);
             showError(getString(R.string.doctor_public_error_missing_id), false);
             return;
         }
 
-        // Load profile
         loadDoctorProfile(doctorId);
     }
 
@@ -196,7 +185,12 @@ public class DoctorPublicProfileFragment extends Fragment {
         showError(null, false);
         showContent(true);
 
-        // Avatar
+        if (contentContainer != null) {
+            contentContainer.startAnimation(
+                    AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in_short)
+            );
+        }
+
         if (!TextUtils.isEmpty(profile.getProfileImageUrl())) {
             Glide.with(this)
                     .load(profile.getProfileImageUrl())
@@ -208,14 +202,12 @@ public class DoctorPublicProfileFragment extends Fragment {
             imageAvatar.setImageResource(R.drawable.logo);
         }
 
-        // Name
         String fullName = profile.getFullName();
         if (TextUtils.isEmpty(fullName)) {
             fullName = getString(R.string.profile_role_doctor);
         }
         textName.setText(fullName);
 
-        // Specialty
         if (!TextUtils.isEmpty(profile.getSpecialtyName())) {
             textSpecialty.setVisibility(View.VISIBLE);
             textSpecialty.setText(profile.getSpecialtyName());
@@ -223,7 +215,6 @@ public class DoctorPublicProfileFragment extends Fragment {
             textSpecialty.setVisibility(View.GONE);
         }
 
-        // Location: "City, Country"
         String city = profile.getCity() != null ? profile.getCity().trim() : "";
         String country = profile.getCountry() != null ? profile.getCountry().trim() : "";
         StringBuilder locationBuilder = new StringBuilder();
@@ -241,7 +232,6 @@ public class DoctorPublicProfileFragment extends Fragment {
             textLocation.setVisibility(View.GONE);
         }
 
-        // Flags: accepting new patients
         Boolean acceptingNew = profile.getAcceptingNewPatients();
         if (chipAcceptingNew != null) {
             if (acceptingNew == null) {
@@ -256,7 +246,6 @@ public class DoctorPublicProfileFragment extends Fragment {
             }
         }
 
-        // Flags: teleconsultation
         Boolean tele = profile.getTeleconsultationEnabled();
         if (chipTeleconsultation != null) {
             if (tele == null) {
@@ -271,7 +260,6 @@ public class DoctorPublicProfileFragment extends Fragment {
             }
         }
 
-        // Fee formatting: "Consultation: X"
         String feeFormatted = formatFee(profile.getConsultationFee());
         if (feeFormatted != null) {
             textConsultationFee.setVisibility(View.VISIBLE);
@@ -280,7 +268,6 @@ public class DoctorPublicProfileFragment extends Fragment {
             textConsultationFee.setVisibility(View.GONE);
         }
 
-        // Bio
         String bio = profile.getBio();
         if (TextUtils.isEmpty(bio)) {
             textBio.setText(R.string.doctor_public_bio_placeholder);
@@ -288,7 +275,6 @@ public class DoctorPublicProfileFragment extends Fragment {
             textBio.setText(bio.trim());
         }
 
-        // Experience
         Integer years = profile.getYearsOfExperience();
         if (years != null && years > 0) {
             textExperience.setVisibility(View.VISIBLE);
@@ -299,7 +285,6 @@ public class DoctorPublicProfileFragment extends Fragment {
             textExperience.setVisibility(View.GONE);
         }
 
-        // Clinic address
         String clinicAddress = profile.getClinicAddress();
         if (TextUtils.isEmpty(clinicAddress)) {
             textClinicAddress.setText(R.string.doctor_public_clinic_address_placeholder);
@@ -307,7 +292,6 @@ public class DoctorPublicProfileFragment extends Fragment {
             textClinicAddress.setText(clinicAddress.trim());
         }
 
-        // Clinic city/country line
         if (locationBuilder.length() > 0) {
             textClinicCityCountry.setVisibility(View.VISIBLE);
             textClinicCityCountry.setText(locationBuilder.toString());
@@ -315,7 +299,6 @@ public class DoctorPublicProfileFragment extends Fragment {
             textClinicCityCountry.setVisibility(View.GONE);
         }
 
-        // Acts list
         List<DoctorPublicProfile.Act> acts = profile.getActs();
         if (acts == null || acts.isEmpty()) {
             textActsEmpty.setVisibility(View.VISIBLE);
@@ -325,9 +308,11 @@ public class DoctorPublicProfileFragment extends Fragment {
             textActsEmpty.setVisibility(View.GONE);
             recyclerActs.setVisibility(View.VISIBLE);
             actsAdapter.submitList(acts);
+            recyclerActs.startAnimation(
+                    AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
+            );
         }
 
-        // CTAs state: disable Book when not accepting new patients
         if (buttonBook != null) {
             boolean canBook = acceptingNew == null || Boolean.TRUE.equals(acceptingNew);
             buttonBook.setEnabled(canBook);
@@ -340,11 +325,8 @@ public class DoctorPublicProfileFragment extends Fragment {
         if (fee == null) {
             return null;
         }
-        // Normalize (no trailing zeros like 50.00 → 50)
         BigDecimal normalized = fee.stripTrailingZeros();
         String plain = normalized.toPlainString();
-
-        // Reuse existing profile format string: "Consultation: %1$s"
         return getString(R.string.profile_doctor_fee_format, plain);
     }
 
@@ -372,8 +354,6 @@ public class DoctorPublicProfileFragment extends Fragment {
             contentContainer.setVisibility(show ? View.VISIBLE : View.GONE);
         }
     }
-
-    // ---------- CTAs ----------
 
     private void handleBookClick() {
         if (!isAdded()) return;
@@ -421,25 +401,5 @@ public class DoctorPublicProfileFragment extends Fragment {
                 specialty,
                 teleEnabled
         );
-    }
-
-    private void handleMessageClick() {
-        if (!isAdded()) return;
-
-        if (currentProfile == null) {
-            Toast.makeText(
-                    requireContext(),
-                    getString(R.string.doctor_public_error_generic),
-                    Toast.LENGTH_SHORT
-            ).show();
-            return;
-        }
-
-        // Future: navigate to chat / messaging thread.
-        Toast.makeText(
-                requireContext(),
-                "Messaging is not implemented yet.",
-                Toast.LENGTH_SHORT
-        ).show();
     }
 }

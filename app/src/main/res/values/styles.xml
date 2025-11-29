@@ -22,4 +22,15 @@
         <item name="chipEndPadding">10dp</item>
     </style>
 
+    <!-- Flags chips (accepting new, teleconsultation) -->
+    <style name="Widget.Docs.Chip.Flag" parent="Widget.Material3.Chip.Assist">
+        <item name="chipMinHeight">32dp</item>
+        <item name="chipBackgroundColor">@color/color_surface</item>
+        <item name="chipStrokeColor">@color/color_on_surface</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="android:textColor">@color/color_on_surface</item>
+        <item name="chipStartPadding">12dp</item>
+        <item name="chipEndPadding">12dp</item>
+    </style>
+
 </resources>
