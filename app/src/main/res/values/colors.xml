@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <!-- Base -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
@@ -32,6 +33,7 @@
     <!-- Profile-specific -->
     <color name="color_profile_role_bg">@color/color_primary_soft</color>
     <color name="color_profile_role_text">@color/color_primary_variant</color>
+    <color name="color_profile_meta_text">@color/color_on_background_secondary</color>
 
     <!-- Ripples / effects -->
     <color name="color_primary_ripple">#330BA5A4</color>      <!-- 20% alpha primary -->

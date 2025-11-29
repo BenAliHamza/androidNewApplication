@@ -5,8 +5,14 @@
     <dimen name="drawer_header_avatar_size">48dp</dimen>
     <dimen name="drawer_header_avatar_padding">8dp</dimen>
     <dimen name="drawer_header_spacing_horizontal">16dp</dimen>
-
+    <dimen name="profile_card_corner_radius">16dp</dimen>
+    <dimen name="profile_card_elevation">2dp</dimen>
     <!-- Profile header -->
     <dimen name="profile_header_avatar_size">64dp</dimen>
     <dimen name="profile_header_avatar_padding">8dp</dimen>
+
+
+    <dimen name="profile_section_title_padding_horizontal">8dp</dimen>
+    <dimen name="profile_section_title_padding_vertical">4dp</dimen>
+    <dimen name="profile_section_title_margin_bottom">8dp</dimen>
 </resources>

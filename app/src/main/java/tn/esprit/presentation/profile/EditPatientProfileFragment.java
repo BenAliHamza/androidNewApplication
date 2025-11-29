@@ -46,6 +46,7 @@ public class EditPatientProfileFragment extends Fragment {
     private TextInputLayout layoutGender;
     private TextInputLayout layoutBloodType;
     private TextInputLayout layoutMaritalStatus;
+    private TextInputLayout layoutCity;
 
     private TextInputEditText inputDob;
     private TextInputEditText inputGender;
@@ -96,6 +97,7 @@ public class EditPatientProfileFragment extends Fragment {
         layoutGender = view.findViewById(R.id.layout_gender);
         layoutBloodType = view.findViewById(R.id.layout_blood_type);
         layoutMaritalStatus = view.findViewById(R.id.layout_marital_status);
+        layoutCity = view.findViewById(R.id.layout_city);
 
         inputDob = view.findViewById(R.id.input_dob);
         inputGender = view.findViewById(R.id.input_gender);
@@ -137,12 +139,19 @@ public class EditPatientProfileFragment extends Fragment {
         attachClearErrorTextWatchers();
         setupPickers();
 
+        // Country is Tunisia-based; keep it non-editable and we will default if empty.
+        if (inputCountry != null) {
+            inputCountry.setFocusable(false);
+            inputCountry.setFocusableInTouchMode(false);
+            inputCountry.setClickable(false);
+        }
+
         loadProfileForEdit();
     }
 
     // ------------------------------------------------------------
-    // Picker dialogs for gender / blood type / marital status
-    // using existing arrays: profile_genders, profile_blood_types, profile_marital_statuses
+    // Picker dialogs for gender / blood type / marital status / city
+    // using arrays: profile_genders, profile_blood_types, profile_marital_statuses, profile_tunisia_cities
     // ------------------------------------------------------------
     private void setupPickers() {
         if (!isAdded()) return;
@@ -150,6 +159,7 @@ public class EditPatientProfileFragment extends Fragment {
         setupPickerForField(inputGender, R.array.profile_genders);
         setupPickerForField(inputBloodType, R.array.profile_blood_types);
         setupPickerForField(inputMaritalStatus, R.array.profile_marital_statuses);
+        setupPickerForField(inputCity, R.array.profile_tunisia_cities);
     }
 
     private void setupPickerForField(@Nullable TextInputEditText editText,
@@ -210,6 +220,9 @@ public class EditPatientProfileFragment extends Fragment {
         }
         if (inputMaritalStatus != null && layoutMaritalStatus != null) {
             inputMaritalStatus.addTextChangedListener(new SimpleClearErrorWatcher(layoutMaritalStatus));
+        }
+        if (inputCity != null && layoutCity != null) {
+            inputCity.addTextChangedListener(new SimpleClearErrorWatcher(layoutCity));
         }
     }
 
@@ -309,7 +322,11 @@ public class EditPatientProfileFragment extends Fragment {
                     }
                     if (inputCountry != null) {
                         try {
-                            inputCountry.setText(patientProfile.getCountry());
+                            String country = patientProfile.getCountry();
+                            if (TextUtils.isEmpty(country)) {
+                                country = getString(R.string.profile_country_tunisia);
+                            }
+                            inputCountry.setText(country);
                         } catch (Exception ignored) {
                         }
                     }
@@ -338,6 +355,11 @@ public class EditPatientProfileFragment extends Fragment {
                             checkAlcohol.setChecked(alcohol != null && alcohol);
                         } catch (Exception ignored) {
                         }
+                    }
+                } else {
+                    // No patient profile yet: default country to Tunisia for convenience
+                    if (inputCountry != null) {
+                        inputCountry.setText(getString(R.string.profile_country_tunisia));
                     }
                 }
             }
@@ -410,6 +432,7 @@ public class EditPatientProfileFragment extends Fragment {
     // ------------------------------------------------------------
     private boolean validateAndFillRequest(PatientProfileUpdateRequestDto request) {
         boolean hasError = false;
+        TextInputEditText firstErrorField = null;
 
         // Clear old errors
         if (layoutDob != null) layoutDob.setError(null);
@@ -418,6 +441,7 @@ public class EditPatientProfileFragment extends Fragment {
         if (layoutGender != null) layoutGender.setError(null);
         if (layoutBloodType != null) layoutBloodType.setError(null);
         if (layoutMaritalStatus != null) layoutMaritalStatus.setError(null);
+        if (layoutCity != null) layoutCity.setError(null);
 
         // DOB
         String dob = inputDob != null ? trimOrNull(inputDob.getText()) : null;
@@ -425,6 +449,9 @@ public class EditPatientProfileFragment extends Fragment {
             if (!isValidPastDate(dob)) {
                 if (layoutDob != null) {
                     layoutDob.setError(getString(R.string.profile_error_invalid_dob));
+                }
+                if (firstErrorField == null && inputDob != null) {
+                    firstErrorField = inputDob;
                 }
                 hasError = true;
             } else {
@@ -439,6 +466,9 @@ public class EditPatientProfileFragment extends Fragment {
                 if (layoutGender != null) {
                     layoutGender.setError(getString(R.string.profile_error_invalid_gender));
                 }
+                if (firstErrorField == null && inputGender != null) {
+                    firstErrorField = inputGender;
+                }
                 hasError = true;
             } else {
                 request.setGender(gender);
@@ -452,6 +482,9 @@ public class EditPatientProfileFragment extends Fragment {
                 if (layoutBloodType != null) {
                     layoutBloodType.setError(getString(R.string.profile_error_invalid_blood_type));
                 }
+                if (firstErrorField == null && inputBloodType != null) {
+                    firstErrorField = inputBloodType;
+                }
                 hasError = true;
             } else {
                 request.setBloodType(blood);
@@ -462,11 +495,32 @@ public class EditPatientProfileFragment extends Fragment {
         if (inputAddress != null) {
             request.setAddress(trimOrNull(inputAddress.getText()));
         }
-        if (inputCity != null) {
-            request.setCity(trimOrNull(inputCity.getText()));
+
+        // City: optional but if filled must be a known Tunisian city
+        String city = inputCity != null ? trimOrNull(inputCity.getText()) : null;
+        if (!TextUtils.isEmpty(city)) {
+            if (!isInStringArray(city, R.array.profile_tunisia_cities)) {
+                if (layoutCity != null) {
+                    layoutCity.setError(getString(R.string.profile_error_invalid_city));
+                }
+                if (firstErrorField == null && inputCity != null) {
+                    firstErrorField = inputCity;
+                }
+                hasError = true;
+            } else {
+                request.setCity(city);
+            }
+        } else {
+            request.setCity(null);
         }
+
+        // Country: default to Tunisia if empty
         if (inputCountry != null) {
-            request.setCountry(trimOrNull(inputCountry.getText()));
+            String countryValue = trimOrNull(inputCountry.getText());
+            if (TextUtils.isEmpty(countryValue)) {
+                countryValue = getString(R.string.profile_country_tunisia);
+            }
+            request.setCountry(countryValue);
         }
 
         // Marital status: optional but if filled must be from array
@@ -477,6 +531,9 @@ public class EditPatientProfileFragment extends Fragment {
                     layoutMaritalStatus.setError(
                             getString(R.string.profile_error_invalid_marital_status)
                     );
+                }
+                if (firstErrorField == null && inputMaritalStatus != null) {
+                    firstErrorField = inputMaritalStatus;
                 }
                 hasError = true;
             } else {
@@ -495,10 +552,13 @@ public class EditPatientProfileFragment extends Fragment {
             if (!TextUtils.isEmpty(hText)) {
                 try {
                     int h = Integer.parseInt(hText);
-                    // Reasonable human range in cm
-                    if (h < 50 || h > 260) {
+                    // More realistic human range in cm
+                    if (h < 80 || h > 230) {
                         if (layoutHeight != null) {
                             layoutHeight.setError(getString(R.string.profile_error_invalid_height));
+                        }
+                        if (firstErrorField == null && inputHeightCm != null) {
+                            firstErrorField = inputHeightCm;
                         }
                         hasError = true;
                     } else {
@@ -507,6 +567,9 @@ public class EditPatientProfileFragment extends Fragment {
                 } catch (NumberFormatException e) {
                     if (layoutHeight != null) {
                         layoutHeight.setError(getString(R.string.profile_error_invalid_height));
+                    }
+                    if (firstErrorField == null && inputHeightCm != null) {
+                        firstErrorField = inputHeightCm;
                     }
                     hasError = true;
                 }
@@ -519,10 +582,13 @@ public class EditPatientProfileFragment extends Fragment {
             if (!TextUtils.isEmpty(wText)) {
                 try {
                     int w = Integer.parseInt(wText);
-                    // Reasonable human range in kg
-                    if (w < 3 || w > 350) {
+                    // More realistic human range in kg
+                    if (w < 20 || w > 250) {
                         if (layoutWeight != null) {
                             layoutWeight.setError(getString(R.string.profile_error_invalid_weight));
+                        }
+                        if (firstErrorField == null && inputWeightKg != null) {
+                            firstErrorField = inputWeightKg;
                         }
                         hasError = true;
                     } else {
@@ -531,6 +597,9 @@ public class EditPatientProfileFragment extends Fragment {
                 } catch (NumberFormatException e) {
                     if (layoutWeight != null) {
                         layoutWeight.setError(getString(R.string.profile_error_invalid_weight));
+                    }
+                    if (firstErrorField == null && inputWeightKg != null) {
+                        firstErrorField = inputWeightKg;
                     }
                     hasError = true;
                 }
@@ -542,6 +611,10 @@ public class EditPatientProfileFragment extends Fragment {
         }
         if (checkAlcohol != null) {
             request.setAlcoholUse(checkAlcohol.isChecked());
+        }
+
+        if (hasError && firstErrorField != null) {
+            firstErrorField.requestFocus();
         }
 
         return !hasError;
@@ -575,10 +648,21 @@ public class EditPatientProfileFragment extends Fragment {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
         sdf.setLenient(false);
         try {
-            long time = sdf.parse(isoDate).getTime();
+            long parsedTime = sdf.parse(isoDate).getTime();
             long now = System.currentTimeMillis();
-            // allow today, disallow future
-            return time <= now;
+
+            // Disallow future dates
+            if (parsedTime > now) {
+                return false;
+            }
+
+            // Disallow ages older than 120 years (very generous)
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(now);
+            cal.add(Calendar.YEAR, -120);
+            long oldestAllowed = cal.getTimeInMillis();
+
+            return parsedTime >= oldestAllowed;
         } catch (ParseException e) {
             return false;
         }

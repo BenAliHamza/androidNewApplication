@@ -105,6 +105,11 @@
         <action
             android:id="@+id/action_profileFragment_to_editPatientProfileFragment"
             app:destination="@id/editPatientProfileFragment" />
+
+        <!-- NEW: open base user info from profile header contact line -->
+        <action
+            android:id="@+id/action_profileFragment_to_userBaseInfoFragment"
+            app:destination="@id/userBaseInfoFragment" />
     </fragment>
 
     <!-- Doctor edit profile fragment -->

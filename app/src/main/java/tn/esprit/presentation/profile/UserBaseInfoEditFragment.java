@@ -44,6 +44,7 @@ public class UserBaseInfoEditFragment extends Fragment {
 
     private MaterialButton buttonCancel;
     private MaterialButton buttonSave;
+    private ImageButton buttonBack;
 
     private ProfileRepository profileRepository;
     private User currentUser;
@@ -71,7 +72,7 @@ public class UserBaseInfoEditFragment extends Fragment {
                               @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        ImageButton buttonBack = view.findViewById(R.id.button_back_base_info_edit);
+        buttonBack = view.findViewById(R.id.button_back_base_info_edit);
 
         layoutFirstname = view.findViewById(R.id.layout_firstname);
         layoutLastname = view.findViewById(R.id.layout_lastname);
@@ -165,6 +166,7 @@ public class UserBaseInfoEditFragment extends Fragment {
 
         if (buttonSave != null) buttonSave.setEnabled(enabled);
         if (buttonCancel != null) buttonCancel.setEnabled(enabled);
+        if (buttonBack != null) buttonBack.setEnabled(enabled);
     }
 
     private void loadUser() {
@@ -237,29 +239,50 @@ public class UserBaseInfoEditFragment extends Fragment {
             phone = trimOrNull(inputPhone.getText());
         }
 
+        boolean hasError = false;
+        TextInputEditText firstErrorField = null;
+
+        // First name required
+        if (TextUtils.isEmpty(first)) {
+            if (layoutFirstname != null) {
+                layoutFirstname.setError(getString(R.string.profile_error_firstname_required));
+            }
+            firstErrorField = inputFirstname;
+            hasError = true;
+        }
+
         // Email validation: required + valid format
         if (TextUtils.isEmpty(email) || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             if (layoutEmail != null) {
                 layoutEmail.setError(getString(R.string.profile_error_invalid_email));
             }
-            if (inputEmail != null) {
-                inputEmail.requestFocus();
+            if (!hasError) {
+                firstErrorField = inputEmail;
             }
-            return;
+            hasError = true;
+        } else {
+            request.setEmail(email);
         }
-        request.setEmail(email);
 
         // Phone validation: optional, but if provided must be reasonably valid
         if (!TextUtils.isEmpty(phone) && !isValidPhone(phone)) {
             if (layoutPhone != null) {
                 layoutPhone.setError(getString(R.string.profile_error_invalid_phone));
             }
-            if (inputPhone != null) {
-                inputPhone.requestFocus();
+            if (!hasError) {
+                firstErrorField = inputPhone;
+            }
+            hasError = true;
+        } else {
+            request.setPhone(phone);
+        }
+
+        if (hasError) {
+            if (firstErrorField != null) {
+                firstErrorField.requestFocus();
             }
             return;
         }
-        request.setPhone(phone);
 
         showLoading(true);
         profileRepository.updateBaseUser(request, new ProfileRepository.BaseUserUpdateCallback() {

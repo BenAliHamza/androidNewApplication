@@ -29,5 +29,32 @@
         <item>Widowed</item>
         <item>Other</item>
     </string-array>
+    <string-array name="profile_tunisia_cities">
+        <item>Tunis</item>
+        <item>Ariana</item>
+        <item>Ben Arous</item>
+        <item>Manouba</item>
+        <item>Nabeul</item>
+        <item>Bizerte</item>
+        <item>Zaghouan</item>
+        <item>Beja</item>
+        <item>Jendouba</item>
+        <item>Kef</item>
+        <item>Siliana</item>
+        <item>Kairouan</item>
+        <item>Kasserine</item>
+        <item>Sidi Bouzid</item>
+        <item>Sousse</item>
+        <item>Monastir</item>
+        <item>Mahdia</item>
+        <item>Sfax</item>
+        <item>Gafsa</item>
+        <item>Tozeur</item>
+        <item>Kebili</item>
+        <item>Gabes</item>
+        <item>Medenine</item>
+        <item>Tataouine</item>
+    </string-array>
+
 
 </resources>

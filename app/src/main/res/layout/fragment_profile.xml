@@ -5,7 +5,7 @@
     android:id="@+id/profile_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="@color/color_background"
     tools:context="tn.esprit.presentation.profile.ProfileFragment">
 
     <ProgressBar
@@ -32,75 +32,14 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- HEADER CARD: avatar + name + role pill + contact + edit CTA -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_profile_header"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardElevation="2dp"
-                app:cardCornerRadius="16dp"
-                app:cardUseCompatPadding="true">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:padding="16dp">
-
-                    <ImageView
-                        android:id="@+id/image_profile_avatar"
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
-                        android:src="@drawable/logo"
-                        android:scaleType="centerCrop"
-                        android:contentDescription="@string/profile_title" />
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/text_profile_header_name"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                            android:textStyle="bold"
-                            tools:text="Rania Zaibi" />
-
-                        <TextView
-                            android:id="@+id/text_profile_header_role"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            tools:text="Patient" />
-                    </LinearLayout>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_change_avatar"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/profile_edit_title"
-                        android:textAllCaps="false"
-                        android:textSize="12sp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Doctor section unchanged (visible only for doctors) -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/section_doctor"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:visibility="gone"
-                app:cardElevation="2dp"
-                app:cardCornerRadius="16dp"
+                app:cardElevation="@dimen/profile_card_elevation"
+                app:cardCornerRadius="@dimen/profile_card_corner_radius"
                 app:cardUseCompatPadding="true">
 
                 <LinearLayout
@@ -108,6 +47,152 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:padding="16dp">
+
+                    <!-- Top row: avatar + name/role/contact + change photo -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <!-- Avatar with small camera overlay -->
+                        <FrameLayout
+                            android:layout_width="72dp"
+                            android:layout_height="72dp">
+
+                            <ImageView
+                                android:id="@+id/image_profile_avatar"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:scaleType="centerCrop"
+                                android:src="@drawable/logo"
+                                android:contentDescription="@string/profile_title" />
+
+                            <ImageView
+                                android:id="@+id/image_profile_avatar_camera"
+                                android:layout_width="22dp"
+                                android:layout_height="22dp"
+                                android:layout_gravity="bottom|end"
+                                android:background="@drawable/bg_profile_role_pill"
+                                android:padding="4dp"
+                                android:src="@android:drawable/ic_menu_camera"
+                                android:tint="@color/color_profile_role_text"
+                                android:contentDescription="@string/profile_change_photo" />
+                        </FrameLayout>
+
+                        <!-- Name, role pill, contact line -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/text_profile_header_name"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                                android:textStyle="bold"
+                                tools:text="Marouane Bouhlel" />
+
+                            <TextView
+                                android:id="@+id/text_profile_header_role"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:background="@drawable/bg_profile_role_pill"
+                                android:paddingStart="10dp"
+                                android:paddingEnd="10dp"
+                                android:paddingTop="4dp"
+                                android:paddingBottom="4dp"
+                                android:textColor="@color/color_profile_role_text"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                tools:text="Patient" />
+
+                            <TextView
+                                android:id="@+id/text_profile_header_contact"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                                android:textColor="@color/color_profile_meta_text"
+                                android:visibility="gone"
+                                tools:text="patient28@example.com • +216210000028" />
+                        </LinearLayout>
+
+                        <!-- Change photo small text button -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/button_change_avatar"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:minWidth="0dp"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp"
+                            android:text="@string/profile_change_photo"
+                            android:textAllCaps="false"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <!-- Main CTA: edit profile (doctor/patient-specific edit screen) -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_edit_profile"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/profile_edit_title"
+                        android:textAllCaps="false" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- DOCTOR SECTION (visible only for doctors) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/section_doctor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone"
+                app:cardElevation="@dimen/profile_card_elevation"
+                app:cardCornerRadius="@dimen/profile_card_corner_radius"
+                app:cardUseCompatPadding="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- Section title -->
+                    <TextView
+                        android:id="@+id/text_profile_doctor_section_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_profile_section_label"
+                        android:paddingStart="@dimen/profile_section_title_padding_horizontal"
+                        android:paddingEnd="@dimen/profile_section_title_padding_horizontal"
+                        android:paddingTop="@dimen/profile_section_title_padding_vertical"
+                        android:paddingBottom="@dimen/profile_section_title_padding_vertical"
+                        android:text="@string/profile_doctor_section_title"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="@dimen/profile_section_title_margin_bottom" />
+
+                    <!-- Empty state message when doctor profile is not created -->
+                    <TextView
+                        android:id="@+id/text_doctor_profile_empty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:text="@string/profile_doctor_empty_message"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        android:textColor="@color/color_profile_meta_text"
+                        android:visibility="gone"
+                        tools:visibility="gone" />
 
                     <TextView
                         android:id="@+id/text_profile_name"
@@ -122,7 +207,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textColor="@color/color_on_background_secondary"
                         tools:text="Pediatrics" />
 
                     <TextView
@@ -139,7 +224,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-                        tools:text="80 TND" />
+                        tools:text="Consultation fee: 80 TND" />
 
                     <TextView
                         android:id="@+id/text_profile_bio"
@@ -147,36 +232,59 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
                         android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        android:lineSpacingExtra="3dp"
                         tools:text="Short doctor bio goes here…" />
 
-                    <TextView
-                        android:id="@+id/text_profile_accepts_new"
+                    <!-- Flags row: accepts new / teleconsultation -->
+                    <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-                        tools:text="@string/profile_flag_accepts_new" />
+                        android:orientation="horizontal">
 
-                    <TextView
-                        android:id="@+id/text_profile_teleconsultation"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-                        tools:text="@string/profile_flag_teleconsultation" />
+                        <TextView
+                            android:id="@+id/text_profile_accepts_new"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_profile_flag_positive"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:paddingTop="4dp"
+                            android:paddingBottom="4dp"
+                            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                            android:textStyle="bold"
+                            android:visibility="gone"
+                            tools:text="@string/profile_flag_accepts_new" />
+
+                        <TextView
+                            android:id="@+id/text_profile_teleconsultation"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:background="@drawable/bg_profile_flag_positive"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:paddingTop="4dp"
+                            android:paddingBottom="4dp"
+                            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                            android:textStyle="bold"
+                            android:visibility="gone"
+                            tools:text="@string/profile_flag_teleconsultation" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Patient section -->
+            <!-- PATIENT SECTION (visible only for patients) -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/section_patient"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
                 android:visibility="gone"
-                app:cardElevation="2dp"
-                app:cardCornerRadius="16dp"
+                app:cardElevation="@dimen/profile_card_elevation"
+                app:cardCornerRadius="@dimen/profile_card_corner_radius"
                 app:cardUseCompatPadding="true">
 
                 <LinearLayout
@@ -184,6 +292,60 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:padding="16dp">
+
+                    <!-- Section title -->
+                    <TextView
+                        android:id="@+id/text_patient_section_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_profile_section_label"
+                        android:paddingStart="@dimen/profile_section_title_padding_horizontal"
+                        android:paddingEnd="@dimen/profile_section_title_padding_horizontal"
+                        android:paddingTop="@dimen/profile_section_title_padding_vertical"
+                        android:paddingBottom="@dimen/profile_section_title_padding_vertical"
+                        android:text="@string/profile_patient_section_health"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="@dimen/profile_section_title_margin_bottom" />
+
+                    <!-- Empty state message when patient profile is not created -->
+                    <TextView
+                        android:id="@+id/text_patient_profile_empty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:text="@string/profile_patient_empty_message"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        android:textColor="@color/color_profile_meta_text"
+                        android:visibility="gone"
+                        tools:visibility="gone" />
+
+                    <!-- META: DOB + gender -->
+                    <TextView
+                        android:id="@+id/text_patient_meta"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        android:textColor="@color/color_profile_meta_text"
+                        android:visibility="gone"
+                        tools:text="1953-03-17 · FEMALE" />
+
+                    <!-- LOCATION: city, country -->
+                    <TextView
+                        android:id="@+id/text_patient_location"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        android:textColor="@color/color_profile_meta_text"
+                        android:visibility="gone"
+                        tools:text="Bizerte, Tunisia" />
+
+                    <!-- Divider spacing before vitals -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="8dp" />
 
                     <!-- Blood type / key vital -->
                     <TextView
@@ -201,6 +363,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
                         android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        android:textColor="@color/color_on_background_secondary"
                         tools:text="180 cm • 75 kg" />
 
                     <!-- Lifestyle flags -->
@@ -223,15 +386,6 @@
                         tools:text="Additional notes…" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/button_edit_profile"
-                style="@style/Widget.MaterialComponents.Button"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/profile_edit_title"
-                android:textAllCaps="false" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

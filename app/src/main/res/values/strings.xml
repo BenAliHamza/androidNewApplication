@@ -918,7 +918,32 @@
     Please select a valid marital status.
 </string>
 
+    <string name="profile_doctor_empty_message">
+    Your doctor profile is not completed yet. Tap "Edit profile" to fill in your professional details.
+</string>
 
+    <string name="profile_patient_empty_message">
+    Your health profile is empty. Tap "Edit profile" to add important information.
+</string>
+    <string name="profile_change_photo">Change photo</string>
+
+    <string name="profile_doctor_section_title">Doctor profile</string>
+
+    <string name="profile_patient_section_health">Health profile</string>
+
+    <!-- Patient profile: placeholders for missing details -->
+    <string name="profile_patient_identity_not_set">Basic details not set</string>
+    <string name="profile_patient_location_not_set">Location not set</string>
+    <string name="profile_patient_marital_not_set">Marital status not set</string>
+    <string name="profile_doctor_complete_profile">Complete my doctor profile</string>
+    <string name="profile_patient_complete_profile">Complete my health profile</string>
+    <string name="profile_country_tunisia">Tunisia</string>
+
+    <!-- City validation (used in doctor + patient edit screens) -->
+    <string name="profile_error_invalid_city">Please choose a city from the list.</string>
+
+    <!-- Base user info: first name required -->
+    <string name="profile_error_firstname_required">First name is required.</string>
 </resources>
 
 

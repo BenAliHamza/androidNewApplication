@@ -51,8 +51,11 @@ public class ProfileFragment extends Fragment {
     // Header inside profile card
     private android.widget.TextView textHeaderName;
     private android.widget.TextView textHeaderRole;
+    private android.widget.TextView textHeaderContact;
 
     // Doctor section
+    private android.widget.TextView textDoctorSectionTitle;
+    private android.widget.TextView textDoctorProfileEmpty;
     private android.widget.TextView textDoctorName;
     private android.widget.TextView textDoctorSpecialty;
     private android.widget.TextView textDoctorLocation;
@@ -62,6 +65,10 @@ public class ProfileFragment extends Fragment {
     private android.widget.TextView textDoctorTeleconsult;
 
     // Patient section
+    private android.widget.TextView textPatientSectionTitle;
+    private android.widget.TextView textPatientProfileEmpty;
+    private android.widget.TextView textPatientMeta;
+    private android.widget.TextView textPatientLocation;
     private android.widget.TextView textPatientBloodType;
     private android.widget.TextView textPatientHeightWeight;
     private android.widget.TextView textPatientFlags;
@@ -117,7 +124,10 @@ public class ProfileFragment extends Fragment {
 
         textHeaderName = view.findViewById(R.id.text_profile_header_name);
         textHeaderRole = view.findViewById(R.id.text_profile_header_role);
+        textHeaderContact = view.findViewById(R.id.text_profile_header_contact);
 
+        textDoctorSectionTitle = view.findViewById(R.id.text_profile_doctor_section_title);
+        textDoctorProfileEmpty = view.findViewById(R.id.text_doctor_profile_empty);
         textDoctorName = view.findViewById(R.id.text_profile_name);
         textDoctorSpecialty = view.findViewById(R.id.text_profile_specialty);
         textDoctorLocation = view.findViewById(R.id.text_profile_location);
@@ -126,6 +136,10 @@ public class ProfileFragment extends Fragment {
         textDoctorAcceptsNew = view.findViewById(R.id.text_profile_accepts_new);
         textDoctorTeleconsult = view.findViewById(R.id.text_profile_teleconsultation);
 
+        textPatientSectionTitle = view.findViewById(R.id.text_patient_section_title);
+        textPatientProfileEmpty = view.findViewById(R.id.text_patient_profile_empty);
+        textPatientMeta = view.findViewById(R.id.text_patient_meta);
+        textPatientLocation = view.findViewById(R.id.text_patient_location);
         textPatientBloodType = view.findViewById(R.id.text_patient_blood_type);
         textPatientHeightWeight = view.findViewById(R.id.text_patient_height_weight);
         textPatientFlags = view.findViewById(R.id.text_patient_flags);
@@ -144,6 +158,27 @@ public class ProfileFragment extends Fragment {
                     imagePickerLauncher.launch("image/*");
                 }
             });
+        }
+
+        if (imageProfileAvatar != null) {
+            imageProfileAvatar.setOnClickListener(v -> {
+                if (imagePickerLauncher != null) {
+                    imagePickerLauncher.launch("image/*");
+                }
+            });
+        }
+
+        View cameraOverlay = view.findViewById(R.id.image_profile_avatar_camera);
+        if (cameraOverlay != null) {
+            cameraOverlay.setOnClickListener(v -> {
+                if (imagePickerLauncher != null) {
+                    imagePickerLauncher.launch("image/*");
+                }
+            });
+        }
+
+        if (textHeaderContact != null) {
+            textHeaderContact.setOnClickListener(v -> onHeaderContactClicked());
         }
 
         loadProfile();
@@ -201,15 +236,20 @@ public class ProfileFragment extends Fragment {
         String displayName = null;
         String role = null;
         String imageUrl = null;
+        String email = null;
+        String phone = null;
 
         if (user != null) {
+            email = user.getEmail();
+            phone = user.getPhone();
+
             String first = user.getFirstname() != null ? user.getFirstname() : "";
             String last = user.getLastname() != null ? user.getLastname() : "";
             String combined = (first + " " + last).trim();
             if (!combined.isEmpty()) {
                 displayName = combined;
-            } else if (!TextUtils.isEmpty(user.getEmail())) {
-                displayName = user.getEmail();
+            } else if (!TextUtils.isEmpty(email)) {
+                displayName = email;
             }
 
             role = user.getRole();
@@ -224,7 +264,6 @@ public class ProfileFragment extends Fragment {
         }
 
         if (TextUtils.isEmpty(displayName)) {
-            // Placeholder string is now empty in strings.xml, so this is safe.
             displayName = getString(R.string.home_drawer_user_name_placeholder);
         }
 
@@ -237,6 +276,26 @@ public class ProfileFragment extends Fragment {
         String roleLabel = getString(roleLabelResId);
         if (textHeaderRole != null) {
             textHeaderRole.setText(roleLabel);
+        }
+
+        // Contact line
+        String contact = null;
+        if (!TextUtils.isEmpty(email) && !TextUtils.isEmpty(phone)) {
+            contact = email + " • " + phone;
+        } else if (!TextUtils.isEmpty(email)) {
+            contact = email;
+        } else if (!TextUtils.isEmpty(phone)) {
+            contact = phone;
+        }
+
+        if (textHeaderContact != null) {
+            if (!TextUtils.isEmpty(contact)) {
+                textHeaderContact.setText(contact);
+                textHeaderContact.setVisibility(View.VISIBLE);
+            } else {
+                textHeaderContact.setText("");
+                textHeaderContact.setVisibility(View.GONE);
+            }
         }
 
         // Avatar
@@ -272,23 +331,45 @@ public class ProfileFragment extends Fragment {
             }
         }
 
+        // If doctor profile is not created yet: show empty message, hide details
         if (doctorProfile == null) {
+            if (textDoctorProfileEmpty != null) {
+                textDoctorProfileEmpty.setVisibility(View.VISIBLE);
+            }
+            if (textDoctorSpecialty != null) textDoctorSpecialty.setVisibility(View.GONE);
+            if (textDoctorLocation != null) textDoctorLocation.setVisibility(View.GONE);
+            if (textDoctorFee != null) textDoctorFee.setVisibility(View.GONE);
+            if (textDoctorBio != null) textDoctorBio.setVisibility(View.GONE);
+            if (textDoctorAcceptsNew != null) textDoctorAcceptsNew.setVisibility(View.GONE);
+            if (textDoctorTeleconsult != null) textDoctorTeleconsult.setVisibility(View.GONE);
             return;
-        }
-
-        if (textDoctorSpecialty != null) {
-            try {
-                DoctorProfile.Specialty specialty = doctorProfile.getSpecialty();
-                if (specialty != null && !TextUtils.isEmpty(specialty.getName())) {
-                    textDoctorSpecialty.setText(specialty.getName());
-                } else {
-                    textDoctorSpecialty.setText("");
-                }
-            } catch (Exception ignored) {
-                textDoctorSpecialty.setText("");
+        } else {
+            if (textDoctorProfileEmpty != null) {
+                textDoctorProfileEmpty.setVisibility(View.GONE);
             }
         }
 
+        // Specialty
+        if (textDoctorSpecialty != null) {
+            try {
+                DoctorProfile.Specialty specialty = doctorProfile.getSpecialty();
+                String specName = (specialty != null && !TextUtils.isEmpty(specialty.getName()))
+                        ? specialty.getName()
+                        : "";
+                if (!TextUtils.isEmpty(specName)) {
+                    textDoctorSpecialty.setText(specName);
+                    textDoctorSpecialty.setVisibility(View.VISIBLE);
+                } else {
+                    textDoctorSpecialty.setText("");
+                    textDoctorSpecialty.setVisibility(View.GONE);
+                }
+            } catch (Exception ignored) {
+                textDoctorSpecialty.setText("");
+                textDoctorSpecialty.setVisibility(View.GONE);
+            }
+        }
+
+        // Location
         if (textDoctorLocation != null) {
             StringBuilder location = new StringBuilder();
             try {
@@ -308,55 +389,94 @@ public class ProfileFragment extends Fragment {
                 }
             } catch (Exception ignored) {
             }
-            textDoctorLocation.setText(location.toString());
+            String locationStr = location.toString().trim();
+            if (!TextUtils.isEmpty(locationStr)) {
+                textDoctorLocation.setText(locationStr);
+                textDoctorLocation.setVisibility(View.VISIBLE);
+            } else {
+                textDoctorLocation.setText("");
+                textDoctorLocation.setVisibility(View.GONE);
+            }
         }
 
+        // Fee
         if (textDoctorFee != null) {
             try {
                 BigDecimal fee = doctorProfile.getConsultationFee();
                 if (fee != null) {
                     String feeText = getString(R.string.profile_doctor_fee_format, fee.toPlainString());
                     textDoctorFee.setText(feeText);
+                    textDoctorFee.setVisibility(View.VISIBLE);
                 } else {
                     textDoctorFee.setText("");
+                    textDoctorFee.setVisibility(View.GONE);
                 }
             } catch (Exception ignored) {
                 textDoctorFee.setText("");
+                textDoctorFee.setVisibility(View.GONE);
             }
         }
 
+        // Bio
         if (textDoctorBio != null) {
             try {
                 String bio = doctorProfile.getBio();
-                textDoctorBio.setText(bio != null ? bio : "");
+                if (!TextUtils.isEmpty(bio)) {
+                    textDoctorBio.setText(bio);
+                    textDoctorBio.setVisibility(View.VISIBLE);
+                } else {
+                    textDoctorBio.setText("");
+                    textDoctorBio.setVisibility(View.GONE);
+                }
             } catch (Exception ignored) {
                 textDoctorBio.setText("");
+                textDoctorBio.setVisibility(View.GONE);
             }
         }
 
+        // Accepts new patients (flag pill)
         if (textDoctorAcceptsNew != null) {
             try {
                 Boolean accepts = doctorProfile.getAcceptsNewPatients();
-                if (accepts != null && accepts) {
-                    textDoctorAcceptsNew.setText(getString(R.string.profile_flag_accepts_new));
+                if (accepts != null) {
+                    textDoctorAcceptsNew.setVisibility(View.VISIBLE);
+                    if (accepts) {
+                        textDoctorAcceptsNew.setText(getString(R.string.profile_flag_accepts_new));
+                        textDoctorAcceptsNew.setBackgroundResource(R.drawable.bg_profile_flag_positive);
+                    } else {
+                        textDoctorAcceptsNew.setText(getString(R.string.profile_flag_not_accepts_new));
+                        textDoctorAcceptsNew.setBackgroundResource(R.drawable.bg_profile_flag_negative);
+                    }
                 } else {
-                    textDoctorAcceptsNew.setText(getString(R.string.profile_flag_not_accepts_new));
+                    textDoctorAcceptsNew.setText("");
+                    textDoctorAcceptsNew.setVisibility(View.GONE);
                 }
             } catch (Exception ignored) {
                 textDoctorAcceptsNew.setText("");
+                textDoctorAcceptsNew.setVisibility(View.GONE);
             }
         }
 
+        // Teleconsultation (flag pill)
         if (textDoctorTeleconsult != null) {
             try {
                 Boolean tele = doctorProfile.getTeleconsultationEnabled();
-                if (tele != null && tele) {
-                    textDoctorTeleconsult.setText(getString(R.string.profile_flag_teleconsultation));
+                if (tele != null) {
+                    textDoctorTeleconsult.setVisibility(View.VISIBLE);
+                    if (tele) {
+                        textDoctorTeleconsult.setText(getString(R.string.profile_flag_teleconsultation));
+                        textDoctorTeleconsult.setBackgroundResource(R.drawable.bg_profile_flag_positive);
+                    } else {
+                        textDoctorTeleconsult.setText(getString(R.string.profile_flag_no_teleconsultation));
+                        textDoctorTeleconsult.setBackgroundResource(R.drawable.bg_profile_flag_negative);
+                    }
                 } else {
-                    textDoctorTeleconsult.setText(getString(R.string.profile_flag_no_teleconsultation));
+                    textDoctorTeleconsult.setText("");
+                    textDoctorTeleconsult.setVisibility(View.GONE);
                 }
             } catch (Exception ignored) {
                 textDoctorTeleconsult.setText("");
+                textDoctorTeleconsult.setVisibility(View.GONE);
             }
         }
     }
@@ -369,10 +489,86 @@ public class ProfileFragment extends Fragment {
             sectionDoctor.setVisibility(View.GONE);
         }
 
+        // If patient profile is not created yet: show empty message, hide details
         if (patientProfile == null) {
+            if (textPatientProfileEmpty != null) {
+                textPatientProfileEmpty.setVisibility(View.VISIBLE);
+            }
+            if (textPatientMeta != null) textPatientMeta.setVisibility(View.GONE);
+            if (textPatientLocation != null) textPatientLocation.setVisibility(View.GONE);
+            if (textPatientBloodType != null) textPatientBloodType.setVisibility(View.GONE);
+            if (textPatientHeightWeight != null) textPatientHeightWeight.setVisibility(View.GONE);
+            if (textPatientFlags != null) textPatientFlags.setVisibility(View.GONE);
+            if (textPatientNotes != null) textPatientNotes.setVisibility(View.GONE);
             return;
+        } else {
+            if (textPatientProfileEmpty != null) {
+                textPatientProfileEmpty.setVisibility(View.GONE);
+            }
         }
 
+        // META: DOB + gender
+        if (textPatientMeta != null) {
+            String meta = "";
+            try {
+                String gender = patientProfile.getGender();
+                String dob = patientProfile.getDateOfBirth();
+
+                gender = gender != null ? gender.trim() : "";
+                dob = dob != null ? dob.trim() : "";
+
+                if (!TextUtils.isEmpty(dob) && !TextUtils.isEmpty(gender)) {
+                    meta = dob + " \u00b7 " + gender; // "yyyy-MM-dd · FEMALE"
+                } else if (!TextUtils.isEmpty(dob)) {
+                    meta = dob;
+                } else if (!TextUtils.isEmpty(gender)) {
+                    meta = gender;
+                }
+            } catch (Exception ignored) {
+            }
+
+            if (!TextUtils.isEmpty(meta)) {
+                textPatientMeta.setText(meta);
+                textPatientMeta.setVisibility(View.VISIBLE);
+            } else {
+                textPatientMeta.setText("");
+                textPatientMeta.setVisibility(View.GONE);
+            }
+        }
+
+        // LOCATION: city, country
+        if (textPatientLocation != null) {
+            String location = "";
+            try {
+                String label = patientProfile.getCityCountryLabel();
+                if (!TextUtils.isEmpty(label)) {
+                    location = label;
+                } else {
+                    String city = patientProfile.getCity();
+                    String country = patientProfile.getCountry();
+                    StringBuilder sb = new StringBuilder();
+                    if (!TextUtils.isEmpty(city)) {
+                        sb.append(city);
+                    }
+                    if (!TextUtils.isEmpty(country)) {
+                        if (sb.length() > 0) sb.append(", ");
+                        sb.append(country);
+                    }
+                    location = sb.toString();
+                }
+            } catch (Exception ignored) {
+            }
+
+            if (!TextUtils.isEmpty(location)) {
+                textPatientLocation.setText(location);
+                textPatientLocation.setVisibility(View.VISIBLE);
+            } else {
+                textPatientLocation.setText("");
+                textPatientLocation.setVisibility(View.GONE);
+            }
+        }
+
+        // Blood type
         if (textPatientBloodType != null) {
             try {
                 String blood = patientProfile.getBloodType();
@@ -380,18 +576,22 @@ public class ProfileFragment extends Fragment {
                     textPatientBloodType.setText(
                             getString(R.string.profile_patient_blood_type_format, blood)
                     );
+                    textPatientBloodType.setVisibility(View.VISIBLE);
                 } else {
                     textPatientBloodType.setText(
                             getString(R.string.profile_patient_blood_type_not_set)
                     );
+                    textPatientBloodType.setVisibility(View.VISIBLE);
                 }
             } catch (Exception ignored) {
                 textPatientBloodType.setText(
                         getString(R.string.profile_patient_blood_type_not_set)
                 );
+                textPatientBloodType.setVisibility(View.VISIBLE);
             }
         }
 
+        // Height / weight
         if (textPatientHeightWeight != null) {
             try {
                 Integer h = patientProfile.getHeightCm();
@@ -399,14 +599,18 @@ public class ProfileFragment extends Fragment {
                 if (h != null && w != null) {
                     String hw = getString(R.string.profile_patient_height_weight_format, h, w);
                     textPatientHeightWeight.setText(hw);
+                    textPatientHeightWeight.setVisibility(View.VISIBLE);
                 } else {
                     textPatientHeightWeight.setText("");
+                    textPatientHeightWeight.setVisibility(View.GONE);
                 }
             } catch (Exception ignored) {
                 textPatientHeightWeight.setText("");
+                textPatientHeightWeight.setVisibility(View.GONE);
             }
         }
 
+        // Lifestyle flags text
         if (textPatientFlags != null) {
             try {
                 Boolean smoker = patientProfile.getSmoker();
@@ -430,17 +634,27 @@ public class ProfileFragment extends Fragment {
                 } else {
                     textPatientFlags.setText(flags.toString());
                 }
+                textPatientFlags.setVisibility(View.VISIBLE);
             } catch (Exception ignored) {
                 textPatientFlags.setText("");
+                textPatientFlags.setVisibility(View.GONE);
             }
         }
 
+        // Notes
         if (textPatientNotes != null) {
             try {
                 String notes = patientProfile.getNotes();
-                textPatientNotes.setText(notes != null ? notes : "");
+                if (!TextUtils.isEmpty(notes)) {
+                    textPatientNotes.setText(notes);
+                    textPatientNotes.setVisibility(View.VISIBLE);
+                } else {
+                    textPatientNotes.setText("");
+                    textPatientNotes.setVisibility(View.GONE);
+                }
             } catch (Exception ignored) {
                 textPatientNotes.setText("");
+                textPatientNotes.setVisibility(View.GONE);
             }
         }
     }
@@ -461,6 +675,11 @@ public class ProfileFragment extends Fragment {
                     R.string.profile_error_unknown_role,
                     Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void onHeaderContactClicked() {
+        NavHostFragment.findNavController(this)
+                .navigate(R.id.action_profileFragment_to_userBaseInfoFragment);
     }
 
     @Override
@@ -545,7 +764,6 @@ public class ProfileFragment extends Fragment {
                     bytes
             );
 
-            // Backend expects field name "image"
             return MultipartBody.Part.createFormData(
                     "image",
                     "profile.jpg",
